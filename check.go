@@ -3,7 +3,7 @@ package dbft
 import (
 	"context"
 
-	"bitbucket.org/nspcc-dev/dbft/payload"
+	"github.com/nspcc-dev/dbft/payload"
 	"go.uber.org/zap"
 )
 

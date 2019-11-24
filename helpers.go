@@ -1,7 +1,7 @@
 package dbft
 
 import (
-	"bitbucket.org/nspcc-dev/dbft/payload"
+	"github.com/nspcc-dev/dbft/payload"
 	"github.com/spaolacci/murmur3"
 )
 

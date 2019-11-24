@@ -15,11 +15,11 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/nspcc-dev/dbft"
-	"bitbucket.org/nspcc-dev/dbft/block"
-	"bitbucket.org/nspcc-dev/dbft/crypto"
-	"bitbucket.org/nspcc-dev/dbft/payload"
 	"github.com/CityOfZion/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft"
+	"github.com/nspcc-dev/dbft/block"
+	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/payload"
 	"github.com/spaolacci/murmur3"
 	"go.uber.org/zap"
 )

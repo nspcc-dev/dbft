@@ -3,11 +3,11 @@ package dbft
 import (
 	"math/rand"
 
-	"bitbucket.org/nspcc-dev/dbft/block"
-	"bitbucket.org/nspcc-dev/dbft/crypto"
-	"bitbucket.org/nspcc-dev/dbft/merkle"
-	"bitbucket.org/nspcc-dev/dbft/payload"
 	"github.com/CityOfZion/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft/block"
+	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/merkle"
+	"github.com/nspcc-dev/dbft/payload"
 )
 
 type Context struct {
