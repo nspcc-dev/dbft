@@ -1,7 +1,6 @@
 package dbft
 
 import (
-	"context"
 	"errors"
 	"time"
 
@@ -41,9 +40,9 @@ type Config struct {
 	// VerifyBlock verifies if block is valid.
 	VerifyBlock func(b block.Block) bool
 	// Broadcast should broadcast payload m to the consensus nodes.
-	Broadcast func(ctx context.Context, m payload.ConsensusPayload)
+	Broadcast func(m payload.ConsensusPayload)
 	// ProcessBlock is called every time new block is accepted.
-	ProcessBlock func(ctx context.Context, b block.Block)
+	ProcessBlock func(b block.Block)
 	// GetBlock should return block with hash.
 	GetBlock func(h util.Uint256) block.Block
 	// WatchOnly tells if a node should only watch.
@@ -97,8 +96,8 @@ func defaultConfig() *Config {
 		GetTx:               func(h util.Uint256) block.Transaction { return nil },
 		GetVerified:         func(count int) []block.Transaction { return make([]block.Transaction, 0) },
 		VerifyBlock:         func(b block.Block) bool { return true },
-		Broadcast:           func(ctx context.Context, m payload.ConsensusPayload) {},
-		ProcessBlock:        func(ctx context.Context, b block.Block) {},
+		Broadcast:           func(m payload.ConsensusPayload) {},
+		ProcessBlock:        func(b block.Block) {},
 		GetBlock:            func(h util.Uint256) block.Block { return nil },
 		WatchOnly:           func() bool { return false },
 		CurrentHeight:       nil,
@@ -188,13 +187,13 @@ func WithVerifyBlock(f func(b block.Block) bool) Option {
 	}
 }
 
-func WithBroadcast(f func(ctx context.Context, m payload.ConsensusPayload)) Option {
+func WithBroadcast(f func(m payload.ConsensusPayload)) Option {
 	return func(cfg *Config) {
 		cfg.Broadcast = f
 	}
 }
 
-func WithProcessBlock(f func(ctx context.Context, b block.Block)) Option {
+func WithProcessBlock(f func(b block.Block)) Option {
 	return func(cfg *Config) {
 		cfg.ProcessBlock = f
 	}

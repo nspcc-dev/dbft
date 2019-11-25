@@ -1,20 +1,18 @@
 package dbft
 
 import (
-	"context"
-
 	"github.com/nspcc-dev/dbft/payload"
 	"go.uber.org/zap"
 )
 
-func (d *DBFT) broadcast(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) broadcast(msg payload.ConsensusPayload) {
 	d.Logger.Debug("broadcasting message",
 		zap.Stringer("type", msg.Type()),
 		zap.Uint32("height", d.BlockIndex),
 		zap.Uint("view", uint(d.ViewNumber)))
 
 	msg.SetValidatorIndex(uint16(d.MyIndex))
-	d.Broadcast(ctx, msg)
+	d.Broadcast(msg)
 }
 
 func (c *Context) makePrepareRequest() payload.ConsensusPayload {
@@ -29,10 +27,10 @@ func (c *Context) makePrepareRequest() payload.ConsensusPayload {
 	return c.withPayload(payload.PrepareRequestType, req)
 }
 
-func (d *DBFT) sendPrepareRequest(ctx context.Context) {
+func (d *DBFT) sendPrepareRequest() {
 	msg := d.makePrepareRequest()
 	d.PreparationPayloads[d.MyIndex] = msg
-	d.broadcast(ctx, msg)
+	d.broadcast(msg)
 
 	delay := d.SecondsPerBlock << (d.ViewNumber + 1)
 	if d.ViewNumber == 0 {
@@ -53,7 +51,7 @@ func (c *Context) makeChangeView(ts uint32) payload.ConsensusPayload {
 	return msg
 }
 
-func (d *DBFT) sendChangeView(ctx context.Context) {
+func (d *DBFT) sendChangeView() {
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -66,7 +64,7 @@ func (d *DBFT) sendChangeView(ctx context.Context) {
 
 	if nc+nf > d.F() {
 		d.Logger.Debug("skip change view", zap.Int("nc", nc), zap.Int("nf", nf))
-		d.sendRecoveryRequest(ctx)
+		d.sendRecoveryRequest()
 
 		return
 	}
@@ -79,8 +77,8 @@ func (d *DBFT) sendChangeView(ctx context.Context) {
 		zap.Int("nf", nf))
 
 	msg := d.makeChangeView(uint32(d.Timer.Now().Unix()))
-	d.broadcast(ctx, msg)
-	d.checkChangeView(ctx, newView)
+	d.broadcast(msg)
+	d.checkChangeView(newView)
 }
 
 func (c *Context) makePrepareResponse() payload.ConsensusPayload {
@@ -93,9 +91,9 @@ func (c *Context) makePrepareResponse() payload.ConsensusPayload {
 	return msg
 }
 
-func (d *DBFT) sendPrepareResponse(ctx context.Context) {
+func (d *DBFT) sendPrepareResponse() {
 	msg := d.makePrepareResponse()
-	d.broadcast(ctx, msg)
+	d.broadcast(msg)
 }
 
 func (c *Context) makeCommit() payload.ConsensusPayload {
@@ -118,16 +116,16 @@ func (c *Context) makeCommit() payload.ConsensusPayload {
 	return nil
 }
 
-func (d *DBFT) sendCommit(ctx context.Context) {
+func (d *DBFT) sendCommit() {
 	msg := d.makeCommit()
 	d.CommitPayloads[d.MyIndex] = msg
-	d.broadcast(ctx, msg)
+	d.broadcast(msg)
 }
 
-func (d *DBFT) sendRecoveryRequest(ctx context.Context) {
+func (d *DBFT) sendRecoveryRequest() {
 	req := d.NewRecoveryRequest()
 	req.SetTimestamp(uint32(d.Timer.Now().Unix()))
-	d.broadcast(ctx, d.withPayload(payload.RecoveryRequestType, req))
+	d.broadcast(d.withPayload(payload.RecoveryRequestType, req))
 }
 
 func (c *Context) makeRecoveryMessage() payload.ConsensusPayload {
@@ -160,8 +158,8 @@ func (c *Context) makeRecoveryMessage() payload.ConsensusPayload {
 	return c.withPayload(payload.RecoveryMessageType, recovery)
 }
 
-func (d *DBFT) sendRecoveryMessage(ctx context.Context) {
-	d.broadcast(ctx, d.makeRecoveryMessage())
+func (d *DBFT) sendRecoveryMessage() {
+	d.broadcast(d.makeRecoveryMessage())
 }
 
 func (c *Context) withPayload(t payload.MessageType, payload interface{}) payload.ConsensusPayload {

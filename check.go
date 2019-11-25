@@ -1,13 +1,11 @@
 package dbft
 
 import (
-	"context"
-
 	"github.com/nspcc-dev/dbft/payload"
 	"go.uber.org/zap"
 )
 
-func (d *DBFT) checkPrepare(ctx context.Context) {
+func (d *DBFT) checkPrepare() {
 	if !d.hasAllTransactions() {
 		d.Logger.Debug("check prepare: some transactions are missing", zap.Any("hashes", d.missingHashes()))
 		return
@@ -33,13 +31,13 @@ func (d *DBFT) checkPrepare(ctx context.Context) {
 		zap.Int("M", d.M()))
 
 	if hasRequest && count >= d.M() {
-		d.sendCommit(ctx)
+		d.sendCommit()
 		d.changeTimer(d.SecondsPerBlock)
-		d.checkCommit(ctx)
+		d.checkCommit()
 	}
 }
 
-func (d *DBFT) checkCommit(ctx context.Context) {
+func (d *DBFT) checkCommit() {
 	if !d.hasAllTransactions() {
 		d.Logger.Debug("check commit: some transactions are missing", zap.Any("hashes", d.missingHashes()))
 		return
@@ -70,7 +68,7 @@ func (d *DBFT) checkCommit(ctx context.Context) {
 		zap.Stringer("merkle", d.block.MerkleRoot()),
 		zap.Stringer("prev", d.block.PrevHash()))
 
-	d.ProcessBlock(ctx, d.block)
+	d.ProcessBlock(d.block)
 
 	d.blockPersistTime = d.Timer.Now()
 
@@ -81,7 +79,7 @@ func (d *DBFT) checkCommit(ctx context.Context) {
 	}
 }
 
-func (d *DBFT) checkChangeView(ctx context.Context, view byte) {
+func (d *DBFT) checkChangeView(view byte) {
 	if d.ViewNumber >= view {
 		return
 	}
@@ -101,7 +99,7 @@ func (d *DBFT) checkChangeView(ctx context.Context, view byte) {
 	if !d.Context.WatchOnly() {
 		msg := d.ChangeViewPayloads[d.MyIndex]
 		if msg != nil && msg.GetChangeView().NewViewNumber() < view {
-			d.broadcast(ctx, d.makeChangeView(uint32(d.Timer.Now().Unix())))
+			d.broadcast(d.makeChangeView(uint32(d.Timer.Now().Unix())))
 		}
 	}
 

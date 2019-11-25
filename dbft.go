@@ -1,7 +1,6 @@
 package dbft
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -24,10 +23,10 @@ type (
 	}
 
 	Service interface {
-		Start(context.Context)
-		OnTransaction(context.Context, block.Transaction)
-		OnReceive(context.Context, payload.ConsensusPayload)
-		OnTimeout(context.Context, timer.HV)
+		Start()
+		OnTransaction(block.Transaction)
+		OnReceive(payload.ConsensusPayload)
+		OnTimeout(timer.HV)
 	}
 )
 
@@ -55,7 +54,7 @@ func New(options ...Option) *DBFT {
 	return d
 }
 
-func (d *DBFT) addTransaction(ctx context.Context, tx block.Transaction) {
+func (d *DBFT) addTransaction(tx block.Transaction) {
 	d.Transactions[tx.Hash()] = tx
 	if d.hasAllTransactions() {
 		if d.IsPrimary() || d.Context.WatchOnly() {
@@ -64,21 +63,21 @@ func (d *DBFT) addTransaction(ctx context.Context, tx block.Transaction) {
 
 		if b := d.Context.MakeHeader(); !d.VerifyBlock(b) {
 			d.Logger.Warn("can't verify transaction", zap.Stringer("hash", tx.Hash()))
-			d.sendChangeView(ctx)
+			d.sendChangeView()
 
 			return
 		}
 
 		d.extendTimer(2)
-		d.sendPrepareResponse(ctx)
-		d.checkPrepare(ctx)
+		d.sendPrepareResponse()
+		d.checkPrepare()
 	}
 }
 
-func (d *DBFT) Start(ctx context.Context) {
+func (d *DBFT) Start() {
 	d.cache = newCache()
 	d.InitializeConsensus(0)
-	d.start(ctx)
+	d.start()
 }
 
 func (d *DBFT) InitializeConsensus(view byte) {
@@ -125,7 +124,7 @@ func (d *DBFT) InitializeConsensus(view byte) {
 	}
 }
 
-func (d *DBFT) OnTransaction(ctx context.Context, tx block.Transaction) {
+func (d *DBFT) OnTransaction(tx block.Transaction) {
 	// d.Logger.Debug("OnTransaction",
 	// 	zap.Bool("backup", d.IsBackup()),
 	// 	zap.Bool("not_accepting", d.NotAcceptingPayloadsDueToViewChanging()),
@@ -144,14 +143,14 @@ func (d *DBFT) OnTransaction(ctx context.Context, tx block.Transaction) {
 
 	for i := range d.TransactionHashes {
 		if h == d.TransactionHashes[i] {
-			d.addTransaction(ctx, tx)
+			d.addTransaction(tx)
 			return
 		}
 	}
 }
 
 // OnTimeout advances state machine as if timeout was fired.
-func (d *DBFT) OnTimeout(ctx context.Context, hv timer.HV) {
+func (d *DBFT) OnTimeout(hv timer.HV) {
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -169,20 +168,20 @@ func (d *DBFT) OnTimeout(ctx context.Context, hv timer.HV) {
 		zap.Uint("view", uint(hv.View)))
 
 	if d.IsPrimary() && !d.RequestSentOrReceived() {
-		d.sendPrepareRequest(ctx)
+		d.sendPrepareRequest()
 	} else if (d.IsPrimary() && d.RequestSentOrReceived()) || d.IsBackup() {
 		if d.CommitSent() {
 			d.Logger.Info("send recovery to resend commit")
-			d.sendRecoveryRequest(ctx)
+			d.sendRecoveryRequest()
 			d.changeTimer(d.SecondsPerBlock << 1)
 		} else {
-			d.sendChangeView(ctx)
+			d.sendChangeView()
 		}
 	}
 }
 
 // OnReceive advances state machine in accordance with msg.
-func (d *DBFT) OnReceive(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
 	if int(msg.ValidatorIndex()) >= len(d.Validators) {
 		d.Logger.Error("too big validator index", zap.Uint16("from", msg.ValidatorIndex()))
 		return
@@ -222,17 +221,17 @@ func (d *DBFT) OnReceive(ctx context.Context, msg payload.ConsensusPayload) {
 
 	switch msg.Type() {
 	case payload.ChangeViewType:
-		d.onChangeView(ctx, msg)
+		d.onChangeView(msg)
 	case payload.PrepareRequestType:
-		d.onPrepareRequest(ctx, msg)
+		d.onPrepareRequest(msg)
 	case payload.PrepareResponseType:
-		d.onPrepareResponse(ctx, msg)
+		d.onPrepareResponse(msg)
 	case payload.CommitType:
-		d.onCommit(ctx, msg)
+		d.onCommit(msg)
 	case payload.RecoveryRequestType:
-		d.onRecoveryRequest(ctx, msg)
+		d.onRecoveryRequest(msg)
 	case payload.RecoveryMessageType:
-		d.onRecoveryMessage(ctx, msg)
+		d.onRecoveryMessage(msg)
 	default:
 		d.Logger.DPanic("wrong message type")
 	}
@@ -240,33 +239,33 @@ func (d *DBFT) OnReceive(ctx context.Context, msg payload.ConsensusPayload) {
 
 // start performs initial operations and returns messages to be sent.
 // It must be called after every height or view increment.
-func (d *DBFT) start(ctx context.Context) {
+func (d *DBFT) start() {
 	if !d.IsPrimary() {
 		if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
 			for _, m := range msgs.prepare {
 				if m.Type() == payload.PrepareRequestType {
-					d.onPrepareRequest(ctx, m)
+					d.onPrepareRequest(m)
 				} else {
-					d.onPrepareResponse(ctx, m)
+					d.onPrepareResponse(m)
 				}
 			}
 
 			for _, m := range msgs.chViews {
-				d.onChangeView(ctx, m)
+				d.onChangeView(m)
 			}
 
 			for _, m := range msgs.commit {
-				d.onCommit(ctx, m)
+				d.onCommit(m)
 			}
 		}
 
 		return
 	}
 
-	d.sendPrepareRequest(ctx)
+	d.sendPrepareRequest()
 }
 
-func (d *DBFT) onPrepareRequest(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	// ignore prepareRequest if we had already received it or
 	// are in process of changing view
 	if d.RequestSentOrReceived() { //|| (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
@@ -299,7 +298,7 @@ func (d *DBFT) onPrepareRequest(ctx context.Context, msg payload.ConsensusPayloa
 	d.TransactionHashes = p.TransactionHashes()
 	d.Transactions = make(map[util.Uint256]block.Transaction)
 
-	d.processMissingTx(ctx)
+	d.processMissingTx()
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
@@ -307,11 +306,11 @@ func (d *DBFT) onPrepareRequest(ctx context.Context, msg payload.ConsensusPayloa
 		return
 	}
 
-	d.sendPrepareResponse(ctx)
-	d.checkPrepare(ctx)
+	d.sendPrepareResponse()
+	d.checkPrepare()
 }
 
-func (d *DBFT) processMissingTx(ctx context.Context) {
+func (d *DBFT) processMissingTx() {
 	missing := make([]util.Uint256, 0, len(d.TransactionHashes))
 	txx := make([]block.Transaction, 0, len(d.TransactionHashes))
 
@@ -327,7 +326,7 @@ func (d *DBFT) processMissingTx(ctx context.Context) {
 	if len(missing) == 0 {
 		if d.NextConsensus != d.GetConsensusAddress(d.GetValidators(txx...)...) {
 			d.Logger.Error("invalid nextConsensus")
-			d.sendChangeView(ctx)
+			d.sendChangeView()
 
 			return
 		}
@@ -362,7 +361,7 @@ func (d *DBFT) updateExistingPayloads(msg payload.ConsensusPayload) {
 	}
 }
 
-func (d *DBFT) onPrepareResponse(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 	if d.ViewNumber != msg.ViewNumber() {
 		d.Logger.Debug("ignoring wrong view number", zap.Uint("view", uint(msg.ViewNumber())))
 		return
@@ -399,16 +398,16 @@ func (d *DBFT) onPrepareResponse(ctx context.Context, msg payload.ConsensusPaylo
 	d.extendTimer(2)
 
 	if d.RequestSentOrReceived() {
-		d.checkPrepare(ctx)
+		d.checkPrepare()
 	}
 }
 
-func (d *DBFT) onChangeView(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 	p := msg.GetChangeView()
 
 	if p.NewViewNumber() <= d.ViewNumber {
 		d.Logger.Debug("ignoring old ChangeView", zap.Uint("new_view", uint(p.NewViewNumber())))
-		d.onRecoveryRequest(ctx, msg)
+		d.onRecoveryRequest(msg)
 
 		return
 	}
@@ -424,10 +423,10 @@ func (d *DBFT) onChangeView(ctx context.Context, msg payload.ConsensusPayload) {
 	}
 
 	d.ChangeViewPayloads[msg.ValidatorIndex()] = msg
-	d.checkChangeView(ctx, p.NewViewNumber())
+	d.checkChangeView(p.NewViewNumber())
 }
 
-func (d *DBFT) onCommit(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
 	d.extendTimer(4)
 
 	if d.ViewNumber == msg.ViewNumber() {
@@ -438,7 +437,7 @@ func (d *DBFT) onCommit(ctx context.Context, msg payload.ConsensusPayload) {
 			pub := d.Validators[msg.ValidatorIndex()]
 			if header.Verify(pub, msg.GetCommit().Signature()) == nil {
 				d.CommitPayloads[msg.ValidatorIndex()] = msg
-				d.checkCommit(ctx)
+				d.checkCommit()
 			} else {
 				d.Logger.Warn("can't validate commit signature")
 			}
@@ -450,7 +449,7 @@ func (d *DBFT) onCommit(ctx context.Context, msg payload.ConsensusPayload) {
 	d.CommitPayloads[msg.ValidatorIndex()] = msg
 }
 
-func (d *DBFT) onRecoveryRequest(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) onRecoveryRequest(msg payload.ConsensusPayload) {
 	if !d.CommitSent() {
 		// Limit recoveries to be sent from no more than F nodes
 		// TODO replace loop with a single if
@@ -469,10 +468,10 @@ func (d *DBFT) onRecoveryRequest(ctx context.Context, msg payload.ConsensusPaylo
 		}
 	}
 
-	d.sendRecoveryMessage(ctx)
+	d.sendRecoveryMessage()
 }
 
-func (d *DBFT) onRecoveryMessage(ctx context.Context, msg payload.ConsensusPayload) {
+func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 	d.Logger.Debug("recovery message received", zap.Any("dump", msg))
 
 	var (
@@ -502,7 +501,7 @@ func (d *DBFT) onRecoveryMessage(ctx context.Context, msg payload.ConsensusPaylo
 
 		for _, m := range recovery.GetChangeViews(msg) {
 			validChViews++
-			d.onChangeView(ctx, m)
+			d.onChangeView(m)
 		}
 	}
 
@@ -512,15 +511,15 @@ func (d *DBFT) onRecoveryMessage(ctx context.Context, msg payload.ConsensusPaylo
 				totalPrepReq, validPrepReq = 1, 1
 
 				prepReq.SetValidatorIndex(uint16(d.GetPrimaryIndex(msg.ViewNumber())))
-				d.onPrepareRequest(ctx, prepReq)
+				d.onPrepareRequest(prepReq)
 			} else if d.IsPrimary() {
-				d.sendPrepareRequest(ctx)
+				d.sendPrepareRequest()
 			}
 		}
 
 		for _, m := range recovery.GetPrepareResponses(msg) {
 			validPrepResp++
-			d.onPrepareResponse(ctx, m)
+			d.onPrepareResponse(m)
 		}
 	}
 
@@ -528,7 +527,7 @@ func (d *DBFT) onRecoveryMessage(ctx context.Context, msg payload.ConsensusPaylo
 		// Ensure we know about all commits from lower view numbers.
 		for _, m := range recovery.GetCommits(msg) {
 			validCommits++
-			d.onCommit(ctx, m)
+			d.onCommit(m)
 		}
 	}
 }

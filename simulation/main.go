@@ -83,7 +83,7 @@ func main() {
 
 // Run implements simple event loop.
 func (n *simNode) Run(ctx context.Context) {
-	n.d.Start(ctx)
+	n.d.Start()
 
 	for {
 		select {
@@ -91,9 +91,9 @@ func (n *simNode) Run(ctx context.Context) {
 			n.log.Info("context cancelled")
 			return
 		case hv := <-n.d.Timer.C():
-			n.d.OnTimeout(ctx, hv)
+			n.d.OnTimeout(hv)
 		case msg := <-n.messages:
-			n.d.OnReceive(ctx, msg)
+			n.d.OnReceive(msg)
 		}
 	}
 }
@@ -164,7 +164,7 @@ func sortValidators(pubs []crypto.PublicKey) {
 	})
 }
 
-func (t *simNode) Broadcast(ctx context.Context, m payload.ConsensusPayload) {
+func (t *simNode) Broadcast(m payload.ConsensusPayload) {
 	for i, node := range t.cluster {
 		if i != t.id {
 			select {
@@ -184,7 +184,7 @@ func (t *simNode) GetValidators(...block.Transaction) []crypto.PublicKey {
 	return t.validators
 }
 
-func (t *simNode) ProcessBlock(ctx context.Context, b block.Block) {
+func (t *simNode) ProcessBlock(b block.Block) {
 	t.d.Logger.Debug("received block", zap.Uint32("height", b.Index()))
 
 	for _, tx := range b.Transactions() {
