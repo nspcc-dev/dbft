@@ -31,6 +31,10 @@ The library provides 4 callbacks:
 
 A minimal example can be found in `simulation/main.go`.
 
+## Links
+- dBFT high-level description on NEO website [https://docs.neo.org/docs/en-us/tooldev/concept/consensus/consensus_algorithm.html](https://docs.neo.org/docs/en-us/tooldev/concept/consensus/consensus_algorithm.html)
+- dBFT research paper [https://github.com/NeoResearch/yellowpaper/blob/master/releases/08_dBFT.pdf](https://github.com/NeoResearch/yellowpaper/blob/master/releases/08_dBFT.pdf)
+
 ## Notes
 1. C# NEO node implementation works with the memory pool model, where only transaction hashes
 are proposed in the first step of the consensus and
