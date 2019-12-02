@@ -170,6 +170,56 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 	})
 }
 
+func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
+	s := newTestState(2, 4)
+	t.Run("send recovery message", func(t *testing.T) {
+		s.currHeight = 1
+		service := New(s.getOptions()...)
+		service.Start()
+
+		req := s.tryRecv()
+		require.NotNil(t, req)
+
+		resp := s.getPrepareResponse(1, req.Hash())
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		resp = s.getPrepareResponse(0, req.Hash())
+		service.OnReceive(resp)
+		cm := s.tryRecv()
+		require.NotNil(t, cm)
+
+		rr := s.getRecoveryRequest(3)
+		service.OnReceive(rr)
+		rm := s.tryRecv()
+		require.NotNil(t, rm)
+		require.Equal(t, payload.RecoveryMessageType, rm.Type())
+
+		other := s.copyWithIndex(3)
+		srv2 := New(other.getOptions()...)
+		srv2.Start()
+		srv2.OnReceive(rm)
+
+		r2 := other.tryRecv()
+		require.NotNil(t, r2)
+		require.Equal(t, payload.PrepareResponseType, r2.Type())
+
+		cm2 := other.tryRecv()
+		require.NotNil(t, cm2)
+		require.Equal(t, payload.CommitType, cm2.Type())
+		pub := other.pubs[other.myIndex]
+		require.NoError(t, service.header.Verify(pub, cm2.GetCommit().Signature()))
+	})
+}
+
+func (s testState) getRecoveryRequest(from uint16) Payload {
+	p := s.getPayload(from)
+	p.SetType(payload.RecoveryRequestType)
+	p.SetPayload(payload.NewRecoveryRequest())
+
+	return p
+}
+
 func (s testState) getPrepareResponse(from uint16, phash util.Uint256) Payload {
 	resp := payload.NewPrepareResponse()
 	resp.SetPreparationHash(phash)
@@ -222,6 +272,18 @@ func (s *testState) tryRecv() Payload {
 	s.ch = s.ch[1:]
 
 	return p
+}
+
+func (s testState) copyWithIndex(myIndex int) *testState {
+	return &testState{
+		myIndex:    myIndex,
+		count:      s.count,
+		privs:      s.privs,
+		pubs:       s.pubs,
+		currHeight: s.currHeight,
+		currHash:   s.currHash,
+		pool:       newTestPool(),
+	}
 }
 
 func (s *testState) getOptions() []Option {
