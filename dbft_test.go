@@ -139,6 +139,48 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	})
 }
 
+func TestDBFT_OnReceiveCommit(t *testing.T) {
+	s := newTestState(2, 4)
+	t.Run("send commit after enough responses", func(t *testing.T) {
+		s.currHeight = 1
+		service := New(s.getOptions()...)
+		service.Start()
+
+		req := s.tryRecv()
+		require.NotNil(t, req)
+
+		resp := s.getPrepareResponse(1, req.Hash())
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		resp = s.getPrepareResponse(0, req.Hash())
+		service.OnReceive(resp)
+
+		cm := s.tryRecv()
+		require.NotNil(t, cm)
+		require.Equal(t, payload.CommitType, cm.Type())
+		require.EqualValues(t, s.currHeight+1, cm.Height())
+		require.EqualValues(t, 0, cm.ViewNumber())
+		require.Equal(t, s.currHash, cm.PrevHash())
+		require.EqualValues(t, s.myIndex, cm.ValidatorIndex())
+		require.NotNil(t, cm.Payload())
+
+		pub := s.pubs[s.myIndex]
+		require.NoError(t, service.header.Verify(pub, cm.GetCommit().Signature()))
+	})
+}
+
+func (s testState) getPrepareResponse(from uint16, phash util.Uint256) Payload {
+	resp := payload.NewPrepareResponse()
+	resp.SetPreparationHash(phash)
+
+	p := s.getPayload(from)
+	p.SetType(payload.PrepareResponseType)
+	p.SetPayload(resp)
+
+	return p
+}
+
 func (s testState) getPrepareRequest(from uint16, hashes ...util.Uint256) Payload {
 	req := payload.NewPrepareRequest()
 	req.SetTransactionHashes(hashes)
