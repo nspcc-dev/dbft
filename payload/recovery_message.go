@@ -54,6 +54,8 @@ func (m *recoveryMessage) AddPayload(p ConsensusPayload) {
 	switch p.Type() {
 	case PrepareRequestType:
 		m.prepareRequest = p.GetPrepareRequest()
+		prepHash := p.Hash()
+		m.preparationHash = &prepHash
 	case PrepareResponseType:
 		m.preparationPayloads = append(m.preparationPayloads, preparationCompact{
 			validatorIndex: p.ValidatorIndex(),
