@@ -397,7 +397,7 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 
 	d.extendTimer(2)
 
-	if d.RequestSentOrReceived() {
+	if !d.Context.WatchOnly() && !d.CommitSent() && d.RequestSentOrReceived() {
 		d.checkPrepare()
 	}
 }

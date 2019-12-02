@@ -209,6 +209,9 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 		require.Equal(t, payload.CommitType, cm2.Type())
 		pub := other.pubs[other.myIndex]
 		require.NoError(t, service.header.Verify(pub, cm2.GetCommit().Signature()))
+
+		// send commit once during recovery
+		require.Nil(t, s.tryRecv())
 	})
 }
 
