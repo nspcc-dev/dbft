@@ -1,0 +1,97 @@
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.5
+
+executors:
+  go1_13:
+    docker:
+      - image: circleci/golang:1.13
+        environment:
+          GO111MODULE: "on"
+
+commands:
+  gomod:
+    steps:
+      - restore_cache:
+          keys: [deps-]
+      - run:
+          name: Download go module dependencies
+          command: go mod download
+      - save_cache:
+          key: deps-{{ checksum "go.sum" }}-{{ checksum "go.sum" }}
+          paths: [/go/pkg/mod]
+
+jobs:
+  lint:
+    working_directory: /go/src/github.com/nspcc-dev/dbft
+    executor: go1_13
+    steps:
+      - checkout
+      - gomod
+      - run:
+          name: go-lint
+          command: |
+            go get -u -v golang.org/x/lint/golint
+            golint -set_exit_status ./...
+
+  vet:
+    working_directory: /go/src/github.com/nspcc-dev/dbft
+    executor: go1_13
+    steps:
+      - checkout
+      - gomod
+      - run:
+          name: go-vet
+          command: go vet ./...
+
+  test_1_13:
+    working_directory: /go/src/github.com/nspcc-dev/dbft
+    executor: go1_13
+    steps:
+      - checkout
+      - gomod
+      - run: go test -v -race ./... -coverprofile=coverage.txt -covermode=atomic
+      - codecov/upload:
+          file: coverage.txt
+
+  build_cli:
+    working_directory: /go/src/github.com/nspcc-dev/dbft
+    executor: go1_12
+    steps:
+      - checkout
+      - gomod
+      - run: make build
+      - store_artifacts:
+          path: bin
+          destination: /
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - vet:
+          filters:
+            tags:
+              only: v/[0-9]+\.[0-9]+\.[0-9]+/
+      - lint:
+          filters:
+            tags:
+              only: v/[0-9]+\.[0-9]+\.[0-9]+/
+      - test_1_12:
+          filters:
+            tags:
+              only: v/[0-9]+\.[0-9]+\.[0-9]+/
+      - test_1_13:
+          filters:
+            tags:
+              only: v/[0-9]+\.[0-9]+\.[0-9]+/
+      - build_cli:
+          filters:
+            tags:
+              only: v/[0-9]+\.[0-9]+\.[0-9]+/
+      - build_image:
+          requires:
+            - build_cli
+          filters:
+            tags:
+              only: v/[0-9]+\.[0-9]+\.[0-9]+/
