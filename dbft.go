@@ -507,7 +507,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 			return
 		}
 
-		for _, m := range recovery.GetChangeViews(msg) {
+		for _, m := range recovery.GetChangeViews(msg, d.Validators) {
 			validChViews++
 			d.onChangeView(m)
 		}
@@ -515,17 +515,16 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 
 	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() {
 		if !d.RequestSentOrReceived() {
-			if prepReq := recovery.GetPrepareRequest(msg); prepReq != nil {
+			prepReq := recovery.GetPrepareRequest(msg, d.Validators, uint16(d.PrimaryIndex))
+			if prepReq != nil {
 				totalPrepReq, validPrepReq = 1, 1
-
-				prepReq.SetValidatorIndex(uint16(d.GetPrimaryIndex(msg.ViewNumber())))
 				d.onPrepareRequest(prepReq)
 			} else if d.IsPrimary() {
 				d.sendPrepareRequest()
 			}
 		}
 
-		for _, m := range recovery.GetPrepareResponses(msg) {
+		for _, m := range recovery.GetPrepareResponses(msg, d.Validators) {
 			validPrepResp++
 			d.onPrepareResponse(m)
 		}
@@ -533,7 +532,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 
 	if msg.ViewNumber() <= d.ViewNumber {
 		// Ensure we know about all commits from lower view numbers.
-		for _, m := range recovery.GetCommits(msg) {
+		for _, m := range recovery.GetCommits(msg, d.Validators) {
 			validCommits++
 			d.onCommit(m)
 		}

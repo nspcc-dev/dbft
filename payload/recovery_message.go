@@ -5,6 +5,7 @@ import (
 
 	"github.com/CityOfZion/neo-go/pkg/io"
 	"github.com/CityOfZion/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft/crypto"
 )
 
 type (
@@ -13,13 +14,13 @@ type (
 		// AddPayload adds payload from this epoch to be recovered.
 		AddPayload(p ConsensusPayload)
 		// GetPrepareRequest returns PrepareRequest to be processed.
-		GetPrepareRequest(p ConsensusPayload) ConsensusPayload
+		GetPrepareRequest(p ConsensusPayload, validators []crypto.PublicKey, primary uint16) ConsensusPayload
 		// GetPrepareResponses returns a slice of PrepareResponse in any order.
-		GetPrepareResponses(p ConsensusPayload) []ConsensusPayload
+		GetPrepareResponses(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
 		// GetChangeView returns a slice of ChangeView in any order.
-		GetChangeViews(p ConsensusPayload) []ConsensusPayload
+		GetChangeViews(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
 		// GetCommits returns a slice of Commit in any order.
-		GetCommits(p ConsensusPayload) []ConsensusPayload
+		GetCommits(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
 
 		// PreparationHash returns has of PrepareRequest payload for this epoch.
 		// It can be useful in case only PrepareResponse payloads were received.
@@ -90,17 +91,20 @@ func fromPayload(t MessageType, recovery ConsensusPayload, p interface{}) *conse
 }
 
 // GetPrepareRequest implements RecoveryMessage interface.
-func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload) ConsensusPayload {
-	return fromPayload(PrepareRequestType, p, &prepareRequest{
+func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload, _ []crypto.PublicKey, ind uint16) ConsensusPayload {
+	req := fromPayload(PrepareRequestType, p, &prepareRequest{
 		timestamp:         m.prepareRequest.Timestamp(),
 		nonce:             m.prepareRequest.Nonce(),
 		transactionHashes: m.prepareRequest.TransactionHashes(),
 		nextConsensus:     m.prepareRequest.NextConsensus(),
 	})
+	req.SetValidatorIndex(ind)
+
+	return req
 }
 
 // GetPrepareResponses implements RecoveryMessage interface.
-func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload) []ConsensusPayload {
+func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload, _ []crypto.PublicKey) []ConsensusPayload {
 	if m.preparationHash == nil {
 		return nil
 	}
@@ -118,7 +122,7 @@ func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload) []ConsensusPay
 }
 
 // GetChangeViews implements RecoveryMessage interface.
-func (m *recoveryMessage) GetChangeViews(p ConsensusPayload) []ConsensusPayload {
+func (m *recoveryMessage) GetChangeViews(p ConsensusPayload, _ []crypto.PublicKey) []ConsensusPayload {
 	payloads := make([]ConsensusPayload, len(m.changeViewPayloads))
 
 	for i, cv := range m.changeViewPayloads {
@@ -133,7 +137,7 @@ func (m *recoveryMessage) GetChangeViews(p ConsensusPayload) []ConsensusPayload 
 }
 
 // GetCommits implements RecoveryMessage interface.
-func (m *recoveryMessage) GetCommits(p ConsensusPayload) []ConsensusPayload {
+func (m *recoveryMessage) GetCommits(p ConsensusPayload, _ []crypto.PublicKey) []ConsensusPayload {
 	payloads := make([]ConsensusPayload, len(m.commitPayloads))
 
 	for i, c := range m.commitPayloads {
