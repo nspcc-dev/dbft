@@ -32,25 +32,25 @@ func generateECDSA(r io.Reader) (PrivateKey, PublicKey) {
 
 // NewECDSAPublicKey returns new PublicKey from *ecdsa.PublicKey.
 func NewECDSAPublicKey(pub *ecdsa.PublicKey) PublicKey {
-	return ECDSAPub{
+	return &ECDSAPub{
 		PublicKey: pub,
 	}
 }
 
 // NewECDSAPrivateKey returns new PublicKey from *ecdsa.PrivateKey.
 func NewECDSAPrivateKey(key *ecdsa.PrivateKey) PrivateKey {
-	return ECDSAPriv{
+	return &ECDSAPriv{
 		PrivateKey: key,
 	}
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler interface.
 func (e ECDSAPriv) MarshalBinary() (data []byte, err error) {
-	return
+	return crypto.MarshalPrivateKey(e.PrivateKey), nil
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler interface.
-func (e ECDSAPriv) UnmarshalBinary(data []byte) (err error) {
+func (e *ECDSAPriv) UnmarshalBinary(data []byte) (err error) {
 	e.PrivateKey, err = crypto.UnmarshalPrivateKey(data)
 	return err
 }
@@ -72,7 +72,7 @@ func (e ECDSAPub) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler interface.
-func (e ECDSAPub) UnmarshalBinary(data []byte) error {
+func (e *ECDSAPub) UnmarshalBinary(data []byte) error {
 	e.PublicKey = crypto.UnmarshalPublicKey(data)
 	if e.PublicKey == nil {
 		return errors.New("can't unmarshal ECDSA public key")

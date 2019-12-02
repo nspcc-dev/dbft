@@ -22,3 +22,13 @@ func TestVerifySignature(t *testing.T) {
 	err = pub.Verify(data, sign)
 	require.NoError(t, err)
 }
+
+func TestGenerateWith(t *testing.T) {
+	priv, pub := GenerateWith(defaultSuite, rand.Reader)
+	require.NotNil(t, priv)
+	require.NotNil(t, pub)
+
+	priv, pub = GenerateWith(suiteType(0xFF), rand.Reader)
+	require.Nil(t, priv)
+	require.Nil(t, pub)
+}
