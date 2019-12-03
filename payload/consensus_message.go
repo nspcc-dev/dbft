@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// MessageType is a type for dBFT consensus messages.
 	MessageType byte
 
 	consensusMessage interface {
@@ -46,6 +47,7 @@ type (
 	}
 )
 
+// 6 following constants enumerate all possible type of consensus message.
 const (
 	ChangeViewType      MessageType = 0x00
 	PrepareRequestType  MessageType = 0x20

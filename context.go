@@ -10,6 +10,8 @@ import (
 	"github.com/nspcc-dev/dbft/payload"
 )
 
+// Context is a main dBFT structure which
+// contains all information needed for performing transitions.
 type Context struct {
 	// Config is dBFT's Config instance.
 	Config *Config
@@ -77,7 +79,7 @@ func (c *Context) GetPrimaryIndex(viewNumber byte) uint {
 // IsPrimary returns true iff node is primary for current height and view.
 func (c *Context) IsPrimary() bool { return c.MyIndex == int(c.PrimaryIndex) }
 
-// IsPrimary returns true iff node is backup for current height and view.
+// IsBackup returns true iff node is backup for current height and view.
 func (c *Context) IsBackup() bool {
 	return c.MyIndex >= 0 && !c.IsPrimary()
 }
@@ -138,10 +140,13 @@ func (c *Context) ViewChanging() bool {
 	return cv != nil && cv.GetChangeView().NewViewNumber() > c.ViewNumber
 }
 
+// NotAcceptingPayloadsDueToViewChanging returns true if node should not accept new payloads.
 func (c *Context) NotAcceptingPayloadsDueToViewChanging() bool {
 	return c.ViewChanging() && !c.MoreThanFNodesCommittedOrLost()
 }
 
+// MoreThanFNodesCommittedOrLost returns true iff a number of nodes which either committed
+// or are faulty is more than maximum amount of allowed faulty nodes.
 // A possible attack can happen if the last node to commit is malicious and either sends change view after his
 // commit to stall nodes in a higher view, or if he refuses to send recovery messages. In addition, if a node
 // asking change views loses network or crashes and comes back when nodes are committed in more than one higher
