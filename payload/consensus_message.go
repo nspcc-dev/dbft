@@ -1,6 +1,8 @@
 package payload
 
 import (
+	"fmt"
+
 	"github.com/CityOfZion/neo-go/pkg/io"
 	"github.com/pkg/errors"
 )
@@ -75,7 +77,7 @@ func (m MessageType) String() string {
 	case RecoveryMessageType:
 		return "RecoveryMessage"
 	default:
-		panic("unknown type")
+		return fmt.Sprintf("UNKNOWN(%02x)", byte(m))
 	}
 }
 
