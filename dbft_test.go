@@ -269,6 +269,46 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 	})
 }
 
+func TestDBFT_OnReceiveChangeView(t *testing.T) {
+	s := newTestState(2, 4)
+	t.Run("change view correctly", func(t *testing.T) {
+		s.currHeight = 6
+		service := New(s.getOptions()...)
+		service.Start()
+
+		resp := s.getChangeView(1, 1)
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		resp = s.getChangeView(0, 1)
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+		cv := s.tryRecv()
+		require.NotNil(t, cv)
+		require.Equal(t, payload.ChangeViewType, cv.Type())
+
+		t.Run("primary sends prepare request after timeout", func(t *testing.T) {
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1, View: 1})
+			pr := s.tryRecv()
+			require.NotNil(t, pr)
+			require.Equal(t, payload.PrepareRequestType, pr.Type())
+		})
+	})
+}
+
+func (s testState) getChangeView(from uint16, view byte) Payload {
+	cv := payload.NewChangeView()
+	cv.SetNewViewNumber(view)
+
+	p := s.getPayload(from)
+	p.SetType(payload.ChangeViewType)
+	p.SetPayload(cv)
+
+	return p
+}
+
 func (s testState) getRecoveryRequest(from uint16) Payload {
 	p := s.getPayload(from)
 	p.SetType(payload.RecoveryRequestType)
