@@ -190,6 +190,17 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 
 		pub := s.pubs[s.myIndex]
 		require.NoError(t, service.header.Verify(pub, cm.GetCommit().Signature()))
+
+		t.Run("send recovery request on timeout", func(t *testing.T) {
+			service.OnTimeout(timer.HV{Height: 1})
+			require.Nil(t, s.tryRecv())
+
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+
+			r := s.tryRecv()
+			require.NotNil(t, r)
+			require.Equal(t, payload.RecoveryRequestType, r.Type())
+		})
 	})
 }
 
