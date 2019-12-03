@@ -299,6 +299,47 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 	})
 }
 
+func TestDBFT_Invalid(t *testing.T) {
+	t.Run("without keys", func(t *testing.T) {
+		require.Nil(t, New())
+	})
+
+	priv, pub := crypto.Generate(rand.Reader)
+	require.NotNil(t, priv)
+	require.NotNil(t, pub)
+
+	opts := []Option{WithKeyPair(priv, pub)}
+	t.Run("without CurrentHeight", func(t *testing.T) {
+		require.Nil(t, New(opts...))
+	})
+
+	opts = append(opts, WithCurrentHeight(func() uint32 { return 0 }))
+	t.Run("without CurrentBlockHash", func(t *testing.T) {
+		require.Nil(t, New(opts...))
+	})
+
+	opts = append(opts, WithCurrentBlockHash(func() util.Uint256 { return util.Uint256{} }))
+	t.Run("without GetValidators", func(t *testing.T) {
+		require.Nil(t, New(opts...))
+	})
+
+	opts = append(opts, WithGetValidators(func(...block.Transaction) []crypto.PublicKey {
+		return []crypto.PublicKey{pub}
+	}))
+	t.Run("with all defaults", func(t *testing.T) {
+		d := New(opts...)
+		require.NotNil(t, d)
+		require.NotNil(t, d.Config.RequestTx)
+		require.NotNil(t, d.Config.GetTx)
+		require.NotNil(t, d.Config.GetVerified)
+		require.NotNil(t, d.Config.VerifyBlock)
+		require.NotNil(t, d.Config.Broadcast)
+		require.NotNil(t, d.Config.ProcessBlock)
+		require.NotNil(t, d.Config.GetBlock)
+		require.NotNil(t, d.Config.WatchOnly)
+	})
+}
+
 func (s testState) getChangeView(from uint16, view byte) Payload {
 	cv := payload.NewChangeView()
 	cv.SetNewViewNumber(view)

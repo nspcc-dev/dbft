@@ -84,7 +84,7 @@ type Option = func(*Config)
 
 func defaultConfig() *Config {
 	// fields which are set to nil must be provided from client
-	cfg := &Config{
+	return &Config{
 		TxPerBlock:          defaultMaxBlockSize,
 		Logger:              zap.NewNop(),
 		Timer:               timer.New(),
@@ -112,15 +112,17 @@ func defaultConfig() *Config {
 		NewRecoveryRequest:  payload.NewRecoveryRequest,
 		NewRecoveryMessage:  payload.NewRecoveryMessage,
 	}
-
-	return cfg
 }
 
 func checkConfig(cfg *Config) error {
 	if cfg.Priv == nil {
 		return errors.New("private key is nil")
-	} else if cfg.Timer == nil {
-		return errors.New("timer is nil")
+	} else if cfg.CurrentHeight == nil {
+		return errors.New("CurrentHeight is nil")
+	} else if cfg.CurrentBlockHash == nil {
+		return errors.New("CurrentBlockHash is nil")
+	} else if cfg.GetValidators == nil {
+		return errors.New("GetValidators is nil")
 	}
 
 	return nil
