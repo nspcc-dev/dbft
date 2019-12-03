@@ -1,3 +1,6 @@
+![Codecov](https://img.shields.io/codecov/c/github/nspcc-dev/dbft.svg)
+[![Report](https://goreportcard.com/badge/github.com/nspcc-dev/dbft)](https://goreportcard.com/report/github.com/nspcc-dev/dbft)
+
 # DBFT
 This repo contains Go implementation of the dBFT 2.0 consensus algorithm.
 
