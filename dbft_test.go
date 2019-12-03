@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"testing"
+	"time"
 
 	"github.com/CityOfZion/neo-go/pkg/util"
 	"github.com/nspcc-dev/dbft/block"
@@ -342,6 +343,7 @@ func (s testState) getPrepareResponse(from uint16, phash util.Uint256) Payload {
 func (s testState) getPrepareRequest(from uint16, hashes ...util.Uint256) Payload {
 	req := payload.NewPrepareRequest()
 	req.SetTransactionHashes(hashes)
+	req.SetNextConsensus(s.nextConsensus())
 
 	p := s.getPayload(from)
 	p.SetType(payload.PrepareRequestType)
@@ -405,6 +407,10 @@ func (s testState) copyWithIndex(myIndex int) *testState {
 	}
 }
 
+func (s testState) nextConsensus(...crypto.PublicKey) util.Uint160 {
+	return util.Uint160{1}
+}
+
 func (s *testState) getOptions() []Option {
 	opts := []Option{
 		WithCurrentHeight(func() uint32 { return s.currHeight }),
@@ -414,6 +420,25 @@ func (s *testState) getOptions() []Option {
 		WithBroadcast(func(p Payload) { s.ch = append(s.ch, p) }),
 		WithGetTx(s.pool.Get),
 		WithProcessBlock(func(b block.Block) { s.blocks = append(s.blocks, b) }),
+		WithGetConsensusAddress(s.nextConsensus),
+		WithWatchOnly(func() bool { return false }),
+		WithGetBlock(func(h util.Uint256) block.Block { return nil }),
+		WithVerifyBlock(func(block.Block) bool { return true }),
+		WithTimer(timer.New()),
+		WithTxPerBlock(5),
+		WithLogger(zap.NewNop()),
+		WithNewBlock(block.NewBlock),
+		WithSecondsPerBlock(time.Second * 10),
+		WithRequestTx(func(...util.Uint256) {}),
+		WithGetVerified(func(_ int) []block.Transaction { return []block.Transaction{} }),
+
+		WithNewConsensusPayload(payload.NewConsensusPayload),
+		WithNewPrepareRequest(payload.NewPrepareRequest),
+		WithNewPrepareResponse(payload.NewPrepareResponse),
+		WithNewChangeView(payload.NewChangeView),
+		WithNewCommit(payload.NewCommit),
+		WithNewRecoveryRequest(payload.NewRecoveryRequest),
+		WithNewRecoveryMessage(payload.NewRecoveryMessage),
 	}
 
 	if debugTests {
