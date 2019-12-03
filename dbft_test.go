@@ -25,6 +25,7 @@ type testState struct {
 	currHeight uint32
 	currHash   util.Uint256
 	pool       *testPool
+	blocks     []block.Block
 }
 
 type (
@@ -201,6 +202,25 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 			require.NotNil(t, r)
 			require.Equal(t, payload.RecoveryRequestType, r.Type())
 		})
+
+		t.Run("process block after enough commits", func(t *testing.T) {
+			s0 := s.copyWithIndex(0)
+			require.NoError(t, service.header.Sign(s0.privs[0]))
+			c0 := s0.getCommit(0, service.header.Signature())
+			service.OnReceive(c0)
+			require.Nil(t, s.tryRecv())
+			require.Nil(t, s.nextBlock())
+
+			s1 := s.copyWithIndex(1)
+			require.NoError(t, service.header.Sign(s1.privs[1]))
+			c1 := s1.getCommit(1, service.header.Signature())
+			service.OnReceive(c1)
+			require.Nil(t, s.tryRecv())
+
+			b := s.nextBlock()
+			require.NotNil(t, b)
+			require.Equal(t, s.currHeight+1, b.Index())
+		})
 	})
 }
 
@@ -253,6 +273,17 @@ func (s testState) getRecoveryRequest(from uint16) Payload {
 	p := s.getPayload(from)
 	p.SetType(payload.RecoveryRequestType)
 	p.SetPayload(payload.NewRecoveryRequest())
+
+	return p
+}
+
+func (s testState) getCommit(from uint16, sign []byte) Payload {
+	c := payload.NewCommit()
+	c.SetSignature(sign)
+
+	p := s.getPayload(from)
+	p.SetType(payload.CommitType)
+	p.SetPayload(c)
 
 	return p
 }
@@ -311,6 +342,17 @@ func (s *testState) tryRecv() Payload {
 	return p
 }
 
+func (s *testState) nextBlock() block.Block {
+	if len(s.blocks) == 0 {
+		return nil
+	}
+
+	b := s.blocks[0]
+	s.blocks = s.blocks[1:]
+
+	return b
+}
+
 func (s testState) copyWithIndex(myIndex int) *testState {
 	return &testState{
 		myIndex:    myIndex,
@@ -331,6 +373,7 @@ func (s *testState) getOptions() []Option {
 		WithKeyPair(s.privs[s.myIndex], s.pubs[s.myIndex]),
 		WithBroadcast(func(p Payload) { s.ch = append(s.ch, p) }),
 		WithGetTx(s.pool.Get),
+		WithProcessBlock(func(b block.Block) { s.blocks = append(s.blocks, b) }),
 	}
 
 	if debugTests {
