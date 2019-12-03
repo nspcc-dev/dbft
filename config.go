@@ -126,6 +126,7 @@ func checkConfig(cfg *Config) error {
 	return nil
 }
 
+// WithKeyPair sets Priv and Pub.
 func WithKeyPair(priv crypto.PrivateKey, pub crypto.PublicKey) Option {
 	return func(cfg *Config) {
 		cfg.Priv = priv
@@ -133,144 +134,168 @@ func WithKeyPair(priv crypto.PrivateKey, pub crypto.PublicKey) Option {
 	}
 }
 
+// WithTxPerBlock sets TxPerBlock.
 func WithTxPerBlock(n int) Option {
 	return func(cfg *Config) {
 		cfg.TxPerBlock = n
 	}
 }
 
+// WithLogger sets Logger.
 func WithLogger(log *zap.Logger) Option {
 	return func(cfg *Config) {
 		cfg.Logger = log
 	}
 }
 
+// WithTimer sets Timer.
 func WithTimer(t timer.Timer) Option {
 	return func(cfg *Config) {
 		cfg.Timer = t
 	}
 }
 
+// WithSecondsPerBlock sets SecondsPerBlock.
 func WithSecondsPerBlock(d time.Duration) Option {
 	return func(cfg *Config) {
 		cfg.SecondsPerBlock = d
 	}
 }
 
+// WithNewBlock sets NewBlock.
 func WithNewBlock(f func() block.Block) Option {
 	return func(cfg *Config) {
 		cfg.NewBlock = f
 	}
 }
 
+// WithRequestTx sets RequestTx.
 func WithRequestTx(f func(h ...util.Uint256)) Option {
 	return func(cfg *Config) {
 		cfg.RequestTx = f
 	}
 }
 
+// WithGetTx sets GetTx.
 func WithGetTx(f func(h util.Uint256) block.Transaction) Option {
 	return func(cfg *Config) {
 		cfg.GetTx = f
 	}
 }
 
+// WithGetVerified sets GetVerified.
 func WithGetVerified(f func(count int) []block.Transaction) Option {
 	return func(cfg *Config) {
 		cfg.GetVerified = f
 	}
 }
 
+// WithVerifyBlock sets VerifyBlock.
 func WithVerifyBlock(f func(b block.Block) bool) Option {
 	return func(cfg *Config) {
 		cfg.VerifyBlock = f
 	}
 }
 
+// WithBroadcast sets Broadcast.
 func WithBroadcast(f func(m payload.ConsensusPayload)) Option {
 	return func(cfg *Config) {
 		cfg.Broadcast = f
 	}
 }
 
+// WithProcessBlock sets ProcessBlock.
 func WithProcessBlock(f func(b block.Block)) Option {
 	return func(cfg *Config) {
 		cfg.ProcessBlock = f
 	}
 }
 
+// WithGetBlock sets GetBlock.
 func WithGetBlock(f func(h util.Uint256) block.Block) Option {
 	return func(cfg *Config) {
 		cfg.GetBlock = f
 	}
 }
 
+// WithWatchOnly sets WatchOnly.
 func WithWatchOnly(f func() bool) Option {
 	return func(cfg *Config) {
 		cfg.WatchOnly = f
 	}
 }
 
+// WithCurrentHeight sets CurrentHeight.
 func WithCurrentHeight(f func() uint32) Option {
 	return func(cfg *Config) {
 		cfg.CurrentHeight = f
 	}
 }
 
+// WithCurrentBlockHash sets CurrentBlockHash.
 func WithCurrentBlockHash(f func() util.Uint256) Option {
 	return func(cfg *Config) {
 		cfg.CurrentBlockHash = f
 	}
 }
 
+// WithGetValidators sets GetValidators.
 func WithGetValidators(f func(...block.Transaction) []crypto.PublicKey) Option {
 	return func(cfg *Config) {
 		cfg.GetValidators = f
 	}
 }
 
+// WithGetConsensusAddress sets GetConsensusAddress.
 func WithGetConsensusAddress(f func(keys ...crypto.PublicKey) util.Uint160) Option {
 	return func(cfg *Config) {
 		cfg.GetConsensusAddress = f
 	}
 }
 
+// WithNewConsensusPayload sets NewConsensusPayload.
 func WithNewConsensusPayload(f func() payload.ConsensusPayload) Option {
 	return func(cfg *Config) {
 		cfg.NewConsensusPayload = f
 	}
 }
 
+// WithNewPrepareRequest sets NewPrepareRequest.
 func WithNewPrepareRequest(f func() payload.PrepareRequest) Option {
 	return func(cfg *Config) {
 		cfg.NewPrepareRequest = f
 	}
 }
 
+// WithNewPrepareResponse sets NewPrepareResponse.
 func WithNewPrepareResponse(f func() payload.PrepareResponse) Option {
 	return func(cfg *Config) {
 		cfg.NewPrepareResponse = f
 	}
 }
 
+// WithNewChangeView sets NewChangeView.
 func WithNewChangeView(f func() payload.ChangeView) Option {
 	return func(cfg *Config) {
 		cfg.NewChangeView = f
 	}
 }
 
+// WithNewCommit sets NewCommit.
 func WithNewCommit(f func() payload.Commit) Option {
 	return func(cfg *Config) {
 		cfg.NewCommit = f
 	}
 }
 
+// WithNewRecoveryRequest sets NewRecoveryRequest.
 func WithNewRecoveryRequest(f func() payload.RecoveryRequest) Option {
 	return func(cfg *Config) {
 		cfg.NewRecoveryRequest = f
 	}
 }
 
+// WithNewRecoveryMessage sets NewRecoveryMessage.
 func WithNewRecoveryMessage(f func() payload.RecoveryMessage) Option {
 	return func(cfg *Config) {
 		cfg.NewRecoveryMessage = f

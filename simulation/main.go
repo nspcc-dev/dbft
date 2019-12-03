@@ -164,41 +164,41 @@ func sortValidators(pubs []crypto.PublicKey) {
 	})
 }
 
-func (t *simNode) Broadcast(m payload.ConsensusPayload) {
-	for i, node := range t.cluster {
-		if i != t.id {
+func (n *simNode) Broadcast(m payload.ConsensusPayload) {
+	for i, node := range n.cluster {
+		if i != n.id {
 			select {
 			case node.messages <- m:
 			default:
-				t.log.Warn("can't broadcast message: channel is full")
+				n.log.Warn("can't broadcast message: channel is full")
 			}
 		}
 	}
 }
 
-func (t *simNode) CurrentHeight() uint32          { return t.height }
-func (t *simNode) CurrentBlockHash() util.Uint256 { return t.lastHash }
+func (n *simNode) CurrentHeight() uint32          { return n.height }
+func (n *simNode) CurrentBlockHash() util.Uint256 { return n.lastHash }
 
 // GetValidators always returns the same list of validators.
-func (t *simNode) GetValidators(...block.Transaction) []crypto.PublicKey {
-	return t.validators
+func (n *simNode) GetValidators(...block.Transaction) []crypto.PublicKey {
+	return n.validators
 }
 
-func (t *simNode) ProcessBlock(b block.Block) {
-	t.d.Logger.Debug("received block", zap.Uint32("height", b.Index()))
+func (n *simNode) ProcessBlock(b block.Block) {
+	n.d.Logger.Debug("received block", zap.Uint32("height", b.Index()))
 
 	for _, tx := range b.Transactions() {
-		t.pool.Delete(tx.Hash())
+		n.pool.Delete(tx.Hash())
 	}
 
-	t.height = b.Index()
-	t.lastHash = b.Hash()
+	n.height = b.Index()
+	n.lastHash = b.Hash()
 }
 
-func (t *simNode) addTx(n int) {
-	for i := 0; i < n; i++ {
+func (n *simNode) addTx(count int) {
+	for i := 0; i < count; i++ {
 		tx := tx64(uint64(i))
-		t.pool.Add(&tx)
+		n.pool.Add(&tx)
 	}
 }
 

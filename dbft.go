@@ -12,6 +12,8 @@ import (
 )
 
 type (
+	// DBFT is a wrapper over Context containing service configuration and
+	// some other parameters not directly related to dBFT's state machine.
 	DBFT struct {
 		Context
 		Config
@@ -22,6 +24,7 @@ type (
 		recovering       bool
 	}
 
+	// Service is an interface for dBFT consensus.
 	Service interface {
 		Start()
 		OnTransaction(block.Transaction)
@@ -32,6 +35,8 @@ type (
 
 var _ Service = (*DBFT)(nil)
 
+// New returns new DBFT instance with provided options
+// and nil if some of the options are missing or invalid.
 func New(options ...Option) *DBFT {
 	cfg := defaultConfig()
 
@@ -74,12 +79,14 @@ func (d *DBFT) addTransaction(tx block.Transaction) {
 	}
 }
 
+// Start initializes dBFT instance and starts protocol if node is primary.
 func (d *DBFT) Start() {
 	d.cache = newCache()
 	d.InitializeConsensus(0)
 	d.start()
 }
 
+// InitializeConsensus initializes dBFT instance.
 func (d *DBFT) InitializeConsensus(view byte) {
 	d.reset(view)
 
@@ -124,6 +131,7 @@ func (d *DBFT) InitializeConsensus(view byte) {
 	}
 }
 
+// OnTransaction notifies service about receiving new transaction.
 func (d *DBFT) OnTransaction(tx block.Transaction) {
 	// d.Logger.Debug("OnTransaction",
 	// 	zap.Bool("backup", d.IsBackup()),
