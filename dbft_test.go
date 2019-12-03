@@ -9,6 +9,7 @@ import (
 	"github.com/nspcc-dev/dbft/block"
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
+	"github.com/nspcc-dev/dbft/timer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -59,6 +60,28 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 		require.NotNil(t, p.Payload())
 		require.Equal(t, s.currHash, p.PrevHash())
 		require.EqualValues(t, 2, p.ValidatorIndex())
+
+		t.Run("primary send ChangeView on timeout", func(t *testing.T) {
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+
+			// if there are many faulty must send RecoveryRequest
+			cv := s.tryRecv()
+			require.NotNil(t, cv)
+			require.Equal(t, payload.RecoveryRequestType, cv.Type())
+			require.Nil(t, s.tryRecv())
+
+			// if all nodes are up must send ChangeView
+			for i := range service.LastSeenMessage {
+				service.LastSeenMessage[i] = int64(s.currHeight)
+			}
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+
+			cv = s.tryRecv()
+			require.NotNil(t, cv)
+			require.Equal(t, payload.ChangeViewType, cv.Type())
+			require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
+			require.Nil(t, s.tryRecv())
+		})
 	})
 }
 
