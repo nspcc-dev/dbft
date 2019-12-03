@@ -6,6 +6,7 @@ import (
 
 	"github.com/CityOfZion/neo-go/pkg/io"
 	"github.com/CityOfZion/neo-go/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -126,6 +127,41 @@ func TestCompact_EncodeDecode(t *testing.T) {
 
 		testEncodeDecode(t, p, new(commitCompact))
 	})
+}
+
+func TestPayload_Setters(t *testing.T) {
+	t.Run("ChangeView", func(t *testing.T) {
+		cv := NewChangeView()
+
+		cv.SetTimestamp(1234)
+		assert.EqualValues(t, 1234, cv.Timestamp())
+
+		cv.SetNewViewNumber(4)
+		assert.EqualValues(t, 4, cv.NewViewNumber())
+	})
+
+	t.Run("RecoveryRequest", func(t *testing.T) {
+		r := NewRecoveryRequest()
+
+		r.SetTimestamp(321)
+		require.EqualValues(t, 321, r.Timestamp())
+	})
+
+	t.Run("RecoveryMessage", func(t *testing.T) {
+		r := NewRecoveryMessage()
+
+		r.SetPreparationHash(&util.Uint256{1, 2, 3})
+		require.Equal(t, &util.Uint256{1, 2, 3}, r.PreparationHash())
+	})
+}
+
+func TestMessageType_String(t *testing.T) {
+	require.Equal(t, "ChangeView", ChangeViewType.String())
+	require.Equal(t, "PrepareRequest", PrepareRequestType.String())
+	require.Equal(t, "PrepareResponse", PrepareResponseType.String())
+	require.Equal(t, "Commit", CommitType.String())
+	require.Equal(t, "RecoveryRequest", RecoveryRequestType.String())
+	require.Equal(t, "RecoveryMessage", RecoveryMessageType.String())
 }
 
 func testEncodeDecode(t *testing.T, expected, actual io.Serializable) {
