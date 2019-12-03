@@ -170,7 +170,10 @@ func (b *neoBlock) Signature() []byte {
 // 1. It must have only one valid result for one block.
 // 2. Two different blocks must have different hash data.
 func (b *neoBlock) GetHashData() []byte {
-	return b.base.Marshal()
+	w := io.NewBufBinWriter()
+	b.EncodeBinary(w.BinWriter)
+
+	return w.Bytes()
 }
 
 // Sign implements Block interface.
@@ -227,22 +230,4 @@ func (b *base) DecodeBinary(r *io.BinReader) {
 	r.ReadLE(&b.Index)
 	r.ReadLE(&b.ConsensusData)
 	r.ReadBE(b.NextConsensus[:])
-}
-
-// Unmarshal unmarshals b from data without signature.
-func (b *base) Unmarshal(data []byte) error {
-	r := io.NewBinReaderFromBuf(data)
-	b.DecodeBinary(r)
-
-	return r.Err
-}
-
-// Marshal marshals block base into data.
-// It is stable, i.e. has only one valid result
-// for every b.
-func (b base) Marshal() (data []byte) {
-	w := io.NewBufBinWriter()
-	b.EncodeBinary(w.BinWriter)
-
-	return w.Bytes()
 }
