@@ -30,6 +30,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		})
 
 		testEncodeDecode(t, m, new(consensusPayload))
+		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
 
 	t.Run("PrepareResponse", func(t *testing.T) {
@@ -39,6 +40,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		})
 
 		testEncodeDecode(t, m, new(consensusPayload))
+		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
 
 	t.Run("Commit", func(t *testing.T) {
@@ -48,6 +50,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		m.SetPayload(&cc)
 
 		testEncodeDecode(t, m, new(consensusPayload))
+		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
 
 	t.Run("ChangeView", func(t *testing.T) {
@@ -58,6 +61,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		})
 
 		testEncodeDecode(t, m, new(consensusPayload))
+		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
@@ -87,6 +91,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		})
 
 		testEncodeDecode(t, m, new(consensusPayload))
+		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
 
 	t.Run("RecoveryRequest", func(t *testing.T) {
@@ -96,6 +101,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		})
 
 		testEncodeDecode(t, m, new(consensusPayload))
+		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
 }
 
@@ -175,6 +181,12 @@ func testEncodeDecode(t *testing.T, expected, actual io.Serializable) {
 	actual.DecodeBinary(r)
 	require.NoError(t, r.Err)
 	require.Equal(t, expected, actual)
+}
+
+func testMarshalUnmarshal(t *testing.T, expected, actual ConsensusPayload) {
+	data := expected.MarshalUnsigned()
+	require.NoError(t, actual.UnmarshalUnsigned(data))
+	require.Equal(t, expected.Hash(), actual.Hash())
 }
 
 func fillRandom(t *testing.T, arr []byte) {
