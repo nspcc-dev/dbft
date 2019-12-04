@@ -11,7 +11,7 @@ func TestTimer_Reset(t *testing.T) {
 	tt := New()
 
 	tt.Reset(HV{Height: 1, View: 2}, time.Millisecond*100)
-	time.Sleep(time.Millisecond * 200)
+	tt.Sleep(time.Millisecond * 200)
 	select {
 	case hv := <-tt.C():
 		require.Equal(t, hv, HV{Height: 1, View: 2})
@@ -35,11 +35,29 @@ func TestTimer_Reset(t *testing.T) {
 	default:
 	}
 
-	time.Sleep(time.Millisecond * 200)
+	tt.Extend(4)
+
+	tt.Sleep(time.Millisecond * 200)
+	select {
+	case <-tt.C():
+		require.Fail(t, "value arrived to early")
+	default:
+	}
+
+	tt.Sleep(time.Millisecond * 300)
 	select {
 	case hv := <-tt.C():
 		require.Equal(t, hv, HV{Height: 3, View: 1})
 	default:
-		require.Fail(t, "no value in timer after reset")
+		require.Fail(t, "no value in timer after extend")
+	}
+
+	tt.Reset(HV{1, 1}, time.Millisecond*100)
+	tt.Stop()
+	tt.Sleep(time.Millisecond * 200)
+	select {
+	case <-tt.C():
+		require.Fail(t, "timer was not cancelled")
+	default:
 	}
 }
