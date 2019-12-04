@@ -18,6 +18,12 @@ func TestTimer_Reset(t *testing.T) {
 	tt.Reset(HV{Height: 2, View: 3}, 0)
 	shouldReceive(t, tt, HV{Height: 2, View: 3}, "no value in timer after reset(0)")
 
+	tt.Reset(HV{Height: 1, View: 2}, time.Millisecond*100)
+	tt.Sleep(time.Millisecond * 200)
+	tt.Reset(HV{Height: 1, View: 3}, time.Millisecond*100)
+	tt.Sleep(time.Millisecond * 200)
+	shouldReceive(t, tt, HV{Height: 1, View: 3}, "invalid value after reset")
+
 	tt.Reset(HV{Height: 3, View: 1}, time.Millisecond*100)
 	shouldNotReceive(t, tt, "value arrived too early")
 

@@ -135,7 +135,11 @@ func (t *timer) loop() {
 				t.ch <- toSend.HV
 
 			case _, ok := <-t.stop:
-				if stopTimer(tt); !ok {
+				stopTimer(tt)
+				tt = nil
+
+				if !ok {
+					drain(t.ch)
 					return
 				}
 			}
