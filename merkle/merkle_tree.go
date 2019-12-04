@@ -50,9 +50,7 @@ func (m *Tree) Root() *TreeNode {
 
 func buildTree(leaves ...TreeNode) *TreeNode {
 	l := len(leaves)
-	if l == 0 {
-		return nil
-	} else if l == 1 {
+	if l == 1 {
 		return &leaves[0]
 	}
 

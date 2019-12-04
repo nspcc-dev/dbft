@@ -4,11 +4,13 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"testing"
+	"time"
 
 	"github.com/CityOfZion/neo-go/pkg/util"
 	"github.com/nspcc-dev/dbft/block"
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
+	"github.com/nspcc-dev/dbft/timer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -24,6 +26,7 @@ type testState struct {
 	currHeight uint32
 	currHash   util.Uint256
 	pool       *testPool
+	blocks     []block.Block
 }
 
 type (
@@ -59,6 +62,28 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 		require.NotNil(t, p.Payload())
 		require.Equal(t, s.currHash, p.PrevHash())
 		require.EqualValues(t, 2, p.ValidatorIndex())
+
+		t.Run("primary send ChangeView on timeout", func(t *testing.T) {
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+
+			// if there are many faulty must send RecoveryRequest
+			cv := s.tryRecv()
+			require.NotNil(t, cv)
+			require.Equal(t, payload.RecoveryRequestType, cv.Type())
+			require.Nil(t, s.tryRecv())
+
+			// if all nodes are up must send ChangeView
+			for i := range service.LastSeenMessage {
+				service.LastSeenMessage[i] = int64(s.currHeight)
+			}
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+
+			cv = s.tryRecv()
+			require.NotNil(t, cv)
+			require.Equal(t, payload.ChangeViewType, cv.Type())
+			require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
+			require.Nil(t, s.tryRecv())
+		})
 	})
 }
 
@@ -167,6 +192,36 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 
 		pub := s.pubs[s.myIndex]
 		require.NoError(t, service.header.Verify(pub, cm.GetCommit().Signature()))
+
+		t.Run("send recovery request on timeout", func(t *testing.T) {
+			service.OnTimeout(timer.HV{Height: 1})
+			require.Nil(t, s.tryRecv())
+
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+
+			r := s.tryRecv()
+			require.NotNil(t, r)
+			require.Equal(t, payload.RecoveryRequestType, r.Type())
+		})
+
+		t.Run("process block after enough commits", func(t *testing.T) {
+			s0 := s.copyWithIndex(0)
+			require.NoError(t, service.header.Sign(s0.privs[0]))
+			c0 := s0.getCommit(0, service.header.Signature())
+			service.OnReceive(c0)
+			require.Nil(t, s.tryRecv())
+			require.Nil(t, s.nextBlock())
+
+			s1 := s.copyWithIndex(1)
+			require.NoError(t, service.header.Sign(s1.privs[1]))
+			c1 := s1.getCommit(1, service.header.Signature())
+			service.OnReceive(c1)
+			require.Nil(t, s.tryRecv())
+
+			b := s.nextBlock()
+			require.NotNil(t, b)
+			require.Equal(t, s.currHeight+1, b.Index())
+		})
 	})
 }
 
@@ -215,10 +270,102 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 	})
 }
 
+func TestDBFT_OnReceiveChangeView(t *testing.T) {
+	s := newTestState(2, 4)
+	t.Run("change view correctly", func(t *testing.T) {
+		s.currHeight = 6
+		service := New(s.getOptions()...)
+		service.Start()
+
+		resp := s.getChangeView(1, 1)
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		resp = s.getChangeView(0, 1)
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+		cv := s.tryRecv()
+		require.NotNil(t, cv)
+		require.Equal(t, payload.ChangeViewType, cv.Type())
+
+		t.Run("primary sends prepare request after timeout", func(t *testing.T) {
+			service.OnTimeout(timer.HV{Height: s.currHeight + 1, View: 1})
+			pr := s.tryRecv()
+			require.NotNil(t, pr)
+			require.Equal(t, payload.PrepareRequestType, pr.Type())
+		})
+	})
+}
+
+func TestDBFT_Invalid(t *testing.T) {
+	t.Run("without keys", func(t *testing.T) {
+		require.Nil(t, New())
+	})
+
+	priv, pub := crypto.Generate(rand.Reader)
+	require.NotNil(t, priv)
+	require.NotNil(t, pub)
+
+	opts := []Option{WithKeyPair(priv, pub)}
+	t.Run("without CurrentHeight", func(t *testing.T) {
+		require.Nil(t, New(opts...))
+	})
+
+	opts = append(opts, WithCurrentHeight(func() uint32 { return 0 }))
+	t.Run("without CurrentBlockHash", func(t *testing.T) {
+		require.Nil(t, New(opts...))
+	})
+
+	opts = append(opts, WithCurrentBlockHash(func() util.Uint256 { return util.Uint256{} }))
+	t.Run("without GetValidators", func(t *testing.T) {
+		require.Nil(t, New(opts...))
+	})
+
+	opts = append(opts, WithGetValidators(func(...block.Transaction) []crypto.PublicKey {
+		return []crypto.PublicKey{pub}
+	}))
+	t.Run("with all defaults", func(t *testing.T) {
+		d := New(opts...)
+		require.NotNil(t, d)
+		require.NotNil(t, d.Config.RequestTx)
+		require.NotNil(t, d.Config.GetTx)
+		require.NotNil(t, d.Config.GetVerified)
+		require.NotNil(t, d.Config.VerifyBlock)
+		require.NotNil(t, d.Config.Broadcast)
+		require.NotNil(t, d.Config.ProcessBlock)
+		require.NotNil(t, d.Config.GetBlock)
+		require.NotNil(t, d.Config.WatchOnly)
+	})
+}
+
+func (s testState) getChangeView(from uint16, view byte) Payload {
+	cv := payload.NewChangeView()
+	cv.SetNewViewNumber(view)
+
+	p := s.getPayload(from)
+	p.SetType(payload.ChangeViewType)
+	p.SetPayload(cv)
+
+	return p
+}
+
 func (s testState) getRecoveryRequest(from uint16) Payload {
 	p := s.getPayload(from)
 	p.SetType(payload.RecoveryRequestType)
 	p.SetPayload(payload.NewRecoveryRequest())
+
+	return p
+}
+
+func (s testState) getCommit(from uint16, sign []byte) Payload {
+	c := payload.NewCommit()
+	c.SetSignature(sign)
+
+	p := s.getPayload(from)
+	p.SetType(payload.CommitType)
+	p.SetPayload(c)
 
 	return p
 }
@@ -237,6 +384,7 @@ func (s testState) getPrepareResponse(from uint16, phash util.Uint256) Payload {
 func (s testState) getPrepareRequest(from uint16, hashes ...util.Uint256) Payload {
 	req := payload.NewPrepareRequest()
 	req.SetTransactionHashes(hashes)
+	req.SetNextConsensus(s.nextConsensus())
 
 	p := s.getPayload(from)
 	p.SetType(payload.PrepareRequestType)
@@ -277,6 +425,17 @@ func (s *testState) tryRecv() Payload {
 	return p
 }
 
+func (s *testState) nextBlock() block.Block {
+	if len(s.blocks) == 0 {
+		return nil
+	}
+
+	b := s.blocks[0]
+	s.blocks = s.blocks[1:]
+
+	return b
+}
+
 func (s testState) copyWithIndex(myIndex int) *testState {
 	return &testState{
 		myIndex:    myIndex,
@@ -289,6 +448,10 @@ func (s testState) copyWithIndex(myIndex int) *testState {
 	}
 }
 
+func (s testState) nextConsensus(...crypto.PublicKey) util.Uint160 {
+	return util.Uint160{1}
+}
+
 func (s *testState) getOptions() []Option {
 	opts := []Option{
 		WithCurrentHeight(func() uint32 { return s.currHeight }),
@@ -297,6 +460,26 @@ func (s *testState) getOptions() []Option {
 		WithKeyPair(s.privs[s.myIndex], s.pubs[s.myIndex]),
 		WithBroadcast(func(p Payload) { s.ch = append(s.ch, p) }),
 		WithGetTx(s.pool.Get),
+		WithProcessBlock(func(b block.Block) { s.blocks = append(s.blocks, b) }),
+		WithGetConsensusAddress(s.nextConsensus),
+		WithWatchOnly(func() bool { return false }),
+		WithGetBlock(func(h util.Uint256) block.Block { return nil }),
+		WithVerifyBlock(func(block.Block) bool { return true }),
+		WithTimer(timer.New()),
+		WithTxPerBlock(5),
+		WithLogger(zap.NewNop()),
+		WithNewBlock(block.NewBlock),
+		WithSecondsPerBlock(time.Second * 10),
+		WithRequestTx(func(...util.Uint256) {}),
+		WithGetVerified(func(_ int) []block.Transaction { return []block.Transaction{} }),
+
+		WithNewConsensusPayload(payload.NewConsensusPayload),
+		WithNewPrepareRequest(payload.NewPrepareRequest),
+		WithNewPrepareResponse(payload.NewPrepareResponse),
+		WithNewChangeView(payload.NewChangeView),
+		WithNewCommit(payload.NewCommit),
+		WithNewRecoveryRequest(payload.NewRecoveryRequest),
+		WithNewRecoveryMessage(payload.NewRecoveryMessage),
 	}
 
 	if debugTests {
