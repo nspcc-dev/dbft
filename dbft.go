@@ -179,7 +179,7 @@ func (d *DBFT) OnTimeout(hv timer.HV) {
 		d.sendPrepareRequest()
 	} else if (d.IsPrimary() && d.RequestSentOrReceived()) || d.IsBackup() {
 		if d.CommitSent() {
-			d.Logger.Info("send recovery to resend commit")
+			d.Logger.Debug("send recovery to resend commit")
 			d.sendRecoveryRequest()
 			d.changeTimer(d.SecondsPerBlock << 1)
 		} else {
