@@ -153,7 +153,7 @@ func (m recoveryMessage) EncodeBinary(w *io.BinWriter) {
 	w.WriteArray(m.changeViewPayloads)
 
 	hasReq := m.prepareRequest != nil
-	w.WriteLE(hasReq)
+	w.WriteBool(hasReq)
 
 	if hasReq {
 		m.prepareRequest.(io.Serializable).EncodeBinary(w)
@@ -174,11 +174,7 @@ func (m recoveryMessage) EncodeBinary(w *io.BinWriter) {
 func (m *recoveryMessage) DecodeBinary(r *io.BinReader) {
 	r.ReadArray(&m.changeViewPayloads)
 
-	var hasReq bool
-
-	r.ReadLE(&hasReq)
-
-	if hasReq {
+	if hasReq := r.ReadBool(); hasReq {
 		m.prepareRequest = new(prepareRequest)
 		m.prepareRequest.(io.Serializable).DecodeBinary(r)
 	} else {

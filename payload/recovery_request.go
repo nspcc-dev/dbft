@@ -18,12 +18,12 @@ var _ RecoveryRequest = (*recoveryRequest)(nil)
 
 // EncodeBinary implements io.Serializable interface.
 func (m recoveryRequest) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(m.timestamp)
+	w.WriteU32LE(m.timestamp)
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (m *recoveryRequest) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&m.timestamp)
+	m.timestamp = r.ReadU32LE()
 }
 
 // Timestamp implements RecoveryRequest interface.

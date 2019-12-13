@@ -26,12 +26,12 @@ var _ ChangeView = (*changeView)(nil)
 
 // EncodeBinary implements io.Serializable interface.
 func (c changeView) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(c.timestamp)
+	w.WriteU32LE(c.timestamp)
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (c *changeView) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&c.timestamp)
+	c.timestamp = r.ReadU32LE()
 }
 
 // NewViewNumber implements ChangeView interface.

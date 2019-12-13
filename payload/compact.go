@@ -22,38 +22,38 @@ type (
 
 // EncodeBinary implements io.Serializable interface.
 func (p changeViewCompact) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(p.validatorIndex)
-	w.WriteLE(p.originalViewNumber)
-	w.WriteLE(p.timestamp)
+	w.WriteU16LE(p.validatorIndex)
+	w.WriteB(p.originalViewNumber)
+	w.WriteU32LE(p.timestamp)
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (p *changeViewCompact) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&p.validatorIndex)
-	r.ReadLE(&p.originalViewNumber)
-	r.ReadLE(&p.timestamp)
+	p.validatorIndex = r.ReadU16LE()
+	p.originalViewNumber = r.ReadB()
+	p.timestamp = r.ReadU32LE()
 }
 
 // EncodeBinary implements io.Serializable interface.
 func (p commitCompact) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(p.viewNumber)
-	w.WriteLE(p.validatorIndex)
-	w.WriteBE(p.signature)
+	w.WriteB(p.viewNumber)
+	w.WriteU16LE(p.validatorIndex)
+	w.WriteBytes(p.signature[:])
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (p *commitCompact) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&p.viewNumber)
-	r.ReadLE(&p.validatorIndex)
-	r.ReadBE(p.signature[:])
+	p.viewNumber = r.ReadB()
+	p.validatorIndex = r.ReadU16LE()
+	r.ReadBytes(p.signature[:])
 }
 
 // EncodeBinary implements io.Serializable interface.
 func (p preparationCompact) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(p.validatorIndex)
+	w.WriteU16LE(p.validatorIndex)
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (p *preparationCompact) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&p.validatorIndex)
+	p.validatorIndex = r.ReadU16LE()
 }
