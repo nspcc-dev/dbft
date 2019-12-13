@@ -22,12 +22,12 @@ var _ Commit = (*commit)(nil)
 
 // EncodeBinary implements io.Serializable interface.
 func (c commit) EncodeBinary(w *io.BinWriter) {
-	w.WriteBE(c.signature)
+	w.WriteBytes(c.signature[:])
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (c *commit) DecodeBinary(r *io.BinReader) {
-	r.ReadBE(c.signature[:])
+	r.ReadBytes(c.signature[:])
 }
 
 // Signature implements Commit interface.

@@ -22,12 +22,12 @@ var _ PrepareResponse = (*prepareResponse)(nil)
 
 // EncodeBinary implements io.Serializable interface.
 func (p prepareResponse) EncodeBinary(w *io.BinWriter) {
-	p.preparationHash.EncodeBinary(w)
+	w.WriteBytes(p.preparationHash[:])
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (p *prepareResponse) DecodeBinary(r *io.BinReader) {
-	p.preparationHash.DecodeBinary(r)
+	r.ReadBytes(p.preparationHash[:])
 }
 
 // PreparationHash implements PrepareResponse interface.

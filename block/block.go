@@ -212,22 +212,22 @@ func (b *neoBlock) Hash() (h util.Uint256) {
 
 // EncodeBinary implements io.Serializable interface.
 func (b base) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(b.Version)
-	b.PrevHash.EncodeBinary(w)
-	b.MerkleRoot.EncodeBinary(w)
-	w.WriteLE(b.Timestamp)
-	w.WriteLE(b.Index)
-	w.WriteLE(b.ConsensusData)
-	w.WriteBE(b.NextConsensus[:])
+	w.WriteU32LE(b.Version)
+	w.WriteBytes(b.PrevHash[:])
+	w.WriteBytes(b.MerkleRoot[:])
+	w.WriteU32LE(b.Timestamp)
+	w.WriteU32LE(b.Index)
+	w.WriteU64LE(b.ConsensusData)
+	w.WriteBytes(b.NextConsensus[:])
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (b *base) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&b.Version)
-	b.PrevHash.DecodeBinary(r)
-	b.MerkleRoot.DecodeBinary(r)
-	r.ReadLE(&b.Timestamp)
-	r.ReadLE(&b.Index)
-	r.ReadLE(&b.ConsensusData)
-	r.ReadBE(b.NextConsensus[:])
+	b.Version = r.ReadU32LE()
+	r.ReadBytes(b.PrevHash[:])
+	r.ReadBytes(b.MerkleRoot[:])
+	b.Timestamp = r.ReadU32LE()
+	b.Index = r.ReadU32LE()
+	b.ConsensusData = r.ReadU64LE()
+	r.ReadBytes(b.NextConsensus[:])
 }

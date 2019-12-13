@@ -60,21 +60,21 @@ func (p consensusPayload) EncodeBinary(w *io.BinWriter) {
 	p.message.EncodeBinary(ww.BinWriter)
 	data := ww.Bytes()
 
-	w.WriteLE(p.version)
-	p.prevHash.EncodeBinary(w)
-	w.WriteLE(p.height)
-	w.WriteLE(p.validatorIndex)
-	w.WriteBytes(data)
+	w.WriteU32LE(p.version)
+	w.WriteBytes(p.prevHash[:])
+	w.WriteU32LE(p.height)
+	w.WriteU16LE(p.validatorIndex)
+	w.WriteVarBytes(data)
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (p *consensusPayload) DecodeBinary(r *io.BinReader) {
-	r.ReadLE(&p.version)
+	p.version = r.ReadU32LE()
 	p.prevHash.DecodeBinary(r)
-	r.ReadLE(&p.height)
-	r.ReadLE(&p.validatorIndex)
+	p.height = r.ReadU32LE()
+	p.validatorIndex = r.ReadU16LE()
 
-	data := r.ReadBytes()
+	data := r.ReadVarBytes()
 	rr := io.NewBinReaderFromBuf(data)
 	p.message.DecodeBinary(rr)
 }

@@ -83,15 +83,15 @@ func (m MessageType) String() string {
 
 // EncodeBinary implements io.Serializable interface.
 func (m message) EncodeBinary(w *io.BinWriter) {
-	w.WriteLE(byte(m.cmType))
-	w.WriteLE(m.viewNumber)
+	w.WriteB(byte(m.cmType))
+	w.WriteB(m.viewNumber)
 	m.payload.(io.Serializable).EncodeBinary(w)
 }
 
 // DecodeBinary implements io.Serializable interface.
 func (m *message) DecodeBinary(r *io.BinReader) {
-	r.ReadLE((*byte)(&m.cmType))
-	r.ReadLE(&m.viewNumber)
+	m.cmType = MessageType(r.ReadB())
+	m.viewNumber = r.ReadB()
 
 	switch m.cmType {
 	case ChangeViewType:
