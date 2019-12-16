@@ -92,6 +92,10 @@ func fromPayload(t MessageType, recovery ConsensusPayload, p interface{}) *conse
 
 // GetPrepareRequest implements RecoveryMessage interface.
 func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload, _ []crypto.PublicKey, ind uint16) ConsensusPayload {
+	if m.prepareRequest == nil {
+		return nil
+	}
+
 	req := fromPayload(PrepareRequestType, p, &prepareRequest{
 		timestamp:         m.prepareRequest.Timestamp(),
 		nonce:             m.prepareRequest.Nonce(),

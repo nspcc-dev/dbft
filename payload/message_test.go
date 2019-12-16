@@ -6,6 +6,7 @@ import (
 
 	"github.com/CityOfZion/neo-go/pkg/io"
 	"github.com/CityOfZion/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,6 +104,36 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		testEncodeDecode(t, m, new(consensusPayload))
 		testMarshalUnmarshal(t, m, new(consensusPayload))
 	})
+}
+
+func TestRecoveryMessage_NoPayloads(t *testing.T) {
+	m := NewConsensusPayload().(*consensusPayload)
+	m.SetValidatorIndex(0)
+	m.SetHeight(77)
+	m.SetPrevHash(util.Uint256{1})
+	m.SetVersion(8)
+	m.SetViewNumber(3)
+	m.SetPayload(&recoveryMessage{})
+
+	validators := make([]crypto.PublicKey, 1)
+	_, validators[0] = crypto.Generate(rand.Reader)
+
+	rec := m.GetRecoveryMessage()
+	require.NotNil(t, rec)
+
+	var p ConsensusPayload
+	require.NotPanics(t, func() { p = rec.GetPrepareRequest(p, validators, 0) })
+	require.Nil(t, p)
+
+	var ps []ConsensusPayload
+	require.NotPanics(t, func() { ps = rec.GetPrepareResponses(p, validators) })
+	require.Len(t, ps, 0)
+
+	require.NotPanics(t, func() { ps = rec.GetCommits(p, validators) })
+	require.Len(t, ps, 0)
+
+	require.NotPanics(t, func() { ps = rec.GetChangeViews(p, validators) })
+	require.Len(t, ps, 0)
 }
 
 func TestCompact_EncodeDecode(t *testing.T) {
