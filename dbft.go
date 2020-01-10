@@ -312,6 +312,11 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 
 	if !d.hasAllTransactions() {
 		return
+	} else if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
+		d.Logger.Warn("can't verify received block")
+		d.sendChangeView()
+
+		return
 	}
 
 	d.sendPrepareResponse()
