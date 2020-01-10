@@ -66,7 +66,7 @@ func (d *DBFT) addTransaction(tx block.Transaction) {
 			return
 		}
 
-		if b := d.Context.MakeHeader(); !d.VerifyBlock(b) {
+		if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
 			d.Logger.Warn("can't verify transaction", zap.Stringer("hash", tx.Hash()))
 			d.sendChangeView()
 
