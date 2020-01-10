@@ -27,6 +27,7 @@ type testState struct {
 	currHash   util.Uint256
 	pool       *testPool
 	blocks     []block.Block
+	verify     func(b block.Block) bool
 }
 
 type (
@@ -89,6 +90,15 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	s := newTestState(2, 7)
+	s.verify = func(b block.Block) bool {
+		for _, tx := range b.Transactions() {
+			if tx.(testTx)%10 == 0 {
+				return false
+			}
+		}
+
+		return true
+	}
 
 	t.Run("receive request from primary", func(t *testing.T) {
 		s.currHeight = 4
@@ -114,6 +124,62 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		// do nothing on second receive
 		service.OnReceive(p)
 		require.Nil(t, s.tryRecv())
+	})
+
+	t.Run("change view on invalid block", func(t *testing.T) {
+		s.currHeight = 4
+		service := New(s.getOptions()...)
+		txs := []testTx{0}
+		s.pool.Add(txs[0])
+
+		service.Start()
+
+		for i := range service.LastSeenMessage {
+			service.LastSeenMessage[i] = 4
+		}
+
+		p := s.getPrepareRequest(5, txs[0].Hash())
+
+		service.OnReceive(p)
+
+		cv := s.tryRecv()
+		require.NotNil(t, cv)
+		require.Equal(t, payload.ChangeViewType, cv.Type())
+		require.EqualValues(t, s.currHeight+1, cv.Height())
+		require.EqualValues(t, 0, cv.ViewNumber())
+		require.Equal(t, s.currHash, cv.PrevHash())
+		require.EqualValues(t, s.myIndex, cv.ValidatorIndex())
+		require.NotNil(t, cv.Payload())
+		require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
+	})
+
+	t.Run("change view on invalid tx", func(t *testing.T) {
+		s.currHeight = 4
+		service := New(s.getOptions()...)
+		txs := []testTx{10}
+
+		service.Start()
+
+		for i := range service.LastSeenMessage {
+			service.LastSeenMessage[i] = 4
+		}
+
+		p := s.getPrepareRequest(5, txs[0].Hash())
+
+		service.OnReceive(p)
+		require.Nil(t, s.tryRecv())
+
+		service.OnTransaction(testTx(10))
+
+		cv := s.tryRecv()
+		require.NotNil(t, cv)
+		require.Equal(t, payload.ChangeViewType, cv.Type())
+		require.EqualValues(t, s.currHeight+1, cv.Height())
+		require.EqualValues(t, 0, cv.ViewNumber())
+		require.Equal(t, s.currHash, cv.PrevHash())
+		require.EqualValues(t, s.myIndex, cv.ValidatorIndex())
+		require.NotNil(t, cv.Payload())
+		require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
 	})
 
 	t.Run("receive invalid prepare request", func(t *testing.T) {
@@ -464,7 +530,6 @@ func (s *testState) getOptions() []Option {
 		WithGetConsensusAddress(s.nextConsensus),
 		WithWatchOnly(func() bool { return false }),
 		WithGetBlock(func(h util.Uint256) block.Block { return nil }),
-		WithVerifyBlock(func(block.Block) bool { return true }),
 		WithTimer(timer.New()),
 		WithTxPerBlock(5),
 		WithLogger(zap.NewNop()),
@@ -481,6 +546,13 @@ func (s *testState) getOptions() []Option {
 		WithNewRecoveryRequest(payload.NewRecoveryRequest),
 		WithNewRecoveryMessage(payload.NewRecoveryMessage),
 	}
+
+	verify := s.verify
+	if verify == nil {
+		verify = func(b block.Block) bool { return true }
+	}
+
+	opts = append(opts, WithVerifyBlock(verify))
 
 	if debugTests {
 		cfg := zap.NewDevelopmentConfig()
