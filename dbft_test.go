@@ -88,6 +88,35 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 	})
 }
 
+func TestDBFT_SingleNode(t *testing.T) {
+	s := newTestState(0, 1)
+
+	s.currHeight = 2
+	service := New(s.getOptions()...)
+
+	service.Start()
+	p := s.tryRecv()
+	require.NotNil(t, p)
+	require.Equal(t, payload.PrepareRequestType, p.Type())
+	require.EqualValues(t, 3, p.Height())
+	require.EqualValues(t, 0, p.ViewNumber())
+	require.NotNil(t, p.Payload())
+	require.Equal(t, s.currHash, p.PrevHash())
+	require.EqualValues(t, 0, p.ValidatorIndex())
+
+	cm := s.tryRecv()
+	require.NotNil(t, cm)
+	require.Equal(t, payload.CommitType, cm.Type())
+	require.EqualValues(t, s.currHeight+1, cm.Height())
+	require.EqualValues(t, 0, cm.ViewNumber())
+	require.NotNil(t, cm.Payload())
+	require.EqualValues(t, 0, cm.ValidatorIndex())
+
+	b := s.nextBlock()
+	require.NotNil(t, b)
+	require.Equal(t, s.currHeight+1, b.Index())
+}
+
 func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	s := newTestState(2, 7)
 	s.verify = func(b block.Block) bool {

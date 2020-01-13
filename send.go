@@ -38,6 +38,7 @@ func (d *DBFT) sendPrepareRequest() {
 	}
 
 	d.changeTimer(delay)
+	d.checkPrepare()
 }
 
 func (c *Context) makeChangeView(ts uint32) payload.ConsensusPayload {
