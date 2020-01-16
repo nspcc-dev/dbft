@@ -104,7 +104,7 @@ func (c *Context) makeCommit() payload.ConsensusPayload {
 
 	if b := c.MakeHeader(); b != nil {
 		var sign []byte
-		if err := b.Sign(c.Config.Priv); err == nil {
+		if err := b.Sign(c.Priv); err == nil {
 			sign = b.Signature()
 		}
 
