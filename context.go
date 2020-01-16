@@ -16,6 +16,11 @@ type Context struct {
 	// Config is dBFT's Config instance.
 	Config *Config
 
+	// Priv is node's private key.
+	Priv crypto.PrivateKey
+	// Pub is node's public key.
+	Pub crypto.PublicKey
+
 	block  block.Block
 	header block.Block
 
@@ -187,22 +192,7 @@ func (c *Context) reset(view byte) {
 		}
 	}
 
-	data, err := c.Config.Pub.MarshalBinary()
-	if err != nil {
-		panic("can't marshal config public key")
-	}
-
-	id := fetchID(data)
-
-	for i := range c.Validators {
-		data, err := c.Validators[i].MarshalBinary()
-		if err != nil {
-			panic("can't marshal public key")
-		} else if id == fetchID(data) {
-			c.MyIndex = i
-			break
-		}
-	}
+	c.MyIndex, c.Priv, c.Pub = c.Config.GetKeyPair(c.Validators)
 
 	c.header = nil
 

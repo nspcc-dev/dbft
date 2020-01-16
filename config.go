@@ -1,6 +1,7 @@
 package dbft
 
 import (
+	"bytes"
 	"errors"
 	"time"
 
@@ -23,10 +24,9 @@ type Config struct {
 	// SecondsPerBlock is the number of seconds that
 	// need to pass before another block will be accepted.
 	SecondsPerBlock time.Duration
-	// Priv is node private key.
-	Priv crypto.PrivateKey
-	// Pub is node public key.
-	Pub crypto.PublicKey
+	// GetKeyPair returns an index of the node in the list of validators
+	// together with it's key pair.
+	GetKeyPair func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey)
 	// NewBlock should allocate and return new block.Block.
 	NewBlock func() block.Block
 	// RequestTx is a callback which is called when transaction contained
@@ -89,8 +89,7 @@ func defaultConfig() *Config {
 		Logger:              zap.NewNop(),
 		Timer:               timer.New(),
 		SecondsPerBlock:     defaultSecondsPerBlock,
-		Priv:                nil,
-		Pub:                 nil,
+		GetKeyPair:          nil,
 		NewBlock:            block.NewBlock,
 		RequestTx:           func(h ...util.Uint256) {},
 		GetTx:               func(h util.Uint256) block.Transaction { return nil },
@@ -115,7 +114,7 @@ func defaultConfig() *Config {
 }
 
 func checkConfig(cfg *Config) error {
-	if cfg.Priv == nil {
+	if cfg.GetKeyPair == nil {
 		return errors.New("private key is nil")
 	} else if cfg.CurrentHeight == nil {
 		return errors.New("CurrentHeight is nil")
@@ -128,11 +127,34 @@ func checkConfig(cfg *Config) error {
 	return nil
 }
 
-// WithKeyPair sets Priv and Pub.
+// WithKeyPair sets GetKeyPair to a function returning default key pair
+// if it is present in a list of validators.
 func WithKeyPair(priv crypto.PrivateKey, pub crypto.PublicKey) Option {
+	myPub, err := pub.MarshalBinary()
+	if err != nil {
+		return nil
+	}
+
 	return func(cfg *Config) {
-		cfg.Priv = priv
-		cfg.Pub = pub
+		cfg.GetKeyPair = func(ps []crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey) {
+			for i := range ps {
+				pi, err := ps[i].MarshalBinary()
+				if err != nil {
+					continue
+				} else if bytes.Equal(myPub, pi) {
+					return i, priv, pub
+				}
+			}
+
+			return -1, nil, nil
+		}
+	}
+}
+
+// WithGetKeyPair sets GetKeyPair.
+func WithGetKeyPair(f func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey)) Option {
+	return func(cfg *Config) {
+		cfg.GetKeyPair = f
 	}
 }
 
