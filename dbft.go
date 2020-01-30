@@ -427,6 +427,7 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 
 	if d.CommitSent() {
 		d.Logger.Debug("ignoring ChangeView: commit sent")
+		d.sendRecoveryMessage()
 		return
 	}
 
