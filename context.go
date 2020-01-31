@@ -182,6 +182,8 @@ func (c *Context) reset(view byte) {
 			}
 		}
 	} else {
+		c.block = nil
+		c.CommitPayloads = make([]payload.ConsensusPayload, len(c.Validators))
 		for i := range c.Validators {
 			m := c.ChangeViewPayloads[i]
 			if m != nil && m.GetChangeView().NewViewNumber() < view {
