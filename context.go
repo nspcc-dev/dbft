@@ -108,7 +108,7 @@ func (c *Context) CountCommitted() (count int) {
 // for more than 1 epoch
 func (c *Context) CountFailed() (count int) {
 	for _, hv := range c.LastSeenMessage {
-		if hv == nil || hv.Height < c.BlockIndex-1 {
+		if hv == nil || hv.Height != c.BlockIndex || hv.View != c.ViewNumber {
 			count++
 		}
 	}
