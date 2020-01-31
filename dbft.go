@@ -222,9 +222,12 @@ func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
 		return
 	}
 
-	h := d.LastSeenMessage[msg.ValidatorIndex()]
-	if h < int64(msg.Height()) {
-		d.LastSeenMessage[msg.ValidatorIndex()] = int64(msg.Height())
+	hv := d.LastSeenMessage[msg.ValidatorIndex()]
+	if hv == nil || hv.Height < msg.Height() {
+		d.LastSeenMessage[msg.ValidatorIndex()] = &timer.HV{
+			Height: msg.Height(),
+			View:   msg.ViewNumber(),
+		}
 	}
 
 	switch msg.Type() {

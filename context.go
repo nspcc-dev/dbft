@@ -8,6 +8,7 @@ import (
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/merkle"
 	"github.com/nspcc-dev/dbft/payload"
+	"github.com/nspcc-dev/dbft/timer"
 )
 
 // Context is a main dBFT structure which
@@ -59,7 +60,7 @@ type Context struct {
 	LastChangeViewPayloads []payload.ConsensusPayload
 	// LastSeenMessage array stores the height of the last seen message, for each validator.
 	// if this node never heard from validator i, LastSeenMessage[i] will be -1.
-	LastSeenMessage []int64
+	LastSeenMessage []*timer.HV
 }
 
 // N returns total number of validators.
@@ -106,8 +107,8 @@ func (c *Context) CountCommitted() (count int) {
 // CountFailed returns number of nodes with which no communication was performed
 // for more than 1 epoch
 func (c *Context) CountFailed() (count int) {
-	for i := range c.LastSeenMessage {
-		if c.LastSeenMessage[i] < int64(c.BlockIndex)-1 {
+	for _, hv := range c.LastSeenMessage {
+		if hv == nil || hv.Height < c.BlockIndex-1 {
 			count++
 		}
 	}
@@ -172,10 +173,7 @@ func (c *Context) reset(view byte) {
 		c.LastChangeViewPayloads = make([]payload.ConsensusPayload, n)
 
 		if c.LastSeenMessage == nil {
-			c.LastSeenMessage = make([]int64, n)
-			for i := range c.Validators {
-				c.LastSeenMessage[i] = -1
-			}
+			c.LastSeenMessage = make([]*timer.HV, n)
 		}
 	} else {
 		for i := range c.Validators {
@@ -204,7 +202,10 @@ func (c *Context) reset(view byte) {
 	c.ViewNumber = view
 
 	if c.MyIndex >= 0 {
-		c.LastSeenMessage[c.MyIndex] = int64(c.BlockIndex)
+		c.LastSeenMessage[c.MyIndex] = &timer.HV{
+			Height: c.BlockIndex,
+			View:   c.ViewNumber,
+		}
 	}
 }
 
