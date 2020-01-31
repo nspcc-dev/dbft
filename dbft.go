@@ -441,9 +441,8 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 }
 
 func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
-	d.extendTimer(4)
-
 	if d.ViewNumber == msg.ViewNumber() {
+		d.extendTimer(4)
 		header := d.MakeHeader()
 		if header == nil {
 			d.CommitPayloads[msg.ValidatorIndex()] = msg
