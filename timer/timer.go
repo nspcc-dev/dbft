@@ -119,13 +119,8 @@ func (t *timer) loop() {
 
 				stopTimer(tt)
 
-				if elapsed := time.Since(toSend.s); toSend.d > elapsed {
-					tt = time.NewTimer(toSend.d - elapsed)
-				} else {
-					tt = nil
-					drain(t.ch)
-					t.ch <- toSend.HV
-				}
+				elapsed := time.Since(toSend.s)
+				tt = time.NewTimer(toSend.d - elapsed)
 
 			case <-getChan(tt):
 				stopTimer(tt)
