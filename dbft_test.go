@@ -75,7 +75,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 			// if all nodes are up must send ChangeView
 			for i := range service.LastSeenMessage {
-				service.LastSeenMessage[i] = int64(s.currHeight)
+				service.LastSeenMessage[i] = &timer.HV{Height: s.currHeight}
 			}
 			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
 
@@ -164,7 +164,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		service.Start()
 
 		for i := range service.LastSeenMessage {
-			service.LastSeenMessage[i] = 4
+			service.LastSeenMessage[i] = &timer.HV{Height: 4}
 		}
 
 		p := s.getPrepareRequest(5, txs[0].Hash())
@@ -190,7 +190,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		service.Start()
 
 		for i := range service.LastSeenMessage {
-			service.LastSeenMessage[i] = 4
+			service.LastSeenMessage[i] = &timer.HV{Height: 4}
 		}
 
 		p := s.getPrepareRequest(5, txs[0].Hash())
