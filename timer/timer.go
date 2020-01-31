@@ -102,44 +102,42 @@ func drain(ch <-chan HV) {
 }
 
 func (t *timer) loop() {
-	go func() {
-		var tt *time.Timer
-		var toSend value
+	var tt *time.Timer
+	var toSend value
 
-		for {
-			select {
-			case v := <-t.values:
-				if !v.e {
-					toSend.HV = v.HV
-					toSend.s = v.s
-					toSend.d = v.d
-				} else {
-					toSend.d *= v.d
-				}
+	for {
+		select {
+		case v := <-t.values:
+			if !v.e {
+				toSend.HV = v.HV
+				toSend.s = v.s
+				toSend.d = v.d
+			} else {
+				toSend.d *= v.d
+			}
 
-				stopTimer(tt)
+			stopTimer(tt)
 
-				elapsed := time.Since(toSend.s)
-				tt = time.NewTimer(toSend.d - elapsed)
+			elapsed := time.Since(toSend.s)
+			tt = time.NewTimer(toSend.d - elapsed)
 
-			case <-getChan(tt):
-				stopTimer(tt)
-				tt = nil
+		case <-getChan(tt):
+			stopTimer(tt)
+			tt = nil
 
+			drain(t.ch)
+			t.ch <- toSend.HV
+
+		case _, ok := <-t.stop:
+			stopTimer(tt)
+			tt = nil
+
+			if !ok {
 				drain(t.ch)
-				t.ch <- toSend.HV
-
-			case _, ok := <-t.stop:
-				stopTimer(tt)
-				tt = nil
-
-				if !ok {
-					drain(t.ch)
-					return
-				}
+				return
 			}
 		}
-	}()
+	}
 }
 
 // Extend implements Timer interface.
