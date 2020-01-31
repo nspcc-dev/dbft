@@ -168,12 +168,8 @@ func (c *Context) reset(view byte) {
 		c.BlockIndex = c.Config.CurrentHeight() + 1
 		c.Validators = c.Config.GetValidators()
 
-		c.block = nil
-
 		n := len(c.Validators)
-		c.ChangeViewPayloads = make([]payload.ConsensusPayload, n)
 		c.LastChangeViewPayloads = make([]payload.ConsensusPayload, n)
-		c.CommitPayloads = make([]payload.ConsensusPayload, n)
 
 		if c.LastSeenMessage == nil {
 			c.LastSeenMessage = make([]int64, n)
@@ -194,13 +190,18 @@ func (c *Context) reset(view byte) {
 
 	c.MyIndex, c.Priv, c.Pub = c.Config.GetKeyPair(c.Validators)
 
+	c.block = nil
 	c.header = nil
+
+	n := len(c.Validators)
+	c.ChangeViewPayloads = make([]payload.ConsensusPayload, n)
+	c.CommitPayloads = make([]payload.ConsensusPayload, n)
+	c.PreparationPayloads = make([]payload.ConsensusPayload, n)
 
 	c.Transactions = make(map[util.Uint256]block.Transaction)
 	c.TransactionHashes = nil
 	c.PrimaryIndex = c.GetPrimaryIndex(view)
 	c.ViewNumber = view
-	c.PreparationPayloads = make([]payload.ConsensusPayload, len(c.Validators))
 
 	if c.MyIndex >= 0 {
 		c.LastSeenMessage[c.MyIndex] = int64(c.BlockIndex)
