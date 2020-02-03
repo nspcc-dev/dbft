@@ -390,7 +390,6 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 		return
 	}
 
-	d.Logger.Debug("prepare response")
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
 	if m = d.PreparationPayloads[d.GetPrimaryIndex(d.ViewNumber)]; m != nil {
@@ -518,7 +517,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 
 		for _, m := range recovery.GetChangeViews(msg, d.Validators) {
 			validChViews++
-			d.onChangeView(m)
+			d.OnReceive(m)
 		}
 	}
 
@@ -527,7 +526,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 			prepReq := recovery.GetPrepareRequest(msg, d.Validators, uint16(d.PrimaryIndex))
 			if prepReq != nil {
 				totalPrepReq, validPrepReq = 1, 1
-				d.onPrepareRequest(prepReq)
+				d.OnReceive(prepReq)
 			} else if d.IsPrimary() {
 				d.sendPrepareRequest()
 			}
@@ -535,7 +534,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 
 		for _, m := range recovery.GetPrepareResponses(msg, d.Validators) {
 			validPrepResp++
-			d.onPrepareResponse(m)
+			d.OnReceive(m)
 		}
 	}
 
@@ -543,7 +542,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 		// Ensure we know about all commits from lower view numbers.
 		for _, m := range recovery.GetCommits(msg, d.Validators) {
 			validCommits++
-			d.onCommit(m)
+			d.OnReceive(m)
 		}
 	}
 }
