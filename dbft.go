@@ -377,6 +377,9 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 	if d.ViewNumber != msg.ViewNumber() {
 		d.Logger.Debug("ignoring wrong view number", zap.Uint("view", uint(msg.ViewNumber())))
 		return
+	} else if uint(msg.ValidatorIndex()) == d.GetPrimaryIndex(d.ViewNumber) {
+		d.Logger.Debug("ignoring PrepareResponse from primary node", zap.Uint16("from", msg.ValidatorIndex()))
+		return
 	}
 
 	// ignore PrepareResponse if in process of changing view

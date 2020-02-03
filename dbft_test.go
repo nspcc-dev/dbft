@@ -153,6 +153,13 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		// do nothing on second receive
 		service.OnReceive(p)
 		require.Nil(t, s.tryRecv())
+
+		t.Run("receive response from primary", func(t *testing.T) {
+			resp := s.getPrepareResponse(5, p.Hash())
+
+			service.OnReceive(resp)
+			require.Nil(t, s.tryRecv())
+		})
 	})
 
 	t.Run("change view on invalid block", func(t *testing.T) {
