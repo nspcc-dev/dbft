@@ -254,19 +254,15 @@ func (d *DBFT) start() {
 	if !d.IsPrimary() {
 		if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
 			for _, m := range msgs.prepare {
-				if m.Type() == payload.PrepareRequestType {
-					d.onPrepareRequest(m)
-				} else {
-					d.onPrepareResponse(m)
-				}
+				d.OnReceive(m)
 			}
 
 			for _, m := range msgs.chViews {
-				d.onChangeView(m)
+				d.OnReceive(m)
 			}
 
 			for _, m := range msgs.commit {
-				d.onCommit(m)
+				d.OnReceive(m)
 			}
 		}
 
