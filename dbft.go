@@ -67,7 +67,6 @@ func (d *DBFT) addTransaction(tx block.Transaction) {
 		}
 
 		if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
-			d.Logger.Warn("can't verify transaction", zap.Stringer("hash", tx.Hash()))
 			d.sendChangeView()
 
 			return
@@ -101,7 +100,12 @@ func (d *DBFT) InitializeConsensus(view byte) {
 		role = "Backup"
 	}
 
-	d.Logger.Debug("initialize",
+	var logMsg = "initializing dbft"
+	if view > 0 {
+		logMsg = "changing dbft view"
+	}
+
+	d.Logger.Info(logMsg,
 		zap.Uint32("height", d.BlockIndex),
 		zap.Uint("view", uint(view)),
 		zap.Int("index", d.MyIndex),
@@ -437,12 +441,18 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 		return
 	}
 
+	d.Logger.Info("received ChangeView",
+		zap.Uint("validator", uint(msg.ValidatorIndex())),
+		zap.Uint("new view", uint(p.NewViewNumber())),
+	)
+
 	d.ChangeViewPayloads[msg.ValidatorIndex()] = msg
 	d.checkChangeView(p.NewViewNumber())
 }
 
 func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
 	if d.ViewNumber == msg.ViewNumber() {
+		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 		header := d.MakeHeader()
 		if header == nil {
@@ -453,13 +463,19 @@ func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
 				d.CommitPayloads[msg.ValidatorIndex()] = msg
 				d.checkCommit()
 			} else {
-				d.Logger.Warn("can't validate commit signature")
+				d.Logger.Warn("invalid commit signature",
+					zap.Uint("validator", uint(msg.ValidatorIndex())),
+				)
 			}
 		}
 
 		return
 	}
 
+	d.Logger.Info("received commit for different view",
+		zap.Uint("validator", uint(msg.ValidatorIndex())),
+		zap.Uint("view", uint(msg.ViewNumber())),
+	)
 	d.CommitPayloads[msg.ValidatorIndex()] = msg
 }
 

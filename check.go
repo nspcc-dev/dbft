@@ -61,7 +61,7 @@ func (d *DBFT) checkCommit() {
 	d.block = d.CreateBlock()
 	hash := d.block.Hash()
 
-	d.Logger.Debug("approving block",
+	d.Logger.Info("approving block",
 		zap.Uint32("height", d.BlockIndex),
 		zap.Stringer("hash", hash),
 		zap.Int("tx_count", len(d.block.Transactions())),
