@@ -37,6 +37,7 @@ func (d *DBFT) sendPrepareRequest() {
 		delay -= d.SecondsPerBlock
 	}
 
+	d.Logger.Info("sending PrepareRequest", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
 	d.changeTimer(delay)
 	d.checkPrepare()
 }
@@ -94,6 +95,7 @@ func (c *Context) makePrepareResponse() payload.ConsensusPayload {
 
 func (d *DBFT) sendPrepareResponse() {
 	msg := d.makePrepareResponse()
+	d.Logger.Info("sending PrepareResponse", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
 	d.broadcast(msg)
 }
 
@@ -120,6 +122,7 @@ func (c *Context) makeCommit() payload.ConsensusPayload {
 func (d *DBFT) sendCommit() {
 	msg := d.makeCommit()
 	d.CommitPayloads[d.MyIndex] = msg
+	d.Logger.Info("sending Commit", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
 	d.broadcast(msg)
 }
 
