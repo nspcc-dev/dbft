@@ -453,7 +453,9 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
 	if d.ViewNumber == msg.ViewNumber() {
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
-		d.extendTimer(4)
+		if d.RequestSentOrReceived() {
+			d.extendTimer(4)
+		}
 		header := d.MakeHeader()
 		if header == nil {
 			d.CommitPayloads[msg.ValidatorIndex()] = msg
