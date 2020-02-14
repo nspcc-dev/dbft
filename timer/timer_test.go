@@ -27,7 +27,7 @@ func TestTimer_Reset(t *testing.T) {
 	tt.Reset(HV{Height: 3, View: 1}, time.Millisecond*100)
 	shouldNotReceive(t, tt, "value arrived too early")
 
-	tt.Extend(4)
+	tt.Extend(time.Millisecond * 300)
 	tt.Sleep(time.Millisecond * 200)
 	shouldNotReceive(t, tt, "value arrived too early after extend")
 
