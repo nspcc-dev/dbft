@@ -114,7 +114,7 @@ func (t *timer) loop() {
 					toSend.s = v.s
 					toSend.d = v.d
 				} else {
-					toSend.d *= v.d
+					toSend.d += v.d
 				}
 
 				stopTimer(tt)

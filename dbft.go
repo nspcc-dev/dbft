@@ -571,6 +571,6 @@ func (d *DBFT) changeTimer(delay time.Duration) {
 
 func (d *DBFT) extendTimer(count time.Duration) {
 	if !d.CommitSent() && !d.ViewChanging() {
-		d.Timer.Extend(count * d.SecondsPerBlock / time.Second / time.Duration(len(d.Validators)-d.F()))
+		d.Timer.Extend(count * d.SecondsPerBlock / time.Duration(d.M()))
 	}
 }
