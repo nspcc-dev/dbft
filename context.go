@@ -223,7 +223,12 @@ func (c *Context) Fill() {
 
 	validators := c.Config.GetValidators(txx...)
 	c.NextConsensus = c.Config.GetConsensusAddress(validators...)
-	c.Timestamp = uint32(c.Config.Timer.Now().Unix())
+
+	if now := uint32(c.Config.Timer.Now().Unix()); now > c.Timestamp {
+		c.Timestamp = now
+	} else {
+		c.Timestamp++
+	}
 }
 
 // CreateBlock returns resulting block for the current epoch.
