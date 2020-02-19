@@ -309,6 +309,7 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	d.TransactionHashes = p.TransactionHashes()
 	d.Transactions = make(map[util.Uint256]block.Transaction)
 
+	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.TransactionHashes)))
 	d.processMissingTx()
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
@@ -347,9 +348,8 @@ func (d *DBFT) processMissingTx() {
 			return
 		}
 	} else {
-		d.Logger.Warn("missing tx",
-			zap.Int("count", len(missing)),
-			zap.Any("hashes", missing))
+		d.Logger.Info("missing tx",
+			zap.Int("count", len(missing)))
 		d.RequestTx(missing...)
 	}
 }
@@ -393,6 +393,7 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 		return
 	}
 
+	d.Logger.Info("received PrepareResponse", zap.Uint16("validator", msg.ValidatorIndex()))
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
 	if m = d.PreparationPayloads[d.GetPrimaryIndex(d.ViewNumber)]; m != nil {
