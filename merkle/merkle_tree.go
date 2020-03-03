@@ -1,8 +1,8 @@
 package merkle
 
 import (
-	"github.com/CityOfZion/neo-go/pkg/util"
 	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 type (

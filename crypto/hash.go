@@ -3,7 +3,7 @@ package crypto
 import (
 	"crypto/sha256"
 
-	"github.com/CityOfZion/neo-go/pkg/util"
+	"github.com/nspcc-dev/neo-go/pkg/util"
 	"golang.org/x/crypto/ripemd160"
 )
 

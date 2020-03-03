@@ -1,6 +1,6 @@
 package payload
 
-import "github.com/CityOfZion/neo-go/pkg/io"
+import "github.com/nspcc-dev/neo-go/pkg/io"
 
 // Commit is an interface for dBFT Commit message.
 type Commit interface {

@@ -3,12 +3,12 @@ package dbft
 import (
 	"math/rand"
 
-	"github.com/CityOfZion/neo-go/pkg/util"
 	"github.com/nspcc-dev/dbft/block"
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/merkle"
 	"github.com/nspcc-dev/dbft/payload"
 	"github.com/nspcc-dev/dbft/timer"
+	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 // Context is a main dBFT structure which
