@@ -97,7 +97,7 @@ func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload, _ []crypto.Publi
 	}
 
 	req := fromPayload(PrepareRequestType, p, &prepareRequest{
-		timestamp:         m.prepareRequest.Timestamp(),
+		timestamp:         uint32(m.prepareRequest.Timestamp()),
 		nonce:             m.prepareRequest.Nonce(),
 		transactionHashes: m.prepareRequest.TransactionHashes(),
 		nextConsensus:     m.prepareRequest.NextConsensus(),

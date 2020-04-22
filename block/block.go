@@ -35,9 +35,9 @@ type (
 		// SetMerkleRoot sets merkle tree's root.
 		SetMerkleRoot(util.Uint256)
 		// Timestamp returns block's proposal timestamp.
-		Timestamp() uint32
+		Timestamp() uint64
 		// SetTimestamp sets block timestamp.
-		SetTimestamp(uint32)
+		SetTimestamp(uint64)
 		// Index returns block index.
 		Index() uint32
 		// SetIndex sets block index.
@@ -100,13 +100,13 @@ func (b *neoBlock) SetMerkleRoot(r util.Uint256) {
 }
 
 // Timestamp implements Block interface.
-func (b *neoBlock) Timestamp() uint32 {
-	return b.base.Timestamp
+func (b *neoBlock) Timestamp() uint64 {
+	return uint64(b.base.Timestamp)
 }
 
 // SetTimestamp implements Block interface.
-func (b *neoBlock) SetTimestamp(ts uint32) {
-	b.base.Timestamp = ts
+func (b *neoBlock) SetTimestamp(ts uint64) {
+	b.base.Timestamp = uint32(ts)
 }
 
 // Index implements Block interface.
