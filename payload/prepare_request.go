@@ -8,9 +8,9 @@ import (
 // PrepareRequest represents dBFT PrepareRequest message.
 type PrepareRequest interface {
 	// Timestamp returns this message's timestamp.
-	Timestamp() uint32
+	Timestamp() uint64
 	// SetTimestamp sets timestamp of this message.
-	SetTimestamp(ts uint32)
+	SetTimestamp(ts uint64)
 
 	// Nonce is a random nonce.
 	Nonce() uint64
@@ -55,13 +55,13 @@ func (p *prepareRequest) DecodeBinary(r *io.BinReader) {
 }
 
 // Timestamp implements PrepareRequest interface.
-func (p prepareRequest) Timestamp() uint32 {
-	return p.timestamp
+func (p prepareRequest) Timestamp() uint64 {
+	return uint64(p.timestamp)
 }
 
 // SetTimestamp implements PrepareRequest interface.
-func (p *prepareRequest) SetTimestamp(ts uint32) {
-	p.timestamp = ts
+func (p *prepareRequest) SetTimestamp(ts uint64) {
+	p.timestamp = uint32(ts)
 }
 
 // Nonce implements PrepareRequest interface.

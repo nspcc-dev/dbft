@@ -43,7 +43,8 @@ type Context struct {
 	// PrevHash is a hash of the previous block.
 	PrevHash util.Uint256
 
-	Timestamp uint32
+	// Timestamp is a nanosecond-precision timestamp
+	Timestamp uint64
 	Nonce     uint64
 	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
 	TransactionHashes []util.Uint256
@@ -224,7 +225,7 @@ func (c *Context) Fill() {
 	validators := c.Config.GetValidators(txx...)
 	c.NextConsensus = c.Config.GetConsensusAddress(validators...)
 
-	if now := uint32(c.Config.Timer.Now().Unix()); now > c.Timestamp {
+	if now := uint64(c.Config.Timer.Now().Unix()); now > c.Timestamp {
 		c.Timestamp = now
 	} else {
 		c.Timestamp++
