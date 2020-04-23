@@ -569,7 +569,7 @@ func (s *testState) getOptions() []Option {
 		WithTimer(timer.New()),
 		WithTxPerBlock(5),
 		WithLogger(zap.NewNop()),
-		WithNewBlock(block.NewBlock),
+		WithNewBlockFromContext(NewBlockFromContext),
 		WithSecondsPerBlock(time.Second * 10),
 		WithRequestTx(func(...util.Uint256) {}),
 		WithGetVerified(func(_ int) []block.Transaction { return []block.Transaction{} }),
