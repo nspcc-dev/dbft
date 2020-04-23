@@ -27,8 +27,8 @@ type Config struct {
 	// GetKeyPair returns an index of the node in the list of validators
 	// together with it's key pair.
 	GetKeyPair func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey)
-	// NewBlock should allocate and return new block.Block.
-	NewBlock func() block.Block
+	// NewBlockFromContext should allocate, fill from Context and return new block.Block.
+	NewBlockFromContext func(ctx *Context) block.Block
 	// RequestTx is a callback which is called when transaction contained
 	// in current block can't be found in memory pool.
 	RequestTx func(h ...util.Uint256)
@@ -90,7 +90,7 @@ func defaultConfig() *Config {
 		Timer:               timer.New(),
 		SecondsPerBlock:     defaultSecondsPerBlock,
 		GetKeyPair:          nil,
-		NewBlock:            block.NewBlock,
+		NewBlockFromContext: NewBlockFromContext,
 		RequestTx:           func(h ...util.Uint256) {},
 		GetTx:               func(h util.Uint256) block.Transaction { return nil },
 		GetVerified:         func(count int) []block.Transaction { return make([]block.Transaction, 0) },
@@ -186,10 +186,10 @@ func WithSecondsPerBlock(d time.Duration) Option {
 	}
 }
 
-// WithNewBlock sets NewBlock.
-func WithNewBlock(f func() block.Block) Option {
+// WithNewBlockFromContext sets NewBlockFromContext.
+func WithNewBlockFromContext(f func(ctx *Context) block.Block) Option {
 	return func(cfg *Config) {
-		cfg.NewBlock = f
+		cfg.NewBlockFromContext = f
 	}
 }
 

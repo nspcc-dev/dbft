@@ -260,26 +260,32 @@ func (c *Context) CreateBlock() block.Block {
 // MakeHeader returns half-filled block for the current epoch.
 // All hashable fields will be filled.
 func (c *Context) MakeHeader() block.Block {
-	if c.TransactionHashes == nil {
-		return nil
-	}
-
 	if c.header == nil {
-		c.header = c.Config.NewBlock()
-		c.header.SetTimestamp(c.Timestamp)
-		c.header.SetIndex(c.BlockIndex)
-		c.header.SetNextConsensus(c.NextConsensus)
-		c.header.SetPrevHash(c.PrevHash)
-		c.header.SetVersion(c.Version)
-		c.header.SetConsensusData(c.Nonce)
-
-		if len(c.TransactionHashes) != 0 {
-			mt := merkle.NewMerkleTree(c.TransactionHashes...)
-			c.header.SetMerkleRoot(mt.Root().Hash)
-		}
+		c.header = c.Config.NewBlockFromContext(c)
 	}
 
 	return c.header
+}
+
+// NewBlockFromContext returns new block filled with given contexet
+func NewBlockFromContext(ctx *Context) block.Block {
+	if ctx.TransactionHashes == nil {
+		return nil
+	}
+
+	block := block.NewBlock()
+	block.SetTimestamp(ctx.Timestamp)
+	block.SetIndex(ctx.BlockIndex)
+	block.SetNextConsensus(ctx.NextConsensus)
+	block.SetPrevHash(ctx.PrevHash)
+	block.SetVersion(ctx.Version)
+	block.SetConsensusData(ctx.Nonce)
+
+	if len(ctx.TransactionHashes) != 0 {
+		mt := merkle.NewMerkleTree(ctx.TransactionHashes...)
+		block.SetMerkleRoot(mt.Root().Hash)
+	}
+	return block
 }
 
 // hasAllTransactions returns true iff all transactions were received
