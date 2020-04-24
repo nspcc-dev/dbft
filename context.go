@@ -5,7 +5,6 @@ import (
 
 	"github.com/nspcc-dev/dbft/block"
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/dbft/merkle"
 	"github.com/nspcc-dev/dbft/payload"
 	"github.com/nspcc-dev/dbft/timer"
 	"github.com/nspcc-dev/neo-go/pkg/util"
@@ -272,19 +271,7 @@ func NewBlockFromContext(ctx *Context) block.Block {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
-
-	block := block.NewBlock()
-	block.SetTimestamp(ctx.Timestamp)
-	block.SetIndex(ctx.BlockIndex)
-	block.SetNextConsensus(ctx.NextConsensus)
-	block.SetPrevHash(ctx.PrevHash)
-	block.SetVersion(ctx.Version)
-	block.SetConsensusData(ctx.Nonce)
-
-	if len(ctx.TransactionHashes) != 0 {
-		mt := merkle.NewMerkleTree(ctx.TransactionHashes...)
-		block.SetMerkleRoot(mt.Root().Hash)
-	}
+	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.NextConsensus, ctx.PrevHash, ctx.Version, ctx.Nonce, ctx.TransactionHashes)
 	return block
 }
 

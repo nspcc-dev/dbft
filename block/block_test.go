@@ -22,30 +22,26 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 
-	b.SetConsensusData(123)
+	b.consensusData = 123
 	assert.EqualValues(t, 123, b.ConsensusData())
 
-	b.SetVersion(42)
+	b.base.Version = 42
 	assert.EqualValues(t, 42, b.Version())
 
-	b.SetNextConsensus(util.Uint160{1})
+	b.base.NextConsensus = util.Uint160{1}
 	assert.Equal(t, util.Uint160{1}, b.NextConsensus())
 
-	b.SetPrevHash(util.Uint256{3, 7})
+	b.base.PrevHash = util.Uint256{3, 7}
 	assert.Equal(t, util.Uint256{3, 7}, b.PrevHash())
 
-	b.SetMerkleRoot(util.Uint256{13})
+	b.base.MerkleRoot = util.Uint256{13}
 	assert.Equal(t, util.Uint256{13}, b.MerkleRoot())
 
-	b.SetTimestamp(1234)
-	// 1234ns -> 0s -> 0ns
-	assert.EqualValues(t, uint64(0), b.Timestamp())
+	b.base.Timestamp = 1234
+	// 1234s -> 1234000000000ns
+	assert.EqualValues(t, uint64(1234000000000), b.Timestamp())
 
-	b.SetTimestamp(9123456789)
-	// 9123456789ns -> 9s -> 9000000000ns
-	assert.EqualValues(t, uint64(9000000000), b.Timestamp())
-
-	b.SetIndex(100)
+	b.base.Index = 100
 	assert.EqualValues(t, 100, b.Index())
 
 	t.Run("marshal block", func(t *testing.T) {
