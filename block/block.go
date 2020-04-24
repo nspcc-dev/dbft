@@ -2,6 +2,7 @@ package block
 
 import (
 	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/merkle"
 	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 )
@@ -25,31 +26,18 @@ type (
 		Hash() util.Uint256
 
 		Version() uint32
-		SetVersion(uint32)
 		// PrevHash returns previous block hash.
 		PrevHash() util.Uint256
-		// SetPrevHash sets PrevHash.
-		SetPrevHash(util.Uint256)
 		// MerkleRoot returns a merkle root of the transaction hashes.
 		MerkleRoot() util.Uint256
-		// SetMerkleRoot sets merkle tree's root.
-		SetMerkleRoot(util.Uint256)
 		// Timestamp returns block's proposal timestamp.
 		Timestamp() uint64
-		// SetTimestamp sets block timestamp.
-		SetTimestamp(uint64)
 		// Index returns block index.
 		Index() uint32
-		// SetIndex sets block index.
-		SetIndex(uint32)
 		// ConsensusData is a random nonce.
 		ConsensusData() uint64
-		// SetConsensusData sets consensus data.
-		SetConsensusData(uint64)
 		// NextConsensus returns hash of the validators of the next block.
 		NextConsensus() util.Uint160
-		// SetNextConsensus sets NextConsensus field.
-		SetNextConsensus(util.Uint160)
 
 		// Signature returns block's signature.
 		Signature() []byte
@@ -79,24 +67,9 @@ func (b neoBlock) Version() uint32 {
 	return b.base.Version
 }
 
-// SetVersion implements Block interface.
-func (b *neoBlock) SetVersion(v uint32) {
-	b.base.Version = v
-}
-
 // PrevHash implements Block interface.
 func (b *neoBlock) PrevHash() util.Uint256 {
 	return b.base.PrevHash
-}
-
-// SetPrevHash implements Block interface.
-func (b *neoBlock) SetPrevHash(h util.Uint256) {
-	b.base.PrevHash = h
-}
-
-// SetMerkleRoot implements Block interface.
-func (b *neoBlock) SetMerkleRoot(r util.Uint256) {
-	b.base.MerkleRoot = r
 }
 
 // Timestamp implements Block interface.
@@ -104,29 +77,14 @@ func (b *neoBlock) Timestamp() uint64 {
 	return uint64(b.base.Timestamp) * 1000000000
 }
 
-// SetTimestamp implements Block interface.
-func (b *neoBlock) SetTimestamp(ts uint64) {
-	b.base.Timestamp = uint32(ts / 1000000000)
-}
-
 // Index implements Block interface.
 func (b *neoBlock) Index() uint32 {
 	return b.base.Index
 }
 
-// SetIndex implements Block interface.
-func (b *neoBlock) SetIndex(i uint32) {
-	b.base.Index = i
-}
-
 // NextConsensus implements Block interface.
 func (b *neoBlock) NextConsensus() util.Uint160 {
 	return b.base.NextConsensus
-}
-
-// SetNextConsensus implements Block interface.
-func (b *neoBlock) SetNextConsensus(h util.Uint160) {
-	b.base.NextConsensus = h
 }
 
 // MerkleRoot implements Block interface.
@@ -137,11 +95,6 @@ func (b *neoBlock) MerkleRoot() util.Uint256 {
 // ConsensusData implements Block interface.
 func (b *neoBlock) ConsensusData() uint64 {
 	return b.consensusData
-}
-
-// SetConsensusData implements Block interface.
-func (b *neoBlock) SetConsensusData(cd uint64) {
-	b.consensusData = cd
 }
 
 // Transactions implements Block interface.
@@ -155,8 +108,20 @@ func (b *neoBlock) SetTransactions(txx []Transaction) {
 }
 
 // NewBlock returns new block.
-func NewBlock() Block {
-	return new(neoBlock)
+func NewBlock(timestamp uint64, index uint32, nextConsensus util.Uint160, prevHash util.Uint256, version uint32, nonce uint64, txHashes []util.Uint256) Block {
+	block := new(neoBlock)
+	block.base.Timestamp = uint32(timestamp / 1000000000)
+	block.base.Index = index
+	block.base.NextConsensus = nextConsensus
+	block.base.PrevHash = prevHash
+	block.base.Version = version
+	block.base.ConsensusData = nonce
+
+	if len(txHashes) != 0 {
+		mt := merkle.NewMerkleTree(txHashes...)
+		block.base.MerkleRoot = mt.Root().Hash
+	}
+	return block
 }
 
 // Signature implements Block interface.
