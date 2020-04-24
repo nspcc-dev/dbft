@@ -37,8 +37,13 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.SetMerkleRoot(util.Uint256{13})
 	assert.Equal(t, util.Uint256{13}, b.MerkleRoot())
 
-	b.SetTimestamp(12345)
-	assert.EqualValues(t, 12345, b.Timestamp())
+	b.SetTimestamp(1234)
+	// 1234ns -> 0s -> 0ns
+	assert.EqualValues(t, uint64(0), b.Timestamp())
+
+	b.SetTimestamp(9123456789)
+	// 9123456789ns -> 9s -> 9000000000ns
+	assert.EqualValues(t, uint64(9000000000), b.Timestamp())
 
 	b.SetIndex(100)
 	assert.EqualValues(t, 100, b.Index())

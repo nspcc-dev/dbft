@@ -225,11 +225,17 @@ func (c *Context) Fill() {
 	validators := c.Config.GetValidators(txx...)
 	c.NextConsensus = c.Config.GetConsensusAddress(validators...)
 
-	if now := uint64(c.Config.Timer.Now().Unix()); now > c.Timestamp {
+	if now := c.getTimestamp(); now > c.Timestamp {
 		c.Timestamp = now
 	} else {
 		c.Timestamp++
 	}
+}
+
+// getTimestamp returns nanoseconds-precision timestamp using
+// current context config.
+func (c *Context) getTimestamp() uint64 {
+	return uint64(c.Config.Timer.Now().UnixNano())
 }
 
 // CreateBlock returns resulting block for the current epoch.
