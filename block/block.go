@@ -101,12 +101,12 @@ func (b *neoBlock) SetMerkleRoot(r util.Uint256) {
 
 // Timestamp implements Block interface.
 func (b *neoBlock) Timestamp() uint64 {
-	return uint64(b.base.Timestamp)
+	return uint64(b.base.Timestamp) * 1000000000
 }
 
 // SetTimestamp implements Block interface.
 func (b *neoBlock) SetTimestamp(ts uint64) {
-	b.base.Timestamp = uint32(ts)
+	b.base.Timestamp = uint32(ts / 1000000000)
 }
 
 // Index implements Block interface.
