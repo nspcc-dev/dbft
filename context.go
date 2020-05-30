@@ -105,10 +105,10 @@ func (c *Context) CountCommitted() (count int) {
 }
 
 // CountFailed returns number of nodes with which no communication was performed
-// for more than 1 epoch
+// for this block/view.
 func (c *Context) CountFailed() (count int) {
 	for _, hv := range c.LastSeenMessage {
-		if hv == nil || hv.Height != c.BlockIndex || hv.View != c.ViewNumber {
+		if hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber {
 			count++
 		}
 	}
