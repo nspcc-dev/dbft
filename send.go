@@ -65,13 +65,13 @@ func (d *DBFT) sendChangeView() {
 	nf := d.CountFailed()
 
 	if nc+nf > d.F() {
-		d.Logger.Debug("skip change view", zap.Int("nc", nc), zap.Int("nf", nf))
+		d.Logger.Info("skip change view", zap.Int("nc", nc), zap.Int("nf", nf))
 		d.sendRecoveryRequest()
 
 		return
 	}
 
-	d.Logger.Debug("request change view",
+	d.Logger.Info("request change view",
 		zap.Int("view", int(d.ViewNumber)),
 		zap.Uint32("height", d.BlockIndex),
 		zap.Int("new_view", int(newView)),
