@@ -72,6 +72,8 @@ type Config struct {
 	NewRecoveryRequest func() payload.RecoveryRequest
 	// NewRecoveryMessage is a constructor for payload.RecoveryMessage.
 	NewRecoveryMessage func() payload.RecoveryMessage
+	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
+	VerifyPrepareRequest func(p payload.ConsensusPayload) error
 }
 
 const (
@@ -110,6 +112,8 @@ func defaultConfig() *Config {
 		NewCommit:           payload.NewCommit,
 		NewRecoveryRequest:  payload.NewRecoveryRequest,
 		NewRecoveryMessage:  payload.NewRecoveryMessage,
+
+		VerifyPrepareRequest: func(payload.ConsensusPayload) error { return nil },
 	}
 }
 
@@ -323,5 +327,12 @@ func WithNewRecoveryRequest(f func() payload.RecoveryRequest) Option {
 func WithNewRecoveryMessage(f func() payload.RecoveryMessage) Option {
 	return func(cfg *Config) {
 		cfg.NewRecoveryMessage = f
+	}
+}
+
+// WithVerifyPrepareRequest sets VerifyPrepareRequest.
+func WithVerifyPrepareRequest(f func(payload.ConsensusPayload) error) Option {
+	return func(cfg *Config) {
+		cfg.VerifyPrepareRequest = f
 	}
 }

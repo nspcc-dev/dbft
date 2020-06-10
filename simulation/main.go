@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -35,6 +36,7 @@ type (
 		cluster  []*simNode
 		log      *zap.Logger
 
+		blocklist  []int
 		height     uint32
 		lastHash   util.Uint256
 		validators []crypto.PublicKey
@@ -48,6 +50,7 @@ const (
 var (
 	nodebug    = flag.Bool("nodebug", false, "disable debug logging")
 	count      = flag.Int("count", 7, "node count")
+	blocked    = flag.Int("blocked", -1, "blocked validator (payloads from him/her are dropped)")
 	txPerBlock = flag.Int("txblock", 1, "transactions per block")
 	txCount    = flag.Int("txcount", 100000, "transactions on every node")
 	duration   = flag.Duration("duration", time.Second*20, "duration of simulation (infinite by default)")
@@ -132,6 +135,7 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 		dbft.WithCurrentHeight(nodes[i].CurrentHeight),
 		dbft.WithCurrentBlockHash(nodes[i].CurrentBlockHash),
 		dbft.WithGetValidators(nodes[i].GetValidators),
+		dbft.WithVerifyPrepareRequest(nodes[i].VerifyPayload),
 	)
 
 	if nodes[i].d == nil {
@@ -193,6 +197,14 @@ func (n *simNode) ProcessBlock(b block.Block) {
 
 	n.height = b.Index()
 	n.lastHash = b.Hash()
+}
+
+// VerifyPrepareRequest verifies that payload was received from a good validator.
+func (n *simNode) VerifyPayload(p payload.ConsensusPayload) error {
+	if *blocked != -1 && p.ValidatorIndex() == uint16(*blocked) {
+		return fmt.Errorf("message from blocked validator: %d", *blocked)
+	}
+	return nil
 }
 
 func (n *simNode) addTx(count int) {

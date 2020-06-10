@@ -297,6 +297,13 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 		return
 	}
 
+	if err := d.VerifyPrepareRequest(msg); err != nil {
+		// We should change view if we receive signed PrepareRequest from the expected validator but it is invalid.
+		d.Logger.Warn("invalid PrepareRequest", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+		d.sendChangeView()
+		return
+	}
+
 	d.extendTimer(2)
 
 	p := msg.GetPrepareRequest()
