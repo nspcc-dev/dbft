@@ -127,6 +127,11 @@ func (d *DBFT) sendCommit() {
 }
 
 func (d *DBFT) sendRecoveryRequest() {
+	// If we're here, something is wrong, we either missing some messages or
+	// transactions or both, so re-request missing transactions here too.
+	if d.RequestSentOrReceived() && !d.hasAllTransactions() {
+		d.processMissingTx()
+	}
 	req := d.NewRecoveryRequest()
 	req.SetTimestamp(uint32(d.Timer.Now().Unix()))
 	d.broadcast(d.withPayload(payload.RecoveryRequestType, req))
