@@ -278,17 +278,7 @@ func NewBlockFromContext(ctx *Context) block.Block {
 // hasAllTransactions returns true iff all transactions were received
 // for the proposed block.
 func (c *Context) hasAllTransactions() bool {
-	if len(c.TransactionHashes) > len(c.Transactions) {
-		return false
-	}
-
-	for _, h := range c.TransactionHashes {
-		if _, ok := c.Transactions[h]; !ok {
-			return false
-		}
-	}
-
-	return true
+	return len(c.TransactionHashes) == len(c.Transactions)
 }
 
 // missingHashes returns hashes of transactions from the proposed block
