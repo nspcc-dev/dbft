@@ -184,7 +184,7 @@ func (d *DBFT) OnTimeout(hv timer.HV) {
 	} else if (d.IsPrimary() && d.RequestSentOrReceived()) || d.IsBackup() {
 		if d.CommitSent() {
 			d.Logger.Debug("send recovery to resend commit")
-			d.sendRecoveryRequest()
+			d.sendRecoveryMessage()
 			d.changeTimer(d.SecondsPerBlock << 1)
 		} else {
 			d.sendChangeView()
