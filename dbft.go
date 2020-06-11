@@ -331,6 +331,9 @@ func (d *DBFT) processMissingTx() {
 	missing := make([]util.Uint256, 0, len(d.TransactionHashes))
 
 	for _, h := range d.TransactionHashes {
+		if _, ok := d.Transactions[h]; ok {
+			continue
+		}
 		if tx := d.GetTx(h); tx == nil {
 			missing = append(missing, h)
 		} else {
