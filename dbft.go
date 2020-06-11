@@ -315,7 +315,6 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	d.Nonce = p.Nonce()
 	d.NextConsensus = p.NextConsensus()
 	d.TransactionHashes = p.TransactionHashes()
-	d.Transactions = make(map[util.Uint256]block.Transaction)
 
 	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.TransactionHashes)))
 	d.processMissingTx()
