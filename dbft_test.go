@@ -295,7 +295,7 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 		pub := s.pubs[s.myIndex]
 		require.NoError(t, service.header.Verify(pub, cm.GetCommit().Signature()))
 
-		t.Run("send recovery request on timeout", func(t *testing.T) {
+		t.Run("send recovery message on timeout", func(t *testing.T) {
 			service.OnTimeout(timer.HV{Height: 1})
 			require.Nil(t, s.tryRecv())
 
@@ -303,7 +303,7 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 
 			r := s.tryRecv()
 			require.NotNil(t, r)
-			require.Equal(t, payload.RecoveryRequestType, r.Type())
+			require.Equal(t, payload.RecoveryMessageType, r.Type())
 		})
 
 		t.Run("process block after enough commits", func(t *testing.T) {
