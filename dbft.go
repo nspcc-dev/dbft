@@ -66,9 +66,7 @@ func (d *DBFT) addTransaction(tx block.Transaction) {
 			return
 		}
 
-		if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
-			d.sendChangeView()
-
+		if !d.createAndCheckBlock() {
 			return
 		}
 
@@ -321,12 +319,7 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
-	if !d.hasAllTransactions() {
-		return
-	} else if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
-		d.Logger.Warn("can't verify received block")
-		d.sendChangeView()
-
+	if !d.hasAllTransactions() || !d.createAndCheckBlock() {
 		return
 	}
 
@@ -336,29 +329,42 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 
 func (d *DBFT) processMissingTx() {
 	missing := make([]util.Uint256, 0, len(d.TransactionHashes))
-	txx := make([]block.Transaction, 0, len(d.TransactionHashes))
 
 	for _, h := range d.TransactionHashes {
 		if tx := d.GetTx(h); tx == nil {
 			missing = append(missing, h)
 		} else {
 			d.Transactions[h] = tx
-			txx = append(txx, tx)
 		}
 	}
 
-	if len(missing) == 0 {
-		if d.NextConsensus != d.GetConsensusAddress(d.GetValidators(txx...)...) {
-			d.Logger.Error("invalid nextConsensus")
-			d.sendChangeView()
-
-			return
-		}
-	} else {
+	if len(missing) != 0 {
 		d.Logger.Info("missing tx",
 			zap.Int("count", len(missing)))
 		d.RequestTx(missing...)
 	}
+}
+
+// createAndCheckBlock is a prepareRequest-level helper that creates and checks
+// the new proposed block, if it's fine it returns true, if something is wrong
+// with it it send a changeView request and returns false. It's only valid to
+// call it when all transactions for this block are already collected.
+func (d *DBFT) createAndCheckBlock() bool {
+	txx := make([]block.Transaction, 0, len(d.TransactionHashes))
+	for _, h := range d.TransactionHashes {
+		txx = append(txx, d.Transactions[h])
+	}
+	if d.NextConsensus != d.GetConsensusAddress(d.GetValidators(txx...)...) {
+		d.Logger.Error("invalid nextConsensus in proposed block")
+		d.sendChangeView()
+		return false
+	}
+	if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
+		d.Logger.Warn("proposed block fails verification")
+		d.sendChangeView()
+		return false
+	}
+	return true
 }
 
 func (d *DBFT) updateExistingPayloads(msg payload.ConsensusPayload) {
