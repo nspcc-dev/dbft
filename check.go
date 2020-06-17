@@ -70,8 +70,6 @@ func (d *DBFT) checkCommit() {
 
 	d.ProcessBlock(d.block)
 
-	d.blockPersistTime = d.Timer.Now()
-
 	d.InitializeConsensus(0)
 
 	if d.MyIndex < 0 {
