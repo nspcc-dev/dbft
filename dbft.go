@@ -19,9 +19,8 @@ type (
 		Config
 
 		*sync.Mutex
-		blockPersistTime time.Time
-		cache            cache
-		recovering       bool
+		cache      cache
+		recovering bool
 	}
 
 	// Service is an interface for dBFT consensus.
@@ -113,24 +112,18 @@ func (d *DBFT) InitializeConsensus(view byte) {
 		return
 	}
 
+	var timeout time.Duration
 	if d.IsPrimary() && !d.recovering {
-		var (
-			span time.Duration
-			def  time.Time
-		)
-
-		if d.blockPersistTime != def {
-			span = d.Timer.Now().Sub(d.blockPersistTime)
-		}
-
-		if span >= d.SecondsPerBlock {
-			d.changeTimer(0)
-		} else {
-			d.changeTimer(d.SecondsPerBlock - span)
+		// Initializing to view 0 means we have just persisted previous block or are starting consensus first time.
+		// In both cases we should wait full timeout value.
+		// Having non-zero view means we have to start immediately.
+		if view == 0 {
+			timeout = d.SecondsPerBlock
 		}
 	} else {
-		d.changeTimer(d.SecondsPerBlock << (d.ViewNumber + 1))
+		timeout = d.SecondsPerBlock << (d.ViewNumber + 1)
 	}
+	d.changeTimer(timeout)
 }
 
 // OnTransaction notifies service about receiving new transaction.
