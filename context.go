@@ -211,7 +211,7 @@ func (c *Context) reset(view byte) {
 
 // Fill initializes consensus when node is a speaker.
 func (c *Context) Fill() {
-	txx := c.Config.GetVerified(c.Config.TxPerBlock)
+	txx := c.Config.GetVerified()
 	c.Nonce = rand.Uint64()
 	c.TransactionHashes = make([]util.Uint256, len(txx))
 
