@@ -125,7 +125,6 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 
 	nodes[i].d = dbft.New(
 		dbft.WithLogger(nodes[i].log),
-		dbft.WithTxPerBlock(*txPerBlock),
 		dbft.WithSecondsPerBlock(time.Second*5),
 		dbft.WithKeyPair(key, pub),
 		dbft.WithGetTx(nodes[i].pool.Get),
@@ -285,7 +284,8 @@ func (p *memPool) Delete(h util.Uint256) {
 	p.mtx.Unlock()
 }
 
-func (p *memPool) GetVerified(n int) (txx []block.Transaction) {
+func (p *memPool) GetVerified() (txx []block.Transaction) {
+	n := *txPerBlock
 	if n == 0 {
 		return
 	}

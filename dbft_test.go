@@ -567,12 +567,11 @@ func (s *testState) getOptions() []Option {
 		WithWatchOnly(func() bool { return false }),
 		WithGetBlock(func(h util.Uint256) block.Block { return nil }),
 		WithTimer(timer.New()),
-		WithTxPerBlock(5),
 		WithLogger(zap.NewNop()),
 		WithNewBlockFromContext(NewBlockFromContext),
 		WithSecondsPerBlock(time.Second * 10),
 		WithRequestTx(func(...util.Uint256) {}),
-		WithGetVerified(func(_ int) []block.Transaction { return []block.Transaction{} }),
+		WithGetVerified(func() []block.Transaction { return []block.Transaction{} }),
 
 		WithNewConsensusPayload(payload.NewConsensusPayload),
 		WithNewPrepareRequest(payload.NewPrepareRequest),

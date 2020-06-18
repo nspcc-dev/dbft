@@ -15,8 +15,6 @@ import (
 
 // Config contains initialization and working parameters for dBFT.
 type Config struct {
-	// TxPerBlock is the maximum size of a block.
-	TxPerBlock int
 	// Logger
 	Logger *zap.Logger
 	// Timer
@@ -36,7 +34,7 @@ type Config struct {
 	GetTx func(h util.Uint256) block.Transaction
 	// GetVerified returns a slice of verified transactions
 	// to be proposed in a new block.
-	GetVerified func(count int) []block.Transaction
+	GetVerified func() []block.Transaction
 	// VerifyBlock verifies if block is valid.
 	VerifyBlock func(b block.Block) bool
 	// Broadcast should broadcast payload m to the consensus nodes.
@@ -76,10 +74,7 @@ type Config struct {
 	VerifyPrepareRequest func(p payload.ConsensusPayload) error
 }
 
-const (
-	defaultMaxBlockSize    = 1000
-	defaultSecondsPerBlock = time.Second * 15
-)
+const defaultSecondsPerBlock = time.Second * 15
 
 // Option is a generic options type. It can modify config in any way it wants.
 type Option = func(*Config)
@@ -87,7 +82,6 @@ type Option = func(*Config)
 func defaultConfig() *Config {
 	// fields which are set to nil must be provided from client
 	return &Config{
-		TxPerBlock:          defaultMaxBlockSize,
 		Logger:              zap.NewNop(),
 		Timer:               timer.New(),
 		SecondsPerBlock:     defaultSecondsPerBlock,
@@ -95,7 +89,7 @@ func defaultConfig() *Config {
 		NewBlockFromContext: NewBlockFromContext,
 		RequestTx:           func(h ...util.Uint256) {},
 		GetTx:               func(h util.Uint256) block.Transaction { return nil },
-		GetVerified:         func(count int) []block.Transaction { return make([]block.Transaction, 0) },
+		GetVerified:         func() []block.Transaction { return make([]block.Transaction, 0) },
 		VerifyBlock:         func(b block.Block) bool { return true },
 		Broadcast:           func(m payload.ConsensusPayload) {},
 		ProcessBlock:        func(b block.Block) {},
@@ -162,13 +156,6 @@ func WithGetKeyPair(f func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.P
 	}
 }
 
-// WithTxPerBlock sets TxPerBlock.
-func WithTxPerBlock(n int) Option {
-	return func(cfg *Config) {
-		cfg.TxPerBlock = n
-	}
-}
-
 // WithLogger sets Logger.
 func WithLogger(log *zap.Logger) Option {
 	return func(cfg *Config) {
@@ -212,7 +199,7 @@ func WithGetTx(f func(h util.Uint256) block.Transaction) Option {
 }
 
 // WithGetVerified sets GetVerified.
-func WithGetVerified(f func(count int) []block.Transaction) Option {
+func WithGetVerified(f func() []block.Transaction) Option {
 	return func(cfg *Config) {
 		cfg.GetVerified = f
 	}
