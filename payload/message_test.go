@@ -214,7 +214,7 @@ func testEncodeDecode(t *testing.T, expected, actual io.Serializable) {
 	require.Equal(t, expected, actual)
 }
 
-func testMarshalUnmarshal(t *testing.T, expected, actual ConsensusPayload) {
+func testMarshalUnmarshal(t *testing.T, expected, actual *Payload) {
 	data := expected.MarshalUnsigned()
 	require.NoError(t, actual.UnmarshalUnsigned(data))
 	require.Equal(t, expected.Hash(), actual.Hash())

@@ -12,14 +12,6 @@ type (
 	ConsensusPayload interface {
 		consensusMessage
 
-		// MarshalUnsigned marshals payload into a byte array.
-		// It MUST be stable and contain no signatures and other
-		// fields which can be changed.
-		MarshalUnsigned() []byte
-
-		// UnmarshalUnsigned unmarshals payload from a byte array.
-		UnmarshalUnsigned([]byte) error
-
 		Version() uint32
 		SetVersion(v uint32)
 
