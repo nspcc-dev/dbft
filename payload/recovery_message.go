@@ -77,8 +77,8 @@ func (m *recoveryMessage) AddPayload(p ConsensusPayload) {
 	}
 }
 
-func fromPayload(t MessageType, recovery ConsensusPayload, p interface{}) *consensusPayload {
-	return &consensusPayload{
+func fromPayload(t MessageType, recovery ConsensusPayload, p interface{}) *Payload {
+	return &Payload{
 		message: message{
 			cmType:     t,
 			viewNumber: recovery.ViewNumber(),

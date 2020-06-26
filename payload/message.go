@@ -40,7 +40,8 @@ type (
 		Hash() util.Uint256
 	}
 
-	consensusPayload struct {
+	// Payload represents minimal payload containing all necessary fields.
+	Payload struct {
 		message
 
 		version        uint32
@@ -52,10 +53,10 @@ type (
 	}
 )
 
-var _ ConsensusPayload = (*consensusPayload)(nil)
+var _ ConsensusPayload = (*Payload)(nil)
 
 // EncodeBinary implements io.Serializable interface.
-func (p consensusPayload) EncodeBinary(w *io.BinWriter) {
+func (p Payload) EncodeBinary(w *io.BinWriter) {
 	ww := io.NewBufBinWriter()
 	p.message.EncodeBinary(ww.BinWriter)
 	data := ww.Bytes()
@@ -68,7 +69,7 @@ func (p consensusPayload) EncodeBinary(w *io.BinWriter) {
 }
 
 // DecodeBinary implements io.Serializable interface.
-func (p *consensusPayload) DecodeBinary(r *io.BinReader) {
+func (p *Payload) DecodeBinary(r *io.BinReader) {
 	p.version = r.ReadU32LE()
 	p.prevHash.DecodeBinary(r)
 	p.height = r.ReadU32LE()
@@ -80,7 +81,7 @@ func (p *consensusPayload) DecodeBinary(r *io.BinReader) {
 }
 
 // MarshalUnsigned implements ConsensusPayload interface.
-func (p consensusPayload) MarshalUnsigned() []byte {
+func (p Payload) MarshalUnsigned() []byte {
 	w := io.NewBufBinWriter()
 	p.EncodeBinary(w.BinWriter)
 
@@ -88,7 +89,7 @@ func (p consensusPayload) MarshalUnsigned() []byte {
 }
 
 // UnmarshalUnsigned implements ConsensusPayload interface.
-func (p *consensusPayload) UnmarshalUnsigned(data []byte) error {
+func (p *Payload) UnmarshalUnsigned(data []byte) error {
 	r := io.NewBinReaderFromBuf(data)
 	p.DecodeBinary(r)
 
@@ -96,7 +97,7 @@ func (p *consensusPayload) UnmarshalUnsigned(data []byte) error {
 }
 
 // Hash implements ConsensusPayload interface.
-func (p *consensusPayload) Hash() util.Uint256 {
+func (p *Payload) Hash() util.Uint256 {
 	if p.hash != nil {
 		return *p.hash
 	}
@@ -107,41 +108,41 @@ func (p *consensusPayload) Hash() util.Uint256 {
 }
 
 // Version implements ConsensusPayload interface.
-func (p consensusPayload) Version() uint32 {
+func (p Payload) Version() uint32 {
 	return p.version
 }
 
 // SetVersion implements ConsensusPayload interface.
-func (p *consensusPayload) SetVersion(v uint32) {
+func (p *Payload) SetVersion(v uint32) {
 	p.version = v
 }
 
 // ValidatorIndex implements ConsensusPayload interface.
-func (p consensusPayload) ValidatorIndex() uint16 {
+func (p Payload) ValidatorIndex() uint16 {
 	return p.validatorIndex
 }
 
 // SetValidatorIndex implements ConsensusPayload interface.
-func (p *consensusPayload) SetValidatorIndex(i uint16) {
+func (p *Payload) SetValidatorIndex(i uint16) {
 	p.validatorIndex = i
 }
 
 // PrevHash implements ConsensusPayload interface.
-func (p consensusPayload) PrevHash() util.Uint256 {
+func (p Payload) PrevHash() util.Uint256 {
 	return p.prevHash
 }
 
 // SetPrevHash implements ConsensusPayload interface.
-func (p *consensusPayload) SetPrevHash(h util.Uint256) {
+func (p *Payload) SetPrevHash(h util.Uint256) {
 	p.prevHash = h
 }
 
 // Height implements ConsensusPayload interface.
-func (p consensusPayload) Height() uint32 {
+func (p Payload) Height() uint32 {
 	return p.height
 }
 
 // SetHeight implements ConsensusPayload interface.
-func (p *consensusPayload) SetHeight(h uint32) {
+func (p *Payload) SetHeight(h uint32) {
 	p.height = h
 }
