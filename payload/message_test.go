@@ -12,7 +12,7 @@ import (
 )
 
 func TestPayload_EncodeDecode(t *testing.T) {
-	m := NewConsensusPayload().(*consensusPayload)
+	m := NewConsensusPayload().(*Payload)
 	m.SetValidatorIndex(10)
 	m.SetHeight(77)
 	m.SetPrevHash(util.Uint256{1})
@@ -30,8 +30,8 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			},
 		})
 
-		testEncodeDecode(t, m, new(consensusPayload))
-		testMarshalUnmarshal(t, m, new(consensusPayload))
+		testEncodeDecode(t, m, new(Payload))
+		testMarshalUnmarshal(t, m, new(Payload))
 	})
 
 	t.Run("PrepareResponse", func(t *testing.T) {
@@ -40,8 +40,8 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			preparationHash: util.Uint256{3},
 		})
 
-		testEncodeDecode(t, m, new(consensusPayload))
-		testMarshalUnmarshal(t, m, new(consensusPayload))
+		testEncodeDecode(t, m, new(Payload))
+		testMarshalUnmarshal(t, m, new(Payload))
 	})
 
 	t.Run("Commit", func(t *testing.T) {
@@ -50,8 +50,8 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		fillRandom(t, cc.signature[:])
 		m.SetPayload(&cc)
 
-		testEncodeDecode(t, m, new(consensusPayload))
-		testMarshalUnmarshal(t, m, new(consensusPayload))
+		testEncodeDecode(t, m, new(Payload))
+		testMarshalUnmarshal(t, m, new(Payload))
 	})
 
 	t.Run("ChangeView", func(t *testing.T) {
@@ -61,8 +61,8 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			newViewNumber: 4,
 		})
 
-		testEncodeDecode(t, m, new(consensusPayload))
-		testMarshalUnmarshal(t, m, new(consensusPayload))
+		testEncodeDecode(t, m, new(Payload))
+		testMarshalUnmarshal(t, m, new(Payload))
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
@@ -91,8 +91,8 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			},
 		})
 
-		testEncodeDecode(t, m, new(consensusPayload))
-		testMarshalUnmarshal(t, m, new(consensusPayload))
+		testEncodeDecode(t, m, new(Payload))
+		testMarshalUnmarshal(t, m, new(Payload))
 	})
 
 	t.Run("RecoveryRequest", func(t *testing.T) {
@@ -101,13 +101,13 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			timestamp: 17334,
 		})
 
-		testEncodeDecode(t, m, new(consensusPayload))
-		testMarshalUnmarshal(t, m, new(consensusPayload))
+		testEncodeDecode(t, m, new(Payload))
+		testMarshalUnmarshal(t, m, new(Payload))
 	})
 }
 
 func TestRecoveryMessage_NoPayloads(t *testing.T) {
-	m := NewConsensusPayload().(*consensusPayload)
+	m := NewConsensusPayload().(*Payload)
 	m.SetValidatorIndex(0)
 	m.SetHeight(77)
 	m.SetPrevHash(util.Uint256{1})

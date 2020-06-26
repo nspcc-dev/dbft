@@ -2,7 +2,7 @@ package payload
 
 // NewConsensusPayload returns minimal ConsensusPayload implementation.
 func NewConsensusPayload() ConsensusPayload {
-	return &consensusPayload{}
+	return &Payload{}
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
