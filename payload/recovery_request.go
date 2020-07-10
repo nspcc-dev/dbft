@@ -5,9 +5,9 @@ import "github.com/nspcc-dev/neo-go/pkg/io"
 // RecoveryRequest represents dBFT RecoveryRequest message.
 type RecoveryRequest interface {
 	// Timestamp returns this message's timestamp.
-	Timestamp() uint32
+	Timestamp() uint64
 	// SetTimestamp sets this message's timestamp.
-	SetTimestamp(ts uint32)
+	SetTimestamp(ts uint64)
 }
 
 type recoveryRequest struct {
@@ -27,11 +27,11 @@ func (m *recoveryRequest) DecodeBinary(r *io.BinReader) {
 }
 
 // Timestamp implements RecoveryRequest interface.
-func (m *recoveryRequest) Timestamp() uint32 {
-	return m.timestamp
+func (m *recoveryRequest) Timestamp() uint64 {
+	return uint64(m.timestamp) * 1000000000
 }
 
 // SetTimestamp implements RecoveryRequest interface.
-func (m *recoveryRequest) SetTimestamp(ts uint32) {
-	m.timestamp = ts
+func (m *recoveryRequest) SetTimestamp(ts uint64) {
+	m.timestamp = uint32(ts / 1000000000)
 }

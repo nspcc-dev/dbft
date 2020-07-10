@@ -11,10 +11,10 @@ type ChangeView interface {
 	SetNewViewNumber(view byte)
 
 	// Timestamp returns message's timestamp.
-	Timestamp() uint32
+	Timestamp() uint64
 
 	// SetTimestamp sets message's timestamp.
-	SetTimestamp(ts uint32)
+	SetTimestamp(ts uint64)
 }
 
 type changeView struct {
@@ -45,11 +45,11 @@ func (c *changeView) SetNewViewNumber(view byte) {
 }
 
 // Timestamp implements ChangeView interface.
-func (c changeView) Timestamp() uint32 {
-	return c.timestamp
+func (c changeView) Timestamp() uint64 {
+	return uint64(c.timestamp) * 1000000000
 }
 
 // SetTimestamp implements ChangeView interface.
-func (c *changeView) SetTimestamp(ts uint32) {
-	c.timestamp = ts
+func (c *changeView) SetTimestamp(ts uint64) {
+	c.timestamp = uint32(ts / 1000000000)
 }
