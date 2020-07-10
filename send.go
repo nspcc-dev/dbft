@@ -42,7 +42,7 @@ func (d *DBFT) sendPrepareRequest() {
 	d.checkPrepare()
 }
 
-func (c *Context) makeChangeView(ts uint32) payload.ConsensusPayload {
+func (c *Context) makeChangeView(ts uint64) payload.ConsensusPayload {
 	cv := c.Config.NewChangeView()
 	cv.SetNewViewNumber(c.ViewNumber + 1)
 	cv.SetTimestamp(ts)
@@ -78,7 +78,7 @@ func (d *DBFT) sendChangeView() {
 		zap.Int("nc", nc),
 		zap.Int("nf", nf))
 
-	msg := d.makeChangeView(uint32(d.Timer.Now().Unix()))
+	msg := d.makeChangeView(uint64(d.Timer.Now().UnixNano()))
 	d.broadcast(msg)
 	d.checkChangeView(newView)
 }
@@ -133,7 +133,7 @@ func (d *DBFT) sendRecoveryRequest() {
 		d.processMissingTx()
 	}
 	req := d.NewRecoveryRequest()
-	req.SetTimestamp(uint32(d.Timer.Now().Unix()))
+	req.SetTimestamp(uint64(d.Timer.Now().UnixNano()))
 	d.broadcast(d.withPayload(payload.RecoveryRequestType, req))
 }
 

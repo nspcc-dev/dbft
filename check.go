@@ -97,7 +97,7 @@ func (d *DBFT) checkChangeView(view byte) {
 	if !d.Context.WatchOnly() {
 		msg := d.ChangeViewPayloads[d.MyIndex]
 		if msg != nil && msg.GetChangeView().NewViewNumber() < view {
-			d.broadcast(d.makeChangeView(uint32(d.Timer.Now().Unix())))
+			d.broadcast(d.makeChangeView(uint64(d.Timer.Now().UnixNano())))
 		}
 	}
 
