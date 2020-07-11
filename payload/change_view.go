@@ -52,12 +52,12 @@ func (c *changeView) SetNewViewNumber(view byte) {
 
 // Timestamp implements ChangeView interface.
 func (c changeView) Timestamp() uint64 {
-	return uint64(c.timestamp) * 1000000000
+	return secToNanoSec(c.timestamp)
 }
 
 // SetTimestamp implements ChangeView interface.
 func (c *changeView) SetTimestamp(ts uint64) {
-	c.timestamp = uint32(ts / 1000000000)
+	c.timestamp = nanoSecToSec(ts)
 }
 
 // Reason implements ChangeView interface.

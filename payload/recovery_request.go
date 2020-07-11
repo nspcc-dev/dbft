@@ -28,10 +28,10 @@ func (m *recoveryRequest) DecodeBinary(r *io.BinReader) {
 
 // Timestamp implements RecoveryRequest interface.
 func (m *recoveryRequest) Timestamp() uint64 {
-	return uint64(m.timestamp) * 1000000000
+	return secToNanoSec(m.timestamp)
 }
 
 // SetTimestamp implements RecoveryRequest interface.
 func (m *recoveryRequest) SetTimestamp(ts uint64) {
-	m.timestamp = uint32(ts / 1000000000)
+	m.timestamp = nanoSecToSec(ts)
 }

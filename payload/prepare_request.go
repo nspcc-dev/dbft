@@ -56,12 +56,12 @@ func (p *prepareRequest) DecodeBinary(r *io.BinReader) {
 
 // Timestamp implements PrepareRequest interface.
 func (p prepareRequest) Timestamp() uint64 {
-	return uint64(p.timestamp) * 1000000000
+	return secToNanoSec(p.timestamp)
 }
 
 // SetTimestamp implements PrepareRequest interface.
 func (p *prepareRequest) SetTimestamp(ts uint64) {
-	p.timestamp = uint32(ts / 1000000000)
+	p.timestamp = nanoSecToSec(ts)
 }
 
 // Nonce implements PrepareRequest interface.
