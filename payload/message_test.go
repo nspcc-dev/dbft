@@ -170,8 +170,8 @@ func TestPayload_Setters(t *testing.T) {
 	t.Run("ChangeView", func(t *testing.T) {
 		cv := NewChangeView()
 
-		cv.SetTimestamp(1234 * 1000000000)
-		assert.EqualValues(t, 1234*1000000000, cv.Timestamp())
+		cv.SetTimestamp(secToNanoSec(1234))
+		assert.EqualValues(t, secToNanoSec(1234), cv.Timestamp())
 
 		cv.SetNewViewNumber(4)
 		assert.EqualValues(t, 4, cv.NewViewNumber())
@@ -180,8 +180,8 @@ func TestPayload_Setters(t *testing.T) {
 	t.Run("RecoveryRequest", func(t *testing.T) {
 		r := NewRecoveryRequest()
 
-		r.SetTimestamp(321 * 1000000000)
-		require.EqualValues(t, 321*1000000000, r.Timestamp())
+		r.SetTimestamp(secToNanoSec(321))
+		require.EqualValues(t, secToNanoSec(321), r.Timestamp())
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
