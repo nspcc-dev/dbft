@@ -15,6 +15,12 @@ type ChangeView interface {
 
 	// SetTimestamp sets message's timestamp.
 	SetTimestamp(ts uint64)
+
+	// Reason returns change view reason.
+	Reason() ChangeViewReason
+
+	// SetReason sets change view reason.
+	SetReason(reason ChangeViewReason)
 }
 
 type changeView struct {
@@ -52,4 +58,13 @@ func (c changeView) Timestamp() uint64 {
 // SetTimestamp implements ChangeView interface.
 func (c *changeView) SetTimestamp(ts uint64) {
 	c.timestamp = uint32(ts / 1000000000)
+}
+
+// Reason implements ChangeView interface.
+func (c changeView) Reason() ChangeViewReason {
+	return CVUnknown
+}
+
+// SetReason implements ChangeView interface.
+func (c *changeView) SetReason(_ ChangeViewReason) {
 }

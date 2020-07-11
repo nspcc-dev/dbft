@@ -178,7 +178,7 @@ func (d *DBFT) OnTimeout(hv timer.HV) {
 			d.sendRecoveryMessage()
 			d.changeTimer(d.SecondsPerBlock << 1)
 		} else {
-			d.sendChangeView()
+			d.sendChangeView(payload.CVTimeout)
 		}
 	}
 }
@@ -291,7 +291,7 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	if err := d.VerifyPrepareRequest(msg); err != nil {
 		// We should change view if we receive signed PrepareRequest from the expected validator but it is invalid.
 		d.Logger.Warn("invalid PrepareRequest", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
-		d.sendChangeView()
+		d.sendChangeView(payload.CVBlockRejectedByPolicy)
 		return
 	}
 
@@ -352,12 +352,12 @@ func (d *DBFT) createAndCheckBlock() bool {
 	}
 	if d.NextConsensus != d.GetConsensusAddress(d.GetValidators(txx...)...) {
 		d.Logger.Error("invalid nextConsensus in proposed block")
-		d.sendChangeView()
+		d.sendChangeView(payload.CVBlockRejectedByPolicy)
 		return false
 	}
 	if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
 		d.Logger.Warn("proposed block fails verification")
-		d.sendChangeView()
+		d.sendChangeView(payload.CVTxInvalid)
 		return false
 	}
 	return true
@@ -453,6 +453,7 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 
 	d.Logger.Info("received ChangeView",
 		zap.Uint("validator", uint(msg.ValidatorIndex())),
+		zap.Stringer("reason", p.Reason()),
 		zap.Uint("new view", uint(p.NewViewNumber())),
 	)
 

@@ -42,10 +42,11 @@ func (d *DBFT) sendPrepareRequest() {
 	d.checkPrepare()
 }
 
-func (c *Context) makeChangeView(ts uint64) payload.ConsensusPayload {
+func (c *Context) makeChangeView(ts uint64, reason payload.ChangeViewReason) payload.ConsensusPayload {
 	cv := c.Config.NewChangeView()
 	cv.SetNewViewNumber(c.ViewNumber + 1)
 	cv.SetTimestamp(ts)
+	cv.SetReason(reason)
 
 	msg := c.withPayload(payload.ChangeViewType, cv)
 	c.ChangeViewPayloads[c.MyIndex] = msg
@@ -53,7 +54,7 @@ func (c *Context) makeChangeView(ts uint64) payload.ConsensusPayload {
 	return msg
 }
 
-func (d *DBFT) sendChangeView() {
+func (d *DBFT) sendChangeView(reason payload.ChangeViewReason) {
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -71,14 +72,20 @@ func (d *DBFT) sendChangeView() {
 		return
 	}
 
+	// Timeout while missing transactions, set the real reason.
+	if !d.hasAllTransactions() && reason == payload.CVTimeout {
+		reason = payload.CVTxNotFound
+	}
+
 	d.Logger.Info("request change view",
 		zap.Int("view", int(d.ViewNumber)),
 		zap.Uint32("height", d.BlockIndex),
+		zap.Stringer("reason", reason),
 		zap.Int("new_view", int(newView)),
 		zap.Int("nc", nc),
 		zap.Int("nf", nf))
 
-	msg := d.makeChangeView(uint64(d.Timer.Now().UnixNano()))
+	msg := d.makeChangeView(uint64(d.Timer.Now().UnixNano()), reason)
 	d.broadcast(msg)
 	d.checkChangeView(newView)
 }
