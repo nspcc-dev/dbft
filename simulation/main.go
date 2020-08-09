@@ -135,6 +135,7 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 		dbft.WithCurrentBlockHash(nodes[i].CurrentBlockHash),
 		dbft.WithGetValidators(nodes[i].GetValidators),
 		dbft.WithVerifyPrepareRequest(nodes[i].VerifyPayload),
+		dbft.WithVerifyPrepareResponse(nodes[i].VerifyPayload),
 	)
 
 	if nodes[i].d == nil {
