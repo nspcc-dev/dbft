@@ -72,6 +72,8 @@ type Config struct {
 	NewRecoveryMessage func() payload.RecoveryMessage
 	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
 	VerifyPrepareRequest func(p payload.ConsensusPayload) error
+	// VerifyPrepareResponse performs external PrepareResponse verification and returns nil if it's successful.
+	VerifyPrepareResponse func(p payload.ConsensusPayload) error
 }
 
 const defaultSecondsPerBlock = time.Second * 15
@@ -107,7 +109,8 @@ func defaultConfig() *Config {
 		NewRecoveryRequest:  payload.NewRecoveryRequest,
 		NewRecoveryMessage:  payload.NewRecoveryMessage,
 
-		VerifyPrepareRequest: func(payload.ConsensusPayload) error { return nil },
+		VerifyPrepareRequest:  func(payload.ConsensusPayload) error { return nil },
+		VerifyPrepareResponse: func(payload.ConsensusPayload) error { return nil },
 	}
 }
 
@@ -321,5 +324,12 @@ func WithNewRecoveryMessage(f func() payload.RecoveryMessage) Option {
 func WithVerifyPrepareRequest(f func(payload.ConsensusPayload) error) Option {
 	return func(cfg *Config) {
 		cfg.VerifyPrepareRequest = f
+	}
+}
+
+// WithVerifyPrepareResponse sets VerifyPrepareResponse.
+func WithVerifyPrepareResponse(f func(payload.ConsensusPayload) error) Option {
+	return func(cfg *Config) {
+		cfg.VerifyPrepareResponse = f
 	}
 }

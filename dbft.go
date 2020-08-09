@@ -402,6 +402,10 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 		return
 	}
 
+	if err := d.VerifyPrepareResponse(msg); err != nil {
+		d.Logger.Warn("invalid PrepareResponse", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+		return
+	}
 	d.Logger.Info("received PrepareResponse", zap.Uint16("validator", msg.ValidatorIndex()))
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
