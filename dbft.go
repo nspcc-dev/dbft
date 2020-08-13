@@ -312,7 +312,7 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
-	if !d.hasAllTransactions() || !d.createAndCheckBlock() {
+	if !d.hasAllTransactions() || !d.createAndCheckBlock() || d.Context.WatchOnly() {
 		return
 	}
 
