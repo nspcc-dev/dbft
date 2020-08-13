@@ -50,6 +50,7 @@ const (
 var (
 	nodebug    = flag.Bool("nodebug", false, "disable debug logging")
 	count      = flag.Int("count", 7, "node count")
+	watchers   = flag.Int("watchers", 7, "watch-only node count")
 	blocked    = flag.Int("blocked", -1, "blocked validator (payloads from him/her are dropped)")
 	txPerBlock = flag.Int("txblock", 1, "transactions per block")
 	txCount    = flag.Int("txcount", 100000, "transactions on every node")
@@ -63,9 +64,11 @@ func main() {
 
 	logger := initLogger()
 	clusterSize := *count
-	nodes := make([]*simNode, clusterSize)
+	watchOnly := *watchers
+	nodes := make([]*simNode, clusterSize+watchOnly)
 
 	initNodes(nodes, logger)
+	updatePublicKeys(nodes, clusterSize)
 
 	ctx, cancel := initContext(*duration)
 	defer cancel()
@@ -107,8 +110,6 @@ func initNodes(nodes []*simNode, log *zap.Logger) {
 			panic(err)
 		}
 	}
-
-	updatePublicKeys(nodes)
 }
 
 func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
@@ -146,8 +147,8 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 	return nil
 }
 
-func updatePublicKeys(nodes []*simNode) {
-	pubs := make([]crypto.PublicKey, len(nodes))
+func updatePublicKeys(nodes []*simNode, n int) {
+	pubs := make([]crypto.PublicKey, n)
 	for i := range pubs {
 		pubs[i] = nodes[i].pub
 	}
