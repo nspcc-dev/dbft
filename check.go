@@ -71,10 +71,6 @@ func (d *DBFT) checkCommit() {
 	d.ProcessBlock(d.block)
 
 	d.InitializeConsensus(0)
-
-	if d.MyIndex < 0 {
-		d.Logger.Warn("negative index")
-	}
 }
 
 func (d *DBFT) checkChangeView(view byte) {
