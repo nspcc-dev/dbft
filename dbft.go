@@ -321,7 +321,7 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 }
 
 func (d *DBFT) processMissingTx() {
-	missing := make([]util.Uint256, 0, len(d.TransactionHashes))
+	missing := make([]util.Uint256, 0, len(d.TransactionHashes)/2)
 
 	for _, h := range d.TransactionHashes {
 		if _, ok := d.Transactions[h]; ok {
