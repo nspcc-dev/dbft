@@ -47,6 +47,8 @@ type Context struct {
 	Nonce     uint64
 	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
 	TransactionHashes []util.Uint256
+	// MissingTransactions is a slice of hashes containing missing transactions for the current block.
+	MissingTransactions []util.Uint256
 	// Transactions is a map containing actual transactions for the current block.
 	Transactions map[util.Uint256]block.Transaction
 
@@ -198,6 +200,7 @@ func (c *Context) reset(view byte) {
 
 	c.Transactions = make(map[util.Uint256]block.Transaction)
 	c.TransactionHashes = nil
+	c.MissingTransactions = nil
 	c.PrimaryIndex = c.GetPrimaryIndex(view)
 	c.ViewNumber = view
 

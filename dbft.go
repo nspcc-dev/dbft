@@ -135,18 +135,19 @@ func (d *DBFT) OnTransaction(tx block.Transaction) {
 	// 	zap.Bool("response_sent", d.ResponseSent()),
 	// 	zap.Bool("block_sent", d.BlockSent()))
 	if !d.IsBackup() || d.NotAcceptingPayloadsDueToViewChanging() ||
-		!d.RequestSentOrReceived() || d.ResponseSent() || d.BlockSent() {
+		!d.RequestSentOrReceived() || d.ResponseSent() || d.BlockSent() ||
+		len(d.MissingTransactions) == 0 {
 		return
 	}
 
-	h := tx.Hash()
-	if _, ok := d.Transactions[h]; ok {
-		return
-	}
-
-	for i := range d.TransactionHashes {
-		if h == d.TransactionHashes[i] {
+	for i := range d.MissingTransactions {
+		if tx.Hash() == d.MissingTransactions[i] {
 			d.addTransaction(tx)
+			theLastOne := len(d.MissingTransactions) - 1
+			if i < theLastOne {
+				d.MissingTransactions[i] = d.MissingTransactions[theLastOne]
+			}
+			d.MissingTransactions = d.MissingTransactions[:theLastOne]
 			return
 		}
 	}
@@ -335,6 +336,7 @@ func (d *DBFT) processMissingTx() {
 	}
 
 	if len(missing) != 0 {
+		d.MissingTransactions = missing
 		d.Logger.Info("missing tx",
 			zap.Int("count", len(missing)))
 		d.RequestTx(missing...)
