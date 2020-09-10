@@ -42,7 +42,8 @@ func TestTimer_Reset(t *testing.T) {
 
 func shouldReceive(t *testing.T, tt Timer, hv HV, msg string) {
 	select {
-	case got := <-tt.C():
+	case <-tt.C():
+		got := tt.HV()
 		require.Equal(t, hv, got)
 	default:
 		require.Fail(t, msg)

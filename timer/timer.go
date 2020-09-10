@@ -18,16 +18,16 @@ type (
 		Extend(d time.Duration)
 		// Stop stops timer.
 		Stop()
-		// C returns channel where HV events are arrived
-		// after timer has fired.
-		C() <-chan HV
+		// HV returns current height and view set for the timer.
+		HV() HV
+		// C returns channel for timer events.
+		C() <-chan time.Time
 	}
 
 	value struct {
 		HV
 		s time.Time
 		d time.Duration
-		e bool
 	}
 
 	// HV is a pair of a Height and a View.
@@ -37,9 +37,9 @@ type (
 	}
 
 	timer struct {
-		ch     chan HV
-		values chan value
-		stop   chan struct{}
+		val value
+		tt  *time.Timer
+		ch  chan time.Time
 	}
 )
 
@@ -48,31 +48,56 @@ var _ Timer = (*timer)(nil)
 // New returns default Timer implementation.
 func New() Timer {
 	t := &timer{
-		ch:     make(chan HV, 1),
-		values: make(chan value),
-		stop:   make(chan struct{}, 1),
+		ch: make(chan time.Time, 1),
 	}
-
-	go t.loop()
 
 	return t
 }
 
 // C implements Timer interface.
-func (t *timer) C() <-chan HV { return (<-chan HV)(t.ch) }
+func (t *timer) C() <-chan time.Time {
+	if t.tt == nil {
+		return t.ch
+	}
+
+	return t.tt.C
+}
+
+// HV implements Timer interface.
+func (t *timer) HV() HV {
+	return t.val.HV
+}
 
 // Reset implements Timer interface.
 func (t *timer) Reset(hv HV, d time.Duration) {
-	t.values <- value{
-		HV: hv,
-		s:  t.Now(),
-		d:  d,
+	t.Stop()
+
+	t.val.s = t.Now()
+	t.val.d = d
+	t.val.HV = hv
+
+	if t.val.d != 0 {
+		t.tt = time.NewTimer(t.val.d)
+	} else {
+		t.tt = nil
+		drain(t.ch)
+		t.ch <- t.val.s
+	}
+}
+
+func drain(ch <-chan time.Time) {
+	select {
+	case <-ch:
+	default:
 	}
 }
 
 // Stop implements Timer interface.
 func (t *timer) Stop() {
-	close(t.stop)
+	if t.tt != nil {
+		t.tt.Stop()
+		t.tt = nil
+	}
 }
 
 // Sleep implements Timer interface.
@@ -80,76 +105,14 @@ func (t *timer) Sleep(d time.Duration) {
 	time.Sleep(d)
 }
 
-func getChan(tt *time.Timer) <-chan time.Time {
-	if tt == nil {
-		return nil
-	}
-
-	return tt.C
-}
-
-func stopTimer(tt *time.Timer) {
-	if tt != nil {
-		tt.Stop()
-	}
-}
-
-func drain(ch <-chan HV) {
-	select {
-	case <-ch:
-	default:
-	}
-}
-
-func (t *timer) loop() {
-	go func() {
-		var tt *time.Timer
-		var toSend value
-
-		for {
-			select {
-			case v := <-t.values:
-				if !v.e {
-					toSend.HV = v.HV
-					toSend.s = v.s
-					toSend.d = v.d
-				} else {
-					toSend.d += v.d
-				}
-
-				stopTimer(tt)
-
-				if elapsed := time.Since(toSend.s); toSend.d > elapsed {
-					tt = time.NewTimer(toSend.d - elapsed)
-				} else {
-					tt = nil
-					drain(t.ch)
-					t.ch <- toSend.HV
-				}
-
-			case <-getChan(tt):
-				stopTimer(tt)
-				tt = nil
-
-				drain(t.ch)
-				t.ch <- toSend.HV
-
-			case _, ok := <-t.stop:
-				stopTimer(tt)
-				tt = nil
-
-				if !ok {
-					drain(t.ch)
-					return
-				}
-			}
-		}
-	}()
-}
-
 // Extend implements Timer interface.
 func (t *timer) Extend(d time.Duration) {
-	t.values <- value{d: d, e: true}
+	t.val.d += d
+
+	if elapsed := time.Since(t.val.s); t.val.d > elapsed {
+		t.Stop()
+		t.tt = time.NewTimer(t.val.d - elapsed)
+	}
 }
 
 // Now implements Timer interface.
