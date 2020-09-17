@@ -7,7 +7,7 @@ import (
 
 func (d *DBFT) checkPrepare() {
 	if !d.hasAllTransactions() {
-		d.Logger.Debug("check prepare: some transactions are missing", zap.Any("hashes", d.missingHashes()))
+		d.Logger.Debug("check prepare: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
 		return
 	}
 
@@ -39,7 +39,7 @@ func (d *DBFT) checkPrepare() {
 
 func (d *DBFT) checkCommit() {
 	if !d.hasAllTransactions() {
-		d.Logger.Debug("check commit: some transactions are missing", zap.Any("hashes", d.missingHashes()))
+		d.Logger.Debug("check commit: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
 		return
 	}
 
