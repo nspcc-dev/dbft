@@ -283,15 +283,3 @@ func NewBlockFromContext(ctx *Context) block.Block {
 func (c *Context) hasAllTransactions() bool {
 	return len(c.TransactionHashes) == len(c.Transactions)
 }
-
-// missingHashes returns hashes of transactions from the proposed block
-// which are currently missing.
-func (c *Context) missingHashes() (result []util.Uint256) {
-	for _, h := range c.TransactionHashes {
-		if _, ok := c.Transactions[h]; !ok {
-			result = append(result, h)
-		}
-	}
-
-	return
-}
