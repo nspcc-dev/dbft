@@ -58,6 +58,8 @@ func (d *DBFT) checkCommit() {
 		return
 	}
 
+	d.lastBlockIndex = d.BlockIndex
+	d.lastBlockTime = d.Timer.Now()
 	d.block = d.CreateBlock()
 	hash := d.block.Hash()
 

@@ -123,6 +123,14 @@ func (d *DBFT) InitializeConsensus(view byte) {
 	} else {
 		timeout = d.SecondsPerBlock << (d.ViewNumber + 1)
 	}
+	if d.lastBlockIndex+1 == d.BlockIndex {
+		var ts = d.Timer.Now()
+		var diff = ts.Sub(d.lastBlockTime)
+		timeout -= diff
+		if timeout < 0 {
+			timeout = 0
+		}
+	}
 	d.changeTimer(timeout)
 }
 
