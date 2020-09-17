@@ -2,6 +2,7 @@ package dbft
 
 import (
 	"math/rand"
+	"time"
 
 	"github.com/nspcc-dev/dbft/block"
 	"github.com/nspcc-dev/dbft/crypto"
@@ -63,6 +64,9 @@ type Context struct {
 	// LastSeenMessage array stores the height of the last seen message, for each validator.
 	// if this node never heard from validator i, LastSeenMessage[i] will be -1.
 	LastSeenMessage []*timer.HV
+
+	lastBlockTime  time.Time
+	lastBlockIndex uint32
 }
 
 // N returns total number of validators.
