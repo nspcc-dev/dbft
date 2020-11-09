@@ -22,6 +22,10 @@ type Config struct {
 	// SecondsPerBlock is the number of seconds that
 	// need to pass before another block will be accepted.
 	SecondsPerBlock time.Duration
+	// TimestampIncrement increment is the amount of units to add to timestamp
+	// if current time is less than that of previous context.
+	// By default use millisecond precision.
+	TimestampIncrement uint64
 	// GetKeyPair returns an index of the node in the list of validators
 	// together with it's key pair.
 	GetKeyPair func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey)
@@ -78,6 +82,8 @@ type Config struct {
 
 const defaultSecondsPerBlock = time.Second * 15
 
+const defaultTimestampIncrement = uint64(time.Millisecond / time.Nanosecond)
+
 // Option is a generic options type. It can modify config in any way it wants.
 type Option = func(*Config)
 
@@ -87,6 +93,7 @@ func defaultConfig() *Config {
 		Logger:              zap.NewNop(),
 		Timer:               timer.New(),
 		SecondsPerBlock:     defaultSecondsPerBlock,
+		TimestampIncrement:  defaultTimestampIncrement,
 		GetKeyPair:          nil,
 		NewBlockFromContext: NewBlockFromContext,
 		RequestTx:           func(h ...util.Uint256) {},
@@ -177,6 +184,13 @@ func WithTimer(t timer.Timer) Option {
 func WithSecondsPerBlock(d time.Duration) Option {
 	return func(cfg *Config) {
 		cfg.SecondsPerBlock = d
+	}
+}
+
+// WithTimestampIncrement sets TimestampIncrement.
+func WithTimestampIncrement(u uint64) Option {
+	return func(cfg *Config) {
+		cfg.TimestampIncrement = u
 	}
 }
 
