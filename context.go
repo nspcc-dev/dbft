@@ -231,10 +231,10 @@ func (c *Context) Fill() {
 	validators := c.Config.GetValidators(txx...)
 	c.NextConsensus = c.Config.GetConsensusAddress(validators...)
 
-	if now := c.getTimestamp(); now > c.Timestamp {
+	if now := c.getTimestamp(); now > c.Timestamp+c.Config.TimestampIncrement {
 		c.Timestamp = now
 	} else {
-		c.Timestamp++
+		c.Timestamp += c.Config.TimestampIncrement
 	}
 }
 
