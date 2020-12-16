@@ -241,7 +241,7 @@ func (c *Context) Fill() {
 // getTimestamp returns nanoseconds-precision timestamp using
 // current context config.
 func (c *Context) getTimestamp() uint64 {
-	return uint64(c.Config.Timer.Now().UnixNano())
+	return uint64(c.Config.Timer.Now().UnixNano()) / c.Config.TimestampIncrement * c.Config.TimestampIncrement
 }
 
 // CreateBlock returns resulting block for the current epoch.
