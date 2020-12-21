@@ -266,6 +266,48 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	})
 }
 
+func TestDBFT_CommitOnTransaction(t *testing.T) {
+	s := newTestState(0, 4)
+	s.currHeight = 1
+
+	srv := New(s.getOptions()...)
+	srv.Start()
+	require.Nil(t, s.tryRecv())
+
+	tx := testTx(42)
+	req := s.getPrepareRequest(2, tx.Hash())
+	srv.OnReceive(req)
+	srv.OnReceive(s.getPrepareResponse(1, req.Hash()))
+	srv.OnReceive(s.getPrepareResponse(3, req.Hash()))
+	require.Nil(t, srv.header) // missing transaction.
+
+	// Test state for forming header.
+	s1 := &testState{
+		count:      s.count,
+		pool:       newTestPool(),
+		currHeight: 1,
+		pubs:       s.pubs,
+		privs:      s.privs,
+	}
+	s1.pool.Add(tx)
+	srv1 := New(s1.getOptions()...)
+	srv1.Start()
+	srv1.OnReceive(req)
+	srv1.OnReceive(s1.getPrepareResponse(1, req.Hash()))
+	srv1.OnReceive(s1.getPrepareResponse(3, req.Hash()))
+	require.NotNil(t, srv1.header)
+
+	for _, i := range []uint16{1, 2, 3} {
+		require.NoError(t, srv1.header.Sign(s1.privs[i]))
+		c := s1.getCommit(i, srv1.header.Signature())
+		srv.OnReceive(c)
+	}
+
+	require.Nil(t, s.nextBlock())
+	srv.OnTransaction(tx)
+	require.NotNil(t, s.nextBlock())
+}
+
 func TestDBFT_OnReceiveCommit(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("send commit after enough responses", func(t *testing.T) {
