@@ -84,9 +84,7 @@ func fromPayload(t MessageType, recovery ConsensusPayload, p interface{}) *Paylo
 			viewNumber: recovery.ViewNumber(),
 			payload:    p,
 		},
-		version:  recovery.Version(),
-		prevHash: recovery.PrevHash(),
-		height:   recovery.Height(),
+		height: recovery.Height(),
 	}
 }
 

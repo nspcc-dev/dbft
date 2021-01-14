@@ -180,7 +180,6 @@ func (d *DBFT) sendRecoveryMessage() {
 
 func (c *Context) withPayload(t payload.MessageType, payload interface{}) payload.ConsensusPayload {
 	cp := c.Config.NewConsensusPayload()
-	cp.SetPrevHash(c.PrevHash)
 	cp.SetHeight(c.BlockIndex)
 	cp.SetValidatorIndex(uint16(c.MyIndex))
 	cp.SetViewNumber(c.ViewNumber)
