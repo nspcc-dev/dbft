@@ -24,7 +24,7 @@ func (c *Context) makePrepareRequest() payload.ConsensusPayload {
 	req.SetNextConsensus(c.NextConsensus)
 	req.SetTransactionHashes(c.TransactionHashes)
 
-	return c.withPayload(payload.PrepareRequestType, req)
+	return c.Config.NewConsensusPayload(c, payload.PrepareRequestType, req)
 }
 
 func (d *DBFT) sendPrepareRequest() {
@@ -48,7 +48,7 @@ func (c *Context) makeChangeView(ts uint64, reason payload.ChangeViewReason) pay
 	cv.SetTimestamp(ts)
 	cv.SetReason(reason)
 
-	msg := c.withPayload(payload.ChangeViewType, cv)
+	msg := c.Config.NewConsensusPayload(c, payload.ChangeViewType, cv)
 	c.ChangeViewPayloads[c.MyIndex] = msg
 
 	return msg
@@ -94,7 +94,7 @@ func (c *Context) makePrepareResponse() payload.ConsensusPayload {
 	resp := c.Config.NewPrepareResponse()
 	resp.SetPreparationHash(c.PreparationPayloads[c.PrimaryIndex].Hash())
 
-	msg := c.withPayload(payload.PrepareResponseType, resp)
+	msg := c.Config.NewConsensusPayload(c, payload.PrepareResponseType, resp)
 	c.PreparationPayloads[c.MyIndex] = msg
 
 	return msg
@@ -120,7 +120,7 @@ func (c *Context) makeCommit() payload.ConsensusPayload {
 		commit := c.Config.NewCommit()
 		commit.SetSignature(sign)
 
-		return c.withPayload(payload.CommitType, commit)
+		return c.Config.NewConsensusPayload(c, payload.CommitType, commit)
 	}
 
 	return nil
@@ -141,7 +141,7 @@ func (d *DBFT) sendRecoveryRequest() {
 	}
 	req := d.NewRecoveryRequest()
 	req.SetTimestamp(uint64(d.Timer.Now().UnixNano()))
-	d.broadcast(d.withPayload(payload.RecoveryRequestType, req))
+	d.broadcast(d.Config.NewConsensusPayload(&d.Context, payload.RecoveryRequestType, req))
 }
 
 func (c *Context) makeRecoveryMessage() payload.ConsensusPayload {
@@ -171,20 +171,22 @@ func (c *Context) makeRecoveryMessage() payload.ConsensusPayload {
 		}
 	}
 
-	return c.withPayload(payload.RecoveryMessageType, recovery)
+	return c.Config.NewConsensusPayload(c, payload.RecoveryMessageType, recovery)
 }
 
 func (d *DBFT) sendRecoveryMessage() {
 	d.broadcast(d.makeRecoveryMessage())
 }
 
-func (c *Context) withPayload(t payload.MessageType, payload interface{}) payload.ConsensusPayload {
-	cp := c.Config.NewConsensusPayload()
+// defaultNewConsensusPayload is default function for creating
+// consensus payload of specific type.
+func defaultNewConsensusPayload(c *Context, t payload.MessageType, msg interface{}) payload.ConsensusPayload {
+	cp := payload.NewConsensusPayload()
 	cp.SetHeight(c.BlockIndex)
 	cp.SetValidatorIndex(uint16(c.MyIndex))
 	cp.SetViewNumber(c.ViewNumber)
 	cp.SetType(t)
-	cp.SetPayload(payload)
+	cp.SetPayload(msg)
 
 	return cp
 }

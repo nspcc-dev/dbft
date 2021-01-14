@@ -581,7 +581,7 @@ func (s *testState) getOptions() []Option {
 		WithRequestTx(func(...util.Uint256) {}),
 		WithGetVerified(func() []block.Transaction { return []block.Transaction{} }),
 
-		WithNewConsensusPayload(payload.NewConsensusPayload),
+		WithNewConsensusPayload(defaultNewConsensusPayload),
 		WithNewPrepareRequest(payload.NewPrepareRequest),
 		WithNewPrepareResponse(payload.NewPrepareResponse),
 		WithNewChangeView(payload.NewChangeView),
