@@ -61,7 +61,7 @@ type Config struct {
 	// GetConsensusAddress returns hash of the validator list.
 	GetConsensusAddress func(...crypto.PublicKey) util.Uint160
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
-	NewConsensusPayload func() payload.ConsensusPayload
+	NewConsensusPayload func(*Context, payload.MessageType, interface{}) payload.ConsensusPayload
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
 	NewPrepareRequest func() payload.PrepareRequest
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
@@ -108,7 +108,7 @@ func defaultConfig() *Config {
 		CurrentBlockHash:    nil,
 		GetValidators:       nil,
 		GetConsensusAddress: func(...crypto.PublicKey) util.Uint160 { return util.Uint160{} },
-		NewConsensusPayload: payload.NewConsensusPayload,
+		NewConsensusPayload: defaultNewConsensusPayload,
 		NewPrepareRequest:   payload.NewPrepareRequest,
 		NewPrepareResponse:  payload.NewPrepareResponse,
 		NewChangeView:       payload.NewChangeView,
@@ -286,7 +286,7 @@ func WithGetConsensusAddress(f func(keys ...crypto.PublicKey) util.Uint160) Opti
 }
 
 // WithNewConsensusPayload sets NewConsensusPayload.
-func WithNewConsensusPayload(f func() payload.ConsensusPayload) Option {
+func WithNewConsensusPayload(f func(*Context, payload.MessageType, interface{}) payload.ConsensusPayload) Option {
 	return func(cfg *Config) {
 		cfg.NewConsensusPayload = f
 	}
