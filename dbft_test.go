@@ -61,7 +61,6 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 		require.EqualValues(t, 2, p.Height())
 		require.EqualValues(t, 0, p.ViewNumber())
 		require.NotNil(t, p.Payload())
-		require.Equal(t, s.currHash, p.PrevHash())
 		require.EqualValues(t, 2, p.ValidatorIndex())
 
 		t.Run("primary send ChangeView on timeout", func(t *testing.T) {
@@ -101,7 +100,6 @@ func TestDBFT_SingleNode(t *testing.T) {
 	require.EqualValues(t, 3, p.Height())
 	require.EqualValues(t, 0, p.ViewNumber())
 	require.NotNil(t, p.Payload())
-	require.Equal(t, s.currHash, p.PrevHash())
 	require.EqualValues(t, 0, p.ValidatorIndex())
 
 	cm := s.tryRecv()
@@ -145,7 +143,6 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		require.Equal(t, payload.PrepareResponseType, resp.Type())
 		require.EqualValues(t, s.currHeight+1, resp.Height())
 		require.EqualValues(t, 0, resp.ViewNumber())
-		require.Equal(t, s.currHash, resp.PrevHash())
 		require.EqualValues(t, s.myIndex, resp.ValidatorIndex())
 		require.NotNil(t, resp.Payload())
 		require.Equal(t, p.Hash(), resp.GetPrepareResponse().PreparationHash())
@@ -160,33 +157,6 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 			service.OnReceive(resp)
 			require.Nil(t, s.tryRecv())
 		})
-	})
-
-	t.Run("change view on invalid block", func(t *testing.T) {
-		s.currHeight = 4
-		service := New(s.getOptions()...)
-		txs := []testTx{0}
-		s.pool.Add(txs[0])
-
-		service.Start()
-
-		for i := range service.LastSeenMessage {
-			service.LastSeenMessage[i] = &timer.HV{Height: s.currHeight + 1}
-		}
-
-		p := s.getPrepareRequest(5, txs[0].Hash())
-
-		service.OnReceive(p)
-
-		cv := s.tryRecv()
-		require.NotNil(t, cv)
-		require.Equal(t, payload.ChangeViewType, cv.Type())
-		require.EqualValues(t, s.currHeight+1, cv.Height())
-		require.EqualValues(t, 0, cv.ViewNumber())
-		require.Equal(t, s.currHash, cv.PrevHash())
-		require.EqualValues(t, s.myIndex, cv.ValidatorIndex())
-		require.NotNil(t, cv.Payload())
-		require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
 	})
 
 	t.Run("change view on invalid tx", func(t *testing.T) {
@@ -212,7 +182,6 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		require.Equal(t, payload.ChangeViewType, cv.Type())
 		require.EqualValues(t, s.currHeight+1, cv.Height())
 		require.EqualValues(t, 0, cv.ViewNumber())
-		require.Equal(t, s.currHash, cv.PrevHash())
 		require.EqualValues(t, s.myIndex, cv.ValidatorIndex())
 		require.NotNil(t, cv.Payload())
 		require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
@@ -254,7 +223,6 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 			require.Equal(t, payload.PrepareResponseType, resp.Type())
 			require.EqualValues(t, s.currHeight+1, resp.Height())
 			require.EqualValues(t, 0, resp.ViewNumber())
-			require.Equal(t, s.currHash, resp.PrevHash())
 			require.EqualValues(t, s.myIndex, resp.ValidatorIndex())
 			require.NotNil(t, resp.Payload())
 			require.Equal(t, p.Hash(), resp.GetPrepareResponse().PreparationHash())
@@ -330,7 +298,6 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 		require.Equal(t, payload.CommitType, cm.Type())
 		require.EqualValues(t, s.currHeight+1, cm.Height())
 		require.EqualValues(t, 0, cm.ViewNumber())
-		require.Equal(t, s.currHash, cm.PrevHash())
 		require.EqualValues(t, s.myIndex, cm.ValidatorIndex())
 		require.NotNil(t, cm.Payload())
 
@@ -539,7 +506,6 @@ func (s testState) getPrepareRequest(from uint16, hashes ...util.Uint256) Payloa
 
 func (s testState) getPayload(from uint16) Payload {
 	p := payload.NewConsensusPayload()
-	p.SetPrevHash(s.currHash)
 	p.SetHeight(s.currHeight + 1)
 	p.SetValidatorIndex(from)
 

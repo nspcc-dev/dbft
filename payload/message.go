@@ -12,18 +12,12 @@ type (
 	ConsensusPayload interface {
 		consensusMessage
 
-		Version() uint32
-		SetVersion(v uint32)
-
 		// ValidatorIndex returns index of validator from which
 		// payload was originated from.
 		ValidatorIndex() uint16
 
 		// SetValidator index sets validator index.
 		SetValidatorIndex(i uint16)
-
-		PrevHash() util.Uint256
-		SetPrevHash(h util.Uint256)
 
 		Height() uint32
 		SetHeight(h uint32)
