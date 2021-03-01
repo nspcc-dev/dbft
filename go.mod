@@ -1,6 +1,6 @@
 module github.com/nspcc-dev/dbft
 
-go 1.13
+go 1.14
 
 require (
 	github.com/nspcc-dev/neo-go v0.73.1-pre.0.20200303142215-f5a1b928ce09
