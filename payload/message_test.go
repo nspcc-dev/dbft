@@ -22,7 +22,6 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	t.Run("PrepareRequest", func(t *testing.T) {
 		m.SetType(PrepareRequestType)
 		m.SetPayload(&prepareRequest{
-			nonce:     123,
 			timestamp: 345,
 			transactionHashes: []util.Uint256{
 				{1, 2, 3},
@@ -82,7 +81,6 @@ func TestPayload_EncodeDecode(t *testing.T) {
 				4: {validatorIndex: 4},
 			},
 			prepareRequest: &prepareRequest{
-				nonce:     123,
 				timestamp: 345,
 				transactionHashes: []util.Uint256{
 					{1, 2, 3},

@@ -12,11 +12,6 @@ type PrepareRequest interface {
 	// SetTimestamp sets timestamp of this message.
 	SetTimestamp(ts uint64)
 
-	// Nonce is a random nonce.
-	Nonce() uint64
-	// SetNonce sets Nonce.
-	SetNonce(nonce uint64)
-
 	// TransactionHashes returns hashes of all transaction in a proposed block.
 	TransactionHashes() []util.Uint256
 	// SetTransactionHashes sets transaction's hashes.
@@ -31,7 +26,6 @@ type PrepareRequest interface {
 
 type prepareRequest struct {
 	transactionHashes []util.Uint256
-	nonce             uint64
 	timestamp         uint32
 	nextConsensus     util.Uint160
 }
@@ -41,7 +35,6 @@ var _ PrepareRequest = (*prepareRequest)(nil)
 // EncodeBinary implements io.Serializable interface.
 func (p prepareRequest) EncodeBinary(w *io.BinWriter) {
 	w.WriteU32LE(p.timestamp)
-	w.WriteU64LE(p.nonce)
 	w.WriteBytes(p.nextConsensus[:])
 	w.WriteArray(p.transactionHashes)
 }
@@ -49,7 +42,6 @@ func (p prepareRequest) EncodeBinary(w *io.BinWriter) {
 // DecodeBinary implements io.Serializable interface.
 func (p *prepareRequest) DecodeBinary(r *io.BinReader) {
 	p.timestamp = r.ReadU32LE()
-	p.nonce = r.ReadU64LE()
 	r.ReadBytes(p.nextConsensus[:])
 	r.ReadArray(&p.transactionHashes)
 }
@@ -62,16 +54,6 @@ func (p prepareRequest) Timestamp() uint64 {
 // SetTimestamp implements PrepareRequest interface.
 func (p *prepareRequest) SetTimestamp(ts uint64) {
 	p.timestamp = nanoSecToSec(ts)
-}
-
-// Nonce implements PrepareRequest interface.
-func (p prepareRequest) Nonce() uint64 {
-	return p.nonce
-}
-
-// SetNonce implements PrepareRequest interface.
-func (p *prepareRequest) SetNonce(nonce uint64) {
-	p.nonce = nonce
 }
 
 // TransactionHashes implements PrepareRequest interface.

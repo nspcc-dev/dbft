@@ -11,7 +11,7 @@ type (
 	// base is a structure containing all
 	// hashable and signable fields of the block.
 	base struct {
-		ConsensusData uint64
+		PrimaryIndex  byte
 		Index         uint32
 		Timestamp     uint32
 		Version       uint32
@@ -34,8 +34,8 @@ type (
 		Timestamp() uint64
 		// Index returns block index.
 		Index() uint32
-		// ConsensusData is a random nonce.
-		ConsensusData() uint64
+		// ConsensusData is a primary node index at the current round.
+		PrimaryIndex() byte
 		// NextConsensus returns hash of the validators of the next block.
 		NextConsensus() util.Uint160
 
@@ -55,10 +55,9 @@ type (
 	neoBlock struct {
 		base
 
-		consensusData uint64
-		transactions  []Transaction
-		signature     []byte
-		hash          *util.Uint256
+		transactions []Transaction
+		signature    []byte
+		hash         *util.Uint256
 	}
 )
 
@@ -93,8 +92,8 @@ func (b *neoBlock) MerkleRoot() util.Uint256 {
 }
 
 // ConsensusData implements Block interface.
-func (b *neoBlock) ConsensusData() uint64 {
-	return b.consensusData
+func (b *neoBlock) PrimaryIndex() byte {
+	return b.base.PrimaryIndex
 }
 
 // Transactions implements Block interface.
@@ -108,14 +107,14 @@ func (b *neoBlock) SetTransactions(txx []Transaction) {
 }
 
 // NewBlock returns new block.
-func NewBlock(timestamp uint64, index uint32, nextConsensus util.Uint160, prevHash util.Uint256, version uint32, nonce uint64, txHashes []util.Uint256) Block {
+func NewBlock(timestamp uint64, index uint32, nextConsensus util.Uint160, prevHash util.Uint256, version uint32, primaryIndex byte, txHashes []util.Uint256) Block {
 	block := new(neoBlock)
 	block.base.Timestamp = uint32(timestamp / 1000000000)
 	block.base.Index = index
 	block.base.NextConsensus = nextConsensus
 	block.base.PrevHash = prevHash
 	block.base.Version = version
-	block.base.ConsensusData = nonce
+	block.base.PrimaryIndex = primaryIndex
 
 	if len(txHashes) != 0 {
 		mt := merkle.NewMerkleTree(txHashes...)
@@ -182,7 +181,7 @@ func (b base) EncodeBinary(w *io.BinWriter) {
 	w.WriteBytes(b.MerkleRoot[:])
 	w.WriteU32LE(b.Timestamp)
 	w.WriteU32LE(b.Index)
-	w.WriteU64LE(b.ConsensusData)
+	w.WriteB(b.PrimaryIndex)
 	w.WriteBytes(b.NextConsensus[:])
 }
 
@@ -193,6 +192,6 @@ func (b *base) DecodeBinary(r *io.BinReader) {
 	r.ReadBytes(b.MerkleRoot[:])
 	b.Timestamp = r.ReadU32LE()
 	b.Index = r.ReadU32LE()
-	b.ConsensusData = r.ReadU64LE()
+	b.PrimaryIndex = r.ReadB()
 	r.ReadBytes(b.NextConsensus[:])
 }

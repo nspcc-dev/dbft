@@ -1,7 +1,6 @@
 package dbft
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/nspcc-dev/dbft/block"
@@ -45,7 +44,6 @@ type Context struct {
 
 	// Timestamp is a nanosecond-precision timestamp
 	Timestamp uint64
-	Nonce     uint64
 	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
 	TransactionHashes []util.Uint256
 	// MissingTransactions is a slice of hashes containing missing transactions for the current block.
@@ -219,7 +217,6 @@ func (c *Context) reset(view byte) {
 // Fill initializes consensus when node is a speaker.
 func (c *Context) Fill() {
 	txx := c.Config.GetVerified()
-	c.Nonce = rand.Uint64()
 	c.TransactionHashes = make([]util.Uint256, len(txx))
 
 	for i := range txx {
@@ -278,7 +275,7 @@ func NewBlockFromContext(ctx *Context) block.Block {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
-	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.NextConsensus, ctx.PrevHash, ctx.Version, ctx.Nonce, ctx.TransactionHashes)
+	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.NextConsensus, ctx.PrevHash, ctx.Version, byte(ctx.PrimaryIndex), ctx.TransactionHashes)
 	return block
 }
 

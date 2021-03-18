@@ -20,7 +20,6 @@ func (c *Context) makePrepareRequest() payload.ConsensusPayload {
 
 	req := c.Config.NewPrepareRequest()
 	req.SetTimestamp(c.Timestamp)
-	req.SetNonce(c.Nonce)
 	req.SetNextConsensus(c.NextConsensus)
 	req.SetTransactionHashes(c.TransactionHashes)
 

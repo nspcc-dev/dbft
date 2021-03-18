@@ -97,7 +97,6 @@ func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload, _ []crypto.Publi
 	req := fromPayload(PrepareRequestType, p, &prepareRequest{
 		// prepareRequest.Timestamp() here returns nanoseconds-precision value, so convert it to seconds again
 		timestamp:         nanoSecToSec(m.prepareRequest.Timestamp()),
-		nonce:             m.prepareRequest.Nonce(),
 		transactionHashes: m.prepareRequest.TransactionHashes(),
 		nextConsensus:     m.prepareRequest.NextConsensus(),
 	})

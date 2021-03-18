@@ -317,7 +317,6 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	}
 
 	d.Timestamp = p.Timestamp()
-	d.Nonce = p.Nonce()
 	d.NextConsensus = p.NextConsensus()
 	d.TransactionHashes = p.TransactionHashes()
 

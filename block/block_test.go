@@ -22,8 +22,8 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 
-	b.consensusData = 123
-	assert.EqualValues(t, 123, b.ConsensusData())
+	b.base.PrimaryIndex = 123
+	assert.EqualValues(t, 123, b.PrimaryIndex())
 
 	b.base.Version = 42
 	assert.EqualValues(t, 42, b.Version())
