@@ -1,7 +1,8 @@
 package dbft
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"encoding/binary"
 	"time"
 
 	"github.com/nspcc-dev/dbft/block"
@@ -218,8 +219,14 @@ func (c *Context) reset(view byte) {
 
 // Fill initializes consensus when node is a speaker.
 func (c *Context) Fill() {
+	b := make([]byte, 8)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+
 	txx := c.Config.GetVerified()
-	c.Nonce = rand.Uint64()
+	c.Nonce = binary.LittleEndian.Uint64(b)
 	c.TransactionHashes = make([]util.Uint256, len(txx))
 
 	for i := range txx {
