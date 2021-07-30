@@ -82,14 +82,14 @@ func (m MessageType) String() string {
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (m message) EncodeBinary(w *io.BinWriter) {
+func (m message) EncodeBinary(w io.BinaryWriter) {
 	w.WriteB(byte(m.cmType))
 	w.WriteB(m.viewNumber)
 	m.payload.(io.Serializable).EncodeBinary(w)
 }
 
 // DecodeBinary implements io.Serializable interface.
-func (m *message) DecodeBinary(r *io.BinReader) {
+func (m *message) DecodeBinary(r io.BinaryReader) {
 	m.cmType = MessageType(r.ReadB())
 	m.viewNumber = r.ReadB()
 
@@ -109,7 +109,7 @@ func (m *message) DecodeBinary(r *io.BinReader) {
 	case RecoveryMessageType:
 		m.payload = new(recoveryMessage)
 	default:
-		r.Err = errors.Errorf("invalid type: 0x%02x", byte(m.cmType))
+		r.SetError(errors.Errorf("invalid type: 0x%02x", byte(m.cmType)))
 		return
 	}
 

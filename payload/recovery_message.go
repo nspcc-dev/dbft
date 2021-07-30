@@ -152,7 +152,7 @@ func (m *recoveryMessage) GetCommits(p ConsensusPayload, _ []crypto.PublicKey) [
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (m recoveryMessage) EncodeBinary(w *io.BinWriter) {
+func (m recoveryMessage) EncodeBinary(w io.BinaryWriter) {
 	w.WriteArray(m.changeViewPayloads)
 
 	hasReq := m.prepareRequest != nil
@@ -174,7 +174,7 @@ func (m recoveryMessage) EncodeBinary(w *io.BinWriter) {
 }
 
 // DecodeBinary implements io.Serializable interface.
-func (m *recoveryMessage) DecodeBinary(r *io.BinReader) {
+func (m *recoveryMessage) DecodeBinary(r io.BinaryReader) {
 	r.ReadArray(&m.changeViewPayloads)
 
 	if hasReq := r.ReadBool(); hasReq {
@@ -187,7 +187,7 @@ func (m *recoveryMessage) DecodeBinary(r *io.BinReader) {
 				m.preparationHash = new(util.Uint256)
 				m.preparationHash.DecodeBinary(r)
 			} else {
-				r.Err = errors.New("wrong util.Uint256 length")
+				r.SetError(errors.New("wrong util.Uint256 length"))
 			}
 		} else {
 			m.preparationHash = nil

@@ -17,12 +17,12 @@ type recoveryRequest struct {
 var _ RecoveryRequest = (*recoveryRequest)(nil)
 
 // EncodeBinary implements io.Serializable interface.
-func (m recoveryRequest) EncodeBinary(w *io.BinWriter) {
+func (m recoveryRequest) EncodeBinary(w io.BinaryWriter) {
 	w.WriteU32LE(m.timestamp)
 }
 
 // DecodeBinary implements io.Serializable interface.
-func (m *recoveryRequest) DecodeBinary(r *io.BinReader) {
+func (m *recoveryRequest) DecodeBinary(r io.BinaryReader) {
 	m.timestamp = r.ReadU32LE()
 }
 

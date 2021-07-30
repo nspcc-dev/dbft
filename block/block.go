@@ -136,7 +136,7 @@ func (b *neoBlock) Signature() []byte {
 // 2. Two different blocks must have different hash data.
 func (b *neoBlock) GetHashData() []byte {
 	w := io.NewBufBinWriter()
-	b.EncodeBinary(w.BinWriter)
+	b.EncodeBinary(w)
 
 	return w.Bytes()
 }
@@ -176,7 +176,7 @@ func (b *neoBlock) Hash() (h util.Uint256) {
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (b base) EncodeBinary(w *io.BinWriter) {
+func (b base) EncodeBinary(w io.BinaryWriter) {
 	w.WriteU32LE(b.Version)
 	w.WriteBytes(b.PrevHash[:])
 	w.WriteBytes(b.MerkleRoot[:])
@@ -187,7 +187,7 @@ func (b base) EncodeBinary(w *io.BinWriter) {
 }
 
 // DecodeBinary implements io.Serializable interface.
-func (b *base) DecodeBinary(r *io.BinReader) {
+func (b *base) DecodeBinary(r io.BinaryReader) {
 	b.Version = r.ReadU32LE()
 	r.ReadBytes(b.PrevHash[:])
 	r.ReadBytes(b.MerkleRoot[:])
