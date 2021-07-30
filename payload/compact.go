@@ -21,7 +21,7 @@ type (
 )
 
 // EncodeBinary implements io.Serializable interface.
-func (p changeViewCompact) EncodeBinary(w *io.BinWriter) {
+func (p changeViewCompact) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteU16LE(p.validatorIndex)
 	w.WriteB(p.originalViewNumber)
 	w.WriteU32LE(p.timestamp)
@@ -35,7 +35,7 @@ func (p *changeViewCompact) DecodeBinary(r *io.BinReader) {
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (p commitCompact) EncodeBinary(w *io.BinWriter) {
+func (p commitCompact) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteB(p.viewNumber)
 	w.WriteU16LE(p.validatorIndex)
 	w.WriteBytes(p.signature[:])
@@ -49,7 +49,7 @@ func (p *commitCompact) DecodeBinary(r *io.BinReader) {
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (p preparationCompact) EncodeBinary(w *io.BinWriter) {
+func (p preparationCompact) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteU16LE(p.validatorIndex)
 }
 

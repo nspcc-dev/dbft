@@ -39,7 +39,7 @@ type prepareRequest struct {
 var _ PrepareRequest = (*prepareRequest)(nil)
 
 // EncodeBinary implements io.Serializable interface.
-func (p prepareRequest) EncodeBinary(w *io.BinWriter) {
+func (p prepareRequest) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteU32LE(p.timestamp)
 	w.WriteU64LE(p.nonce)
 	w.WriteBytes(p.nextConsensus[:])

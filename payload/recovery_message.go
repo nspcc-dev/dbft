@@ -152,7 +152,7 @@ func (m *recoveryMessage) GetCommits(p ConsensusPayload, _ []crypto.PublicKey) [
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (m recoveryMessage) EncodeBinary(w *io.BinWriter) {
+func (m recoveryMessage) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteArray(m.changeViewPayloads)
 
 	hasReq := m.prepareRequest != nil

@@ -17,7 +17,7 @@ type recoveryRequest struct {
 var _ RecoveryRequest = (*recoveryRequest)(nil)
 
 // EncodeBinary implements io.Serializable interface.
-func (m recoveryRequest) EncodeBinary(w *io.BinWriter) {
+func (m recoveryRequest) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteU32LE(m.timestamp)
 }
 

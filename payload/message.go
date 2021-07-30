@@ -42,9 +42,9 @@ type (
 var _ ConsensusPayload = (*Payload)(nil)
 
 // EncodeBinary implements io.Serializable interface.
-func (p Payload) EncodeBinary(w *io.BinWriter) {
+func (p Payload) EncodeBinary(w io.BinWriterInterface) {
 	ww := io.NewBufBinWriter()
-	p.message.EncodeBinary(ww.BinWriter)
+	p.message.EncodeBinary(ww)
 	data := ww.Bytes()
 
 	w.WriteU32LE(p.version)
@@ -69,7 +69,7 @@ func (p *Payload) DecodeBinary(r *io.BinReader) {
 // MarshalUnsigned implements ConsensusPayload interface.
 func (p Payload) MarshalUnsigned() []byte {
 	w := io.NewBufBinWriter()
-	p.EncodeBinary(w.BinWriter)
+	p.EncodeBinary(w)
 
 	return w.Bytes()
 }

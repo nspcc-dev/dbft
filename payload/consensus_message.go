@@ -82,7 +82,7 @@ func (m MessageType) String() string {
 }
 
 // EncodeBinary implements io.Serializable interface.
-func (m message) EncodeBinary(w *io.BinWriter) {
+func (m message) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteB(byte(m.cmType))
 	w.WriteB(m.viewNumber)
 	m.payload.(io.Serializable).EncodeBinary(w)

@@ -31,7 +31,7 @@ type changeView struct {
 var _ ChangeView = (*changeView)(nil)
 
 // EncodeBinary implements io.Serializable interface.
-func (c changeView) EncodeBinary(w *io.BinWriter) {
+func (c changeView) EncodeBinary(w io.BinWriterInterface) {
 	w.WriteU32LE(c.timestamp)
 }
 

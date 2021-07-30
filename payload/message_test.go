@@ -203,8 +203,8 @@ func TestMessageType_String(t *testing.T) {
 
 func testEncodeDecode(t *testing.T, expected, actual io.Serializable) {
 	w := io.NewBufBinWriter()
-	expected.EncodeBinary(w.BinWriter)
-	require.NoError(t, w.Err)
+	expected.EncodeBinary(w)
+	require.NoError(t, w.Error())
 
 	buf := w.Bytes()
 	r := io.NewBinReaderFromBuf(buf)

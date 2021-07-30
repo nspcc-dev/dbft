@@ -46,8 +46,8 @@ func TestNeoBlock_Setters(t *testing.T) {
 
 	t.Run("marshal block", func(t *testing.T) {
 		w := io.NewBufBinWriter()
-		b.EncodeBinary(w.BinWriter)
-		require.NoError(t, w.Err)
+		b.EncodeBinary(w)
+		require.NoError(t, w.Error())
 
 		r := io.NewBinReaderFromBuf(w.Bytes())
 		newb := new(neoBlock)
