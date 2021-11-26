@@ -68,6 +68,7 @@ type Context struct {
 
 	lastBlockTime  time.Time
 	lastBlockIndex uint32
+	lastBlockView  byte
 }
 
 // N returns total number of validators.
