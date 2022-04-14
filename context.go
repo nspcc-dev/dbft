@@ -274,6 +274,9 @@ func (c *Context) CreateBlock() block.Block {
 // All hashable fields will be filled.
 func (c *Context) MakeHeader() block.Block {
 	if c.header == nil {
+		if !c.RequestSentOrReceived() {
+			return nil
+		}
 		c.header = c.Config.NewBlockFromContext(c)
 	}
 
