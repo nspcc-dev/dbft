@@ -515,7 +515,7 @@ func (d *DBFT) onRecoveryRequest(msg payload.ConsensusPayload) {
 		// TODO replace loop with a single if
 		shouldSend := false
 
-		for i := 1; i <= d.F(); i++ {
+		for i := 1; i <= d.F()+1; i++ {
 			ind := (int(msg.ValidatorIndex()) + i) % len(d.Validators)
 			if ind == d.MyIndex {
 				shouldSend = true
