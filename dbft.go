@@ -220,8 +220,8 @@ func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
 	if msg.Height() < d.BlockIndex {
 		d.Logger.Debug("ignoring old height", zap.Uint32("height", msg.Height()))
 		return
-	} else if msg.Height() > d.BlockIndex || (msg.Height() == d.BlockIndex &&
-		msg.ViewNumber() == d.ViewNumber+1 && msg.Type() != payload.RecoveryMessageType) {
+	} else if msg.Height() > d.BlockIndex ||
+		(msg.ViewNumber() > d.ViewNumber && msg.Type() != payload.RecoveryMessageType) {
 		d.Logger.Debug("caching message from future",
 			zap.Uint32("height", msg.Height()),
 			zap.Uint("view", uint(msg.ViewNumber())),
