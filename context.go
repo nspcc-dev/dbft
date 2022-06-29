@@ -185,7 +185,7 @@ func (c *Context) reset(view byte) {
 	} else {
 		for i := range c.Validators {
 			m := c.ChangeViewPayloads[i]
-			if m != nil && m.GetChangeView().NewViewNumber() < view {
+			if m != nil && m.GetChangeView().NewViewNumber() >= view {
 				c.LastChangeViewPayloads[i] = m
 			} else {
 				c.LastChangeViewPayloads[i] = nil
