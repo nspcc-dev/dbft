@@ -6,6 +6,11 @@ import (
 )
 
 func (d *DBFT) checkPrepare() {
+	if d.lastBlockIndex != d.BlockIndex || d.lastBlockView != d.ViewNumber {
+		d.lastBlockTime = d.Timer.Now()
+		d.lastBlockIndex = d.BlockIndex
+		d.lastBlockView = d.ViewNumber
+	}
 	if !d.hasAllTransactions() {
 		d.Logger.Debug("check prepare: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
 		return
@@ -58,8 +63,6 @@ func (d *DBFT) checkCommit() {
 		return
 	}
 
-	d.lastBlockIndex = d.BlockIndex
-	d.lastBlockTime = d.Timer.Now()
 	d.block = d.CreateBlock()
 	hash := d.block.Hash()
 
