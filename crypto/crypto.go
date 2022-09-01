@@ -17,9 +17,6 @@ type (
 
 	// PrivateKey is a generic private key interface used by dbft.
 	PrivateKey interface {
-		encoding.BinaryMarshaler
-		encoding.BinaryUnmarshaler
-
 		// Sign returns msg's signature and error on failure.
 		Sign(msg []byte) (sig []byte, err error)
 	}

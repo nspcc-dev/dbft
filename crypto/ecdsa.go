@@ -44,17 +44,6 @@ func NewECDSAPrivateKey(key *ecdsa.PrivateKey) PrivateKey {
 	}
 }
 
-// MarshalBinary implements encoding.BinaryMarshaler interface.
-func (e ECDSAPriv) MarshalBinary() (data []byte, err error) {
-	return crypto.MarshalPrivateKey(e.PrivateKey), nil
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler interface.
-func (e *ECDSAPriv) UnmarshalBinary(data []byte) (err error) {
-	e.PrivateKey, err = crypto.UnmarshalPrivateKey(data)
-	return err
-}
-
 // Sign signs message using P-256 curve.
 func (e ECDSAPriv) Sign(msg []byte) (sig []byte, err error) {
 	sig, err = crypto.Sign(e.PrivateKey, msg)
