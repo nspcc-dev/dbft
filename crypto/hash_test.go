@@ -53,6 +53,4 @@ func parseHex(b []byte, s string) {
 	}
 
 	copy(b, buf)
-
-	return
 }
