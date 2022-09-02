@@ -215,8 +215,9 @@ func (n *simNode) addTx(count int) {
 }
 
 // =============================
-// small transaction
+// Small transaction.
 // =============================
+
 type tx64 uint64
 
 var _ block.Transaction = (*tx64)(nil)
@@ -246,8 +247,9 @@ func (t *tx64) UnmarshalBinary(data []byte) error {
 }
 
 // =============================
-// memory pool for transactions
+// Memory pool for transactions.
 // =============================
+
 type memPool struct {
 	mtx   *sync.RWMutex
 	store map[util.Uint256]block.Transaction

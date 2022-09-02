@@ -10,12 +10,12 @@ import (
 )
 
 type (
-	// ECDSAPub is a wrapper over *ecsda.PublicKey
+	// ECDSAPub is a wrapper over *ecsda.PublicKey.
 	ECDSAPub struct {
 		*ecdsa.PublicKey
 	}
 
-	// ECDSAPriv is a wrapper over *ecdsa.PrivateKey
+	// ECDSAPriv is a wrapper over *ecdsa.PrivateKey.
 	ECDSAPriv struct {
 		*ecdsa.PrivateKey
 	}
