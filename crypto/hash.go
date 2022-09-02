@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 
 	"github.com/nspcc-dev/neo-go/pkg/util"
-	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/ripemd160" //nolint:staticcheck // SA1019: package golang.org/x/crypto/ripemd160 is deprecated
 )
 
 // Hash256 returns double sha-256 of data.
