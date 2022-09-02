@@ -36,7 +36,6 @@ type (
 		cluster  []*simNode
 		log      *zap.Logger
 
-		blocklist  []int
 		height     uint32
 		lastHash   util.Uint256
 		validators []crypto.PublicKey
