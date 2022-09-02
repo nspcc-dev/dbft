@@ -337,7 +337,7 @@ func initLogger() *zap.Logger {
 // initContext creates new context which will be cancelled by Ctrl+C.
 func initContext(d time.Duration) (ctx context.Context, cancel func()) {
 	// exit by Ctrl+C
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
