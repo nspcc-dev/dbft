@@ -10,12 +10,12 @@ import (
 )
 
 type (
-	// ECDSAPub is a wrapper over *ecsda.PublicKey
+	// ECDSAPub is a wrapper over *ecsda.PublicKey.
 	ECDSAPub struct {
 		*ecdsa.PublicKey
 	}
 
-	// ECDSAPriv is a wrapper over *ecdsa.PrivateKey
+	// ECDSAPriv is a wrapper over *ecdsa.PrivateKey.
 	ECDSAPriv struct {
 		*ecdsa.PrivateKey
 	}
@@ -42,17 +42,6 @@ func NewECDSAPrivateKey(key *ecdsa.PrivateKey) PrivateKey {
 	return &ECDSAPriv{
 		PrivateKey: key,
 	}
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler interface.
-func (e ECDSAPriv) MarshalBinary() (data []byte, err error) {
-	return crypto.MarshalPrivateKey(e.PrivateKey), nil
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler interface.
-func (e *ECDSAPriv) UnmarshalBinary(data []byte) (err error) {
-	e.PrivateKey, err = crypto.UnmarshalPrivateKey(data)
-	return err
 }
 
 // Sign signs message using P-256 curve.

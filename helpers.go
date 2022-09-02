@@ -2,7 +2,6 @@ package dbft
 
 import (
 	"github.com/nspcc-dev/dbft/payload"
-	"github.com/spaolacci/murmur3"
 )
 
 type (
@@ -19,10 +18,6 @@ type (
 		mail map[uint32]*inbox
 	}
 )
-
-func fetchID(data []byte) uint64 {
-	return murmur3.Sum64(data)
-}
 
 func newInbox() *inbox {
 	return &inbox{

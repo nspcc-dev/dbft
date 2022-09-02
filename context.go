@@ -283,7 +283,7 @@ func (c *Context) MakeHeader() block.Block {
 	return c.header
 }
 
-// NewBlockFromContext returns new block filled with given contexet
+// NewBlockFromContext returns new block filled with given contexet.
 func NewBlockFromContext(ctx *Context) block.Block {
 	if ctx.TransactionHashes == nil {
 		return nil

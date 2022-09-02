@@ -36,7 +36,6 @@ type (
 		cluster  []*simNode
 		log      *zap.Logger
 
-		blocklist  []int
 		height     uint32
 		lastHash   util.Uint256
 		validators []crypto.PublicKey
@@ -216,8 +215,9 @@ func (n *simNode) addTx(count int) {
 }
 
 // =============================
-// small transaction
+// Small transaction.
 // =============================
+
 type tx64 uint64
 
 var _ block.Transaction = (*tx64)(nil)
@@ -247,8 +247,9 @@ func (t *tx64) UnmarshalBinary(data []byte) error {
 }
 
 // =============================
-// memory pool for transactions
+// Memory pool for transactions.
 // =============================
+
 type memPool struct {
 	mtx   *sync.RWMutex
 	store map[util.Uint256]block.Transaction
@@ -338,7 +339,7 @@ func initLogger() *zap.Logger {
 // initContext creates new context which will be cancelled by Ctrl+C.
 func initContext(d time.Duration) (ctx context.Context, cancel func()) {
 	// exit by Ctrl+C
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
