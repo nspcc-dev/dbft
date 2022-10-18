@@ -66,6 +66,8 @@ type Context struct {
 	// if this node never heard from validator i, LastSeenMessage[i] will be -1.
 	LastSeenMessage []*timer.HV
 
+	viewChangePending bool
+
 	lastBlockTime  time.Time
 	lastBlockIndex uint32
 }
@@ -197,6 +199,7 @@ func (c *Context) reset(view byte) {
 
 	c.block = nil
 	c.header = nil
+	c.viewChangePending = false
 
 	n := len(c.Validators)
 	c.ChangeViewPayloads = make([]payload.ConsensusPayload, n)

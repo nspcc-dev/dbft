@@ -67,6 +67,7 @@ func (d *DBFT) sendChangeView(reason payload.ChangeViewReason) {
 
 	if reason == payload.CVTimeout && nc+nf > d.F() {
 		d.Logger.Info("skip change view", zap.Int("nc", nc), zap.Int("nf", nf))
+		d.viewChangePending = true
 		d.sendRecoveryRequest()
 
 		return
