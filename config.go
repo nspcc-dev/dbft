@@ -34,6 +34,9 @@ type Config struct {
 	// RequestTx is a callback which is called when transaction contained
 	// in current block can't be found in memory pool.
 	RequestTx func(h ...util.Uint256)
+	// StopTxFlow is a callback which is called when the process no longer needs
+	// any transactions.
+	StopTxFlow func()
 	// GetTx returns a transaction from memory pool.
 	GetTx func(h util.Uint256) block.Transaction
 	// GetVerified returns a slice of verified transactions
@@ -97,6 +100,7 @@ func defaultConfig() *Config {
 		GetKeyPair:          nil,
 		NewBlockFromContext: NewBlockFromContext,
 		RequestTx:           func(h ...util.Uint256) {},
+		StopTxFlow:          func() {},
 		GetTx:               func(h util.Uint256) block.Transaction { return nil },
 		GetVerified:         func() []block.Transaction { return make([]block.Transaction, 0) },
 		VerifyBlock:         func(b block.Block) bool { return true },
@@ -205,6 +209,13 @@ func WithNewBlockFromContext(f func(ctx *Context) block.Block) Option {
 func WithRequestTx(f func(h ...util.Uint256)) Option {
 	return func(cfg *Config) {
 		cfg.RequestTx = f
+	}
+}
+
+// WithStopTxFlow sets StopTxFlow.
+func WithStopTxFlow(f func()) Option {
+	return func(cfg *Config) {
+		cfg.StopTxFlow = f
 	}
 }
 

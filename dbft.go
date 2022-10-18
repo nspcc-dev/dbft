@@ -102,6 +102,7 @@ func (d *DBFT) InitializeConsensus(view byte) {
 		logMsg = "changing dbft view"
 	}
 
+	d.StopTxFlow()
 	d.Logger.Info(logMsg,
 		zap.Uint32("height", d.BlockIndex),
 		zap.Uint("view", uint(view)),
