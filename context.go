@@ -73,6 +73,8 @@ type Context[H Hash] struct {
 	// If this node never heard a thing from validator i, LastSeenMessage[i] will be nil.
 	LastSeenMessage []*HeightView
 
+	viewChangePending bool
+
 	lastBlockTimestamp uint64    // ns-precision timestamp from the last header (used for the next block timestamp calculations).
 	lastBlockTime      time.Time // Wall clock time of when the last block was first seen (used for timer adjustments).
 	lastBlockIndex     uint32
@@ -222,6 +224,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 
 	c.block = nil
 	c.header = nil
+	c.viewChangePending = false
 
 	n := len(c.Validators)
 	c.ChangeViewPayloads = make([]ConsensusPayload[H], n)

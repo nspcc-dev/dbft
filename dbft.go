@@ -262,6 +262,9 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 	default:
 		d.Logger.DPanic("wrong message type")
 	}
+	if d.viewChangePending && (d.CountCommitted()+d.CountFailed() <= d.F()) {
+		d.sendChangeView(payload.CVTimeout)
+	}
 }
 
 // start performs initial operations and returns messages to be sent.
