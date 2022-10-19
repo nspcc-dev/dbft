@@ -46,7 +46,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 		s.currHeight = 0
 		service := New(s.getOptions()...)
 
-		service.Start()
+		service.Start(0)
 		require.Nil(t, s.tryRecv())
 	})
 
@@ -54,7 +54,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 		s.currHeight = 1
 		service := New(s.getOptions()...)
 
-		service.Start()
+		service.Start(0)
 		p := s.tryRecv()
 		require.NotNil(t, p)
 		require.Equal(t, payload.PrepareRequestType, p.Type())
@@ -93,7 +93,7 @@ func TestDBFT_SingleNode(t *testing.T) {
 	s.currHeight = 2
 	service := New(s.getOptions()...)
 
-	service.Start()
+	service.Start(0)
 	p := s.tryRecv()
 	require.NotNil(t, p)
 	require.Equal(t, payload.PrepareRequestType, p.Type())
@@ -135,7 +135,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 		p := s.getPrepareRequest(5, txs[0].Hash())
 
-		service.Start()
+		service.Start(0)
 		service.OnReceive(p)
 
 		resp := s.tryRecv()
@@ -164,7 +164,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		service := New(s.getOptions()...)
 		txs := []testTx{10}
 
-		service.Start()
+		service.Start(0)
 
 		for i := range service.LastSeenMessage {
 			service.LastSeenMessage[i] = &timer.HV{Height: s.currHeight + 1}
@@ -193,7 +193,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		txs := []testTx{1, 2}
 		s.pool.Add(txs[0])
 
-		service.Start()
+		service.Start(0)
 
 		t.Run("wrong primary index", func(t *testing.T) {
 			p := s.getPrepareRequest(4, txs[0].Hash())
@@ -239,7 +239,7 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 	s.currHeight = 1
 
 	srv := New(s.getOptions()...)
-	srv.Start()
+	srv.Start(0)
 	require.Nil(t, s.tryRecv())
 
 	tx := testTx(42)
@@ -259,7 +259,7 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 	}
 	s1.pool.Add(tx)
 	srv1 := New(s1.getOptions()...)
-	srv1.Start()
+	srv1.Start(0)
 	srv1.OnReceive(req)
 	srv1.OnReceive(s1.getPrepareResponse(1, req.Hash()))
 	srv1.OnReceive(s1.getPrepareResponse(3, req.Hash()))
@@ -281,7 +281,7 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 	t.Run("send commit after enough responses", func(t *testing.T) {
 		s.currHeight = 1
 		service := New(s.getOptions()...)
-		service.Start()
+		service.Start(0)
 
 		req := s.tryRecv()
 		require.NotNil(t, req)
@@ -341,7 +341,7 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 	t.Run("send recovery message", func(t *testing.T) {
 		s.currHeight = 1
 		service := New(s.getOptions()...)
-		service.Start()
+		service.Start(0)
 
 		req := s.tryRecv()
 		require.NotNil(t, req)
@@ -363,7 +363,7 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 
 		other := s.copyWithIndex(3)
 		srv2 := New(other.getOptions()...)
-		srv2.Start()
+		srv2.Start(0)
 		srv2.OnReceive(rm)
 
 		r2 := other.tryRecv()
@@ -386,7 +386,7 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 	t.Run("change view correctly", func(t *testing.T) {
 		s.currHeight = 6
 		service := New(s.getOptions()...)
-		service.Start()
+		service.Start(0)
 
 		resp := s.getChangeView(1, 1)
 		service.OnReceive(resp)
