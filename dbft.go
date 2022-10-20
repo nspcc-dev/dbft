@@ -25,7 +25,7 @@ type (
 
 	// Service is an interface for dBFT consensus.
 	Service interface {
-		Start()
+		Start(uint64)
 		OnTransaction(block.Transaction)
 		OnReceive(payload.ConsensusPayload)
 		OnTimeout(timer.HV)
@@ -75,16 +75,17 @@ func (d *DBFT) addTransaction(tx block.Transaction) {
 	}
 }
 
-// Start initializes dBFT instance and starts protocol if node is primary.
-func (d *DBFT) Start() {
+// Start initializes dBFT instance and starts protocol if node is primary. It
+// accepts a timestamp of the previous block.
+func (d *DBFT) Start(ts uint64) {
 	d.cache = newCache()
-	d.InitializeConsensus(0)
+	d.InitializeConsensus(0, ts)
 	d.start()
 }
 
 // InitializeConsensus initializes dBFT instance.
-func (d *DBFT) InitializeConsensus(view byte) {
-	d.reset(view)
+func (d *DBFT) InitializeConsensus(view byte, ts uint64) {
+	d.reset(view, ts)
 
 	var role string
 

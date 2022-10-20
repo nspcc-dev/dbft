@@ -88,7 +88,7 @@ func main() {
 
 // Run implements simple event loop.
 func (n *simNode) Run(ctx context.Context) {
-	n.d.Start()
+	n.d.Start(0)
 
 	for {
 		select {

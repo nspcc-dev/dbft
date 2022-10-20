@@ -66,8 +66,9 @@ type Context struct {
 	// if this node never heard from validator i, LastSeenMessage[i] will be -1.
 	LastSeenMessage []*timer.HV
 
-	lastBlockTime  time.Time
-	lastBlockIndex uint32
+	lastBlockTimestamp uint64    // ns-precision timestamp from the last header (used for the next block timestamp calculations).
+	lastBlockTime      time.Time // Wall clock time of when the last block was first seen (used for timer adjustments).
+	lastBlockIndex     uint32
 }
 
 // N returns total number of validators.
@@ -169,8 +170,10 @@ func (c *Context) MoreThanFNodesCommittedOrLost() bool {
 	return c.CountCommitted()+c.CountFailed() > c.F()
 }
 
-func (c *Context) reset(view byte) {
+func (c *Context) reset(view byte, ts uint64) {
 	c.MyIndex = -1
+	c.lastBlockTimestamp = ts
+
 	if view == 0 {
 		c.PrevHash = c.Config.CurrentBlockHash()
 		c.BlockIndex = c.Config.CurrentHeight() + 1
@@ -238,10 +241,9 @@ func (c *Context) Fill() {
 	validators := c.Config.GetValidators(txx...)
 	c.NextConsensus = c.Config.GetConsensusAddress(validators...)
 
-	if now := c.getTimestamp(); now > c.Timestamp+c.Config.TimestampIncrement {
+	c.Timestamp = c.lastBlockTimestamp + c.Config.TimestampIncrement
+	if now := c.getTimestamp(); now > c.Timestamp {
 		c.Timestamp = now
-	} else {
-		c.Timestamp += c.Config.TimestampIncrement
 	}
 }
 

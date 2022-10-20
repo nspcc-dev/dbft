@@ -72,7 +72,7 @@ func (d *DBFT) checkCommit() {
 
 	d.ProcessBlock(d.block)
 
-	d.InitializeConsensus(0)
+	d.InitializeConsensus(0, d.Timestamp)
 }
 
 func (d *DBFT) checkChangeView(view byte) {
@@ -99,5 +99,5 @@ func (d *DBFT) checkChangeView(view byte) {
 		}
 	}
 
-	d.InitializeConsensus(view)
+	d.InitializeConsensus(view, d.lastBlockTimestamp)
 }
