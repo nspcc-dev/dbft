@@ -2,7 +2,8 @@
 [![Report](https://goreportcard.com/badge/github.com/nspcc-dev/dbft)](https://goreportcard.com/report/github.com/nspcc-dev/dbft)
 
 # DBFT
-This repo contains Go implementation of the dBFT 2.0 consensus algorithm.
+This repo contains Go implementation of the dBFT 2.0 consensus algorithm and its models
+written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html) language.
 
 ## Design and structure
 1. All control flow is done in main package. Most of the code which communicates with external
@@ -23,6 +24,9 @@ own payloads in order to sign and verify messages.
 5. `timer` contains default time provider. It should make it easier to write tests
 concerning dBFT's time depending behaviour.
 6. `simulation` contains an example of dBFT's usage with 6-node consensus. 
+7. `formal-models` contains the set of dBFT's models written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html)
+   language and instructions on how to run and check them. Please, refer to the [README](./formal-models/README.md)
+   for more details.
 
 ## Usage
 A client of the library must implement its own event loop.
