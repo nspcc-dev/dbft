@@ -1,4 +1,4 @@
-## dBFT formal models
+# dBFT formal models
 
 This section contains a set of dBFT's formal specifications written in
 [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html) language. The models
@@ -112,6 +112,250 @@ configuration:
 * [TLA⁺ specification](./dbftMultipool/dbftMultipool.tla)
 * [TLC Model Checker configuration](./dbftMultipool/dbftMultipool___AllGoodModel.launch)
 
+## Proposed dBFT 2.1 models
+
+Based on the liveness locks scenarios found by the TLC model checker in the
+[basic dBFT 2.0 model](#basic-dbft-20-model) we've developed two extensions of
+dBFT 2.0 protocol that allow to avoid the liveness lock problem and to preserve
+the safety properties of the algorithm. The extensions currently don't have
+any code-level implementation and presented as a TLA⁺ specifications ready to be
+reviewed and discussed. The improved protocol presented in the extensions will
+be referred below as dBFT 2.1.
+
+We've checked both dBFT 2.1 models with the TLC Model Checker against the same
+set of launch configurations that was used to reveal the liveness problems of the
+[basic dBFT 2.0 model](#basic-dbft-20-model). The improved models have larger
+set of states, thus, the TLC Model Checker wasn't able to finish the liveness
+requirements checks for *all* possible states. However, the checks have passed for
+a state graph diameter that was large enough to believe the presented models
+solve the dBFT 2.0 liveness lock problems.
+
+### Common `Commit` message improvement note
+
+Here and below we assume that `Commit` messages should bear preparation hashes
+from all nodes that have sent the preparation message (>= `M` but not including
+a whole `PrepareRequest`). This quickly synchronizes nodes still at the preparation
+stage when someone else collects enough preparations. It at the same time prevents
+malicious/byzantine nodes from sending spoofed `Commit` messages. The `Commit`
+message size becomes a little bigger, but since it's just hashes it still fits
+into a single packet in the vast majority of the cases, so it doesn't really matter.
+
+### dBFT 2.1 stages-based model
+
+The basic idea of this model is to split the consensus process into three subsequent
+stages marked as `I`, `II` and `III` at the scheme. To perform a transition between
+two subsequent stages each consensus node should wait for a set of messages from
+at least `M` consensus nodes to be received so that it's possible to complete a full
+picture of the neighbours' decisions in the current consensus round. In other words,
+no transition can happen unless we have `M` number of messages from the subsequent round,
+timers are only set up after we have this number of messages, just to wait for
+(potentially) a whole set of them. At the same time, each of the stages has
+its own `ChangeView[1,2,3]` message to exit to the next consensus round (view) if
+something goes wrong in the current one and there's definitely no ability to
+continue consensus process in the current view. Below there's a short description
+of each stage. Please, refer to the model scheme and specification for further
+details.
+
+#### Stage I
+
+Once initialized, consensus node has two ways:
+1. Send its `PrepareRequest`/`PrepareResponse` message (and transmit to the
+  `prepareSent` state).
+2. Decide to go to the next view on timeout or any other valid reason (like
+  transaction missing in the node's mempool or wrong proposal) via sending
+  `ChangeView1` message (and transmit to the `cv1` state).
+
+This scheme is quite similar to the basic dBFT 2.0 model except the new type of
+`ChangeView` message. After that the node enters stage `I` and waits for consensus
+messages of stage `I` (`PrepareRequest` or `PrepareResponse` or `ChangeView1`)
+from at least `M` neighbours which is needed to decide about the next actions.
+The set of received messages can be arranged in the following way:
+
+* `M` messages of `ChangeView1` type denote that `M` nodes have decided to change
+  their view directly after initialization due to invalid/missing `PrepareRequest`
+  which leads to immediate view changing. This is a "fail fast" route that is the
+  same as with dBFT 2.0 for the widespread case of missing primary. No additional
+  delay is added, everything works as usual.
+* `M` preparation messages (of type `PrepareRequest` or `PrepareResponse`) with
+  missing `ChangeView3` denote that the majority of nodes have decided to commit which
+  denotes the safe transition to stage `II` can be performed and `Commit` message
+  can safely be sent even if there's `ChangeView1` message in the network. Notice
+  that `ChangeView3` check is just a protection against node seriously lagging
+  behind.
+* `M` messages each of the type `PrepareRequest` or `PrepareResponse` or `ChangeView1`
+  where at least one message is of the type `ChangeView1` denote that at least `M`
+  nodes have reached the stage `I` and the node can safely take further steps.
+  The additional `| Commit | ≤ F ∪ | CV3 | > 0` condition requires the majority of
+  nodes not to have the `Commit` message to be sent so that it's still possible to
+  collect enough `ChangeView[2,3]` messages to change the view in further stages.
+  If so, then the safe transition to stage `II` can be performed and `ChangeView2`
+  message can safely be sent.
+
+#### Stage II
+
+Once the node has `Commit` or `ChangeView2` message sent, it enters the stage `II`
+of the consensus process and waits for at least `M` messages of stage `II`
+(`Commit` or `ChangeView2`) to perform the transition to the next stage. The set
+of accepted messages can be arranged in the following way:
+
+* `M` messages of `ChangeView2` type denote that `M` nodes have decided to change
+  their view directly after entering the stage `II` due to timeout while waiting
+  for the `Commit` messages which leads to immediate view changing.
+* `M` messages of type `Commit` denote that the majority of nodes have decided to
+  commit which denotes the block can be accepted immediately without entering the
+  stage `III`. Notice that this is the regular flow of normal dBFT 2.0 consensus,
+  it also hasn't been changed and proceeds the way it was before.
+* `M` messages each of the type `Commit` or `ChangeView2` where not more than `F`
+  messages are of the type `Commit` denotes that the majority of nodes decided to
+  change their view after entering the stage `II` and there's not enough `Commit`
+  messages to create the block (and produce the fork), thus, the safe transition
+  to stage `III` can be performed and `ChangeView3` message can safely be sent
+  even if there's `Commit` message in the network.
+
+In addition, the direct transition from `cv2` state to the `commitSent` state is
+added in case if it's clear that there's more than `F` nodes have decided to
+commit and no `ChangeView3` message has been received which means that it's possible
+to produce block in the current view. This path handles a corner case of missing
+stage `I` messages, in fact, because `Commit` messages prove that there are at
+least `M` preparation messages exist, but the node went `cv2` path just because
+it missed some of them.
+
+#### Stage III
+
+Unlike the basic dBFT 2.0 model where consensus node locks on the commit phase,
+stage `III` gives the ability to escape from the commit phase via collecting the set
+of `M` `ChangeView3` messages. This phase is reachable as soon as at least `M` nodes
+has reached the phase `II` (have `ChangeView2` or `Commit` messages sent) and if
+there's not enough `Commit` messages (<=`F`) to accept the block. This stage is
+added to avoid situation when the node is being locked on the `commitSent` state
+whereas the rest of the nodes (>`F`) is willing to go to the next view.
+
+Here's the scheme of transitions between consensus node states for the improved
+dBFT 2.1 stages-based model:
+
+![dBFT 2.1stages-based model](./.github/dbft2.1_threeStagedCV.png)
+
+Here you can find the specification file and the basic TLC Model Checker launch
+configuration:
+
+* [TLA⁺ specification](./dbft2.1_threeStagedCV/dbftCV3.tla)
+* [TLC Model Checker configuration](./dbft2.1_threeStagedCV/dbftCV3___AllGoodModel.launch)
+
+### dBFT 2.1 model with the centralized view changes
+
+The improvement which was taken as a base for this model is taken from the pBFT
+algorithm and is as follows.
+The consensus process is split into two stages with the following meaning:
+
+* Stage `I` holds the node states from which it's allowed to transmit to the subsequent
+  view under assumption that the *new* proposal will be generated (as the basic dBFT 2.0
+  model does).
+* Stage `II` holds the node states from which it's allowed to perform view change
+  *preserving* the proposal from the previous view.
+
+Another vital difference from the basic dBFT 2.0 model is that view changes are
+being performed by the node on the `DoCV[1,2]` command (consensus message) sent by the
+leader of the target view specified via `DoCV[1,2]` parameters. Aside from the target view
+parameter, `DoCV[1,2]` message contains the set of all related pre-received consensus messages
+so that the receivers of `DoCV[1,2]` are able to check its validness before the subsequent
+view change.
+
+Below presented the short description of the proposed consensus process. Please, refer to the
+model scheme and specification for further details.
+
+#### Stage I
+
+Once initialized at view `v`, the consensus node has two ways:
+
+1. Send its `PrepareRequest`/`PrepareResponse` message (and transmit to the
+  `prepareSent` state).
+2. Decide to go to the next view `v+1` on timeout or any other valid reason like
+  transaction missing in the node's mempool via sending `ChangeView1(v+1)` message
+  (and transmitting to the `cv1 to v'=v+1` state).
+
+After that the node enters stage `I` and perform as follows:
+
+* If the node has its `PrepareRequest` or `PrepareResponse` sent:
+    * If at least `M` preparation messages (including its own) collected, then
+      it's clear that the majority has proposal for view `v` being accepted as
+      valid and the node can safely send the `Commit` message and transmit to the
+      phase `II` (`commitSent` state).
+    * If there's not enough preparation payloads received from the neighbours for a
+      long time, then the node is allowed to transmit to the stage `II` via sending
+      its `ChangeView2` message (and changing its state to the `cv2 to v'=v+1`). It
+      denotes the node's desire to change view to the next one with the current proposal
+      to be preserved.
+* If the node entered the `cv1 to v'=v+1` state:
+    * If there's a majority (>=`M`) of `ChangeView1(v+1)` messages and the node is
+      primary in the view `v+1` then it should send the signal (`DoCV1(v+1)` message)
+      to the rest of the group to change their view to `v+1` with the new proposal
+      generated. The rest of the group (backup on `v+1` view that have sent their
+      `ChangeVeiew1(v+1)` messages) should change their view on `DoCV1(v+1)` receiving.
+    * If there's a majority (>=`M`) of `ChangeView1(v+1)` messages collected, but
+      `DoCV1(v+1)` is missing for a long time, then the node is able to "skip" view
+      `v+1` and send the `ChangeView1(v+2)` message hoping that the primary of `v+2`
+      will be faster enough to send the `DoCV1(v+2)` signal. The process can be repeated
+      on timeout for view `v+3`, etc.
+    * If there's more than `F` nodes that have sent their preparation messages
+      (and, consequently, announced their desire to transmit to the stage `II` of the
+      current view rather than to change view), then it's clear that it won't be more than `F` messages
+      of type `ChangeView1` to perform transition to the next view from the stage `II`.
+      Thus, the node is allowed to send its `ChangeView2` message (and change its
+      state to the `cv2 to v'=v+1`). Such situation may happen if the node haven't
+      proposal received in time (consider valid proposal).
+
+#### Stage II
+
+Once the node has entered the stage `II`, the proposal of the current round is
+considered to be valid. Depending on the node's state the following decisions are
+possible:
+
+* If the node has its `Commit` sent and is in the `commitSent` state:
+    * If the majority (>=`M`) of the `Commit` messages has been received, then the
+      block may be safely accepted for the current proposal.
+    * If there's not enough `Commit` messages for a long time, then it's legal to
+      send the `ChangeView2(v+1)` message, transmit to the `cv2 to v'=v+1` state
+      and decide to go to the next view `v+1` preserving the current proposal
+      and hoping that it would be possible to collect enough `Commit` messages
+      for it in the view `v+1`.
+* If the node is in the `cv2 to v'=v+1` state then:
+    * If there's a majority (>=`M`) of `ChangeView2(v+1)` messages and the node is
+      primary in the view `v+1` then it should send the signal (`DoCV2(v+1)` message)
+      to the rest of the group to change their view to `v+1` with the old proposal of view `v`
+      preserved. The rest of the group (backup on `v+1` view that have sent their
+      `ChangeVeiew2(v+1)` messages) should change their view on `DoCV2(v+1)` receiving.
+    * If there's a majority (>=`M`) of `ChangeView2(v+1)` messages collected, but
+      `DoCV2(v+1)` is missing for a long time, then the node is able to "skip" view
+      `v+1` and send the `ChangeView2(v+2)` message hoping that the primary of `v+2`
+      will be faster enough to send the `DoCV2(v+2)` signal. The process can be repeated
+      on timeout for view `v+3`, etc.
+    * Finally, if the node receives at least `M` messages from the stage `I` at max
+      `F` of which are preparations (the blue dotted arrow from `cv2 to v'=v+1` to
+      `cv1 to v'=v+1` state), it has the ability to go back to the `cv1` state to start
+      the new consensus round with the new proposal. This case is kind of special,
+      it allows to escape from the deadlock situation when the node is locked on `cv2`
+      state unable to perform any further steps whereas the rest of the network are
+      waiting in the `cv1` state. Consider the case of four-nodes network where the
+      first node is permanently "dead", the primary have sent its `PrepareRequest`
+      and went to the `cv2` state on the timeout and the rest two nodes are waiting
+      in the `cv1` state not able to move further.
+      
+It should be noted that "preserving the proposal of view `v` in view `v+1`" means
+that the primary of view `v+1` broadcasts the `PrepareRequest` message at view `v+1`
+that contains the same set of block's fields (transactions, timestamp, primary, etc) as
+the `PrepareRequest` proposed in the view `v` has.
+
+Here's the scheme of transitions between consensus node states for the improved
+dBFT 2.1 model with the centralized view changes process:
+
+![dBFT 2.1 model with the centralized view changes](./.github/dbft2.1_centralizedCV.png)
+
+Here you can find the specification file and the basic TLC Model Checker launch
+configuration:
+
+* [TLA⁺ specification](./dbft2.1_centralizedCV/dbftCentralizedCV.tla)
+* [TLC Model Checker configuration](./dbft2.1_centralizedCV/dbftCentralizedCV___AllGoodModel.launch)
+
 ## How to run/check the TLA⁺ specification
 
 ### Prerequirements
@@ -137,5 +381,14 @@ configuration:
 5. Open the `Model Overview` window in the TLA⁺ Toolbox  and check that behaviour
    specification, declared constants, invariants and properties of the model are
    filled in with some values.
-6. Press `Run TLC on the model` bottom to start the model checking process and
+6. Press `Run TLC on the model` button to start the model checking process and
    explore the progress in the `Model Checkng Results` window.
+
+### Model checking note
+
+It should be noted that all TLA⁺ specifications provided in this repo can be perfectly checked
+with `MaxView` model constraint set to be 1 for the four-nodes network scenario. Larger
+`MaxView` values produces too many behaviours to be checked, so TLC Model Checker is likely
+to fail with OOM during the checking process. However, `MaxView` set to be 1 is enough to check
+the model liveness properties for the four-nodes scenario as there are two views to be checked
+in this case (0 and 1).
