@@ -1,1 +1,4 @@
 /vendor
+
+# TLC Model Checker files
+formal-models/*/*.toolbox/
