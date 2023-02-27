@@ -185,7 +185,7 @@ RMAcceptBlock(r) ==
 
 \* RMSendChangeView describes node r sending ChangeView message on timeout.
 RMSendChangeView(r) ==
-  /\ \/ rmState[r].type = "initialized"
+  /\ \/ (rmState[r].type = "initialized" /\ \neg IsPrimary(r))
      \/ rmState[r].type = "prepareSent"
   /\ LET cv == [type |-> "ChangeView", rm |-> r, view |-> rmState[r].view]
      IN /\ cv \notin msgs
@@ -374,6 +374,7 @@ THEOREM Spec => [](TypeOK /\ InvTwoBlocksAccepted /\ InvFaultNodesCount)
 
 =============================================================================
 \* Modification History
+\* Last modified Mon Feb 27 16:46:19 MSK 2023 by root
 \* Last modified Fri Feb 17 15:47:41 MSK 2023 by anna
 \* Last modified Sat Jan 21 01:26:16 MSK 2023 by rik
 \* Created Thu Dec 15 16:06:17 MSK 2022 by anna
