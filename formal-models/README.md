@@ -117,8 +117,8 @@ configuration:
 Based on the liveness locks scenarios found by the TLC model checker in the
 [basic dBFT 2.0 model](#basic-dbft-20-model) we've developed two extensions of
 dBFT 2.0 protocol that allow to avoid the liveness lock problem and to preserve
-the safety properties of the algorithm. The extensions currently doesn't have
-the code-level implementation and presented as a TLA⁺ specifications ready to be
+the safety properties of the algorithm. The extensions currently don't have
+any code-level implementation and presented as a TLA⁺ specifications ready to be
 reviewed and discussed. The improved protocol presented in the extensions will
 be referred below as dBFT 2.1.
 
@@ -130,13 +130,26 @@ requirements checks for *all* possible states. However, the checks have passed f
 a state graph diameter that was large enough to believe the presented models
 solve the dBFT 2.0 liveness lock problems.
 
+### Common `Commit` message improvement note
+
+Here and below we assume that `Commit` messages should bear preparation hashes
+from all nodes that have sent the preparation message (>= `M` but not including
+a whole `PrepareRequest`). This quickly synchronizes nodes still at the preparation
+stage when someone else collects enough preparations. It at the same time prevents
+malicious/byzantine nodes from sending spoofed `Commit` messages. The `Commit`
+message size becomes a little bigger, but since it's just hashes it still fits
+into a single packet in the vast majority of the cases, so it doesn't really matter.
+
 ### dBFT 2.1 stages-based model
 
 The basic idea of this model is to split the consensus process into three subsequent
 stages marked as `I`, `II` and `III` at the scheme. To perform a transition between
-two subsequent stages each consensus node should wait for a certain set of messages
-to be received so that it's possible to gather a full picture of the neighbours'
-decisions in the current consensus round. At the same time, each of the stages has
+two subsequent stages each consensus node should wait for a set of messages from
+at least `M` consensus nodes to be received so that it's possible to complete a full
+picture of the neighbours' decisions in the current consensus round. In other words,
+no transition can happen unless we have `M` number of messages from the subsequent round,
+timers are only set up after we have this number of messages, just to wait for
+(potentially) a whole set of them. At the same time, each of the stages has
 its own `ChangeView[1,2,3]` message to exit to the next consensus round (view) if
 something goes wrong in the current one and there's definitely no ability to
 continue consensus process in the current view. Below there's a short description
@@ -148,9 +161,9 @@ details.
 Once initialized, consensus node has two ways:
 1. Send its `PrepareRequest`/`PrepareResponse` message (and transmit to the
   `prepareSent` state).
-2. Decide to go to the next view on timeout or any other valid reason like
-  transaction missing in the node's mempool via sending `ChangeView1` message
-  (and transmit to the `cv1` state).
+2. Decide to go to the next view on timeout or any other valid reason (like
+  transaction missing in the node's mempool or wrong proposal) via sending
+  `ChangeView1` message (and transmit to the `cv1` state).
 
 This scheme is quite similar to the basic dBFT 2.0 model except the new type of
 `ChangeView` message. After that the node enters stage `I` and waits for consensus
@@ -160,11 +173,15 @@ The set of received messages can be arranged in the following way:
 
 * `M` messages of `ChangeView1` type denote that `M` nodes have decided to change
   their view directly after initialization due to invalid/missing `PrepareRequest`
-  which leads to immediate view changing.
+  which leads to immediate view changing. This is a "fail fast" route that is the
+  same as with dBFT 2.0 for the widespread case of missing primary. No additional
+  delay is added, everything works as usual.
 * `M` preparation messages (of type `PrepareRequest` or `PrepareResponse`) with
-  no `ChangeView3` denote that the majority of nodes have decided to commit which
+  missing `ChangeView3` denote that the majority of nodes have decided to commit which
   denotes the safe transition to stage `II` can be performed and `Commit` message
-  can safely be sent even if there's `ChangeView1` message in the network.
+  can safely be sent even if there's `ChangeView1` message in the network. Notice
+  that `ChangeView3` check is just a protection against node seriously lagging
+  behind.
 * `M` messages each of the type `PrepareRequest` or `PrepareResponse` or `ChangeView1`
   where at least one message is of the type `ChangeView1` denote that at least `M`
   nodes have reached the stage `I` and the node can safely take further steps.
@@ -186,7 +203,8 @@ of accepted messages can be arranged in the following way:
   for the `Commit` messages which leads to immediate view changing.
 * `M` messages of type `Commit` denote that the majority of nodes have decided to
   commit which denotes the block can be accepted immediately without entering the
-  stage `III`.
+  stage `III`. Notice that this is the regular flow of normal dBFT 2.0 consensus,
+  it also hasn't been changed and proceeds the way it was before.
 * `M` messages each of the type `Commit` or `ChangeView2` where not more than `F`
   messages are of the type `Commit` denotes that the majority of nodes decided to
   change their view after entering the stage `II` and there's not enough `Commit`
@@ -197,7 +215,10 @@ of accepted messages can be arranged in the following way:
 In addition, the direct transition from `cv2` state to the `commitSent` state is
 added in case if it's clear that there's more than `F` nodes have decided to
 commit and no `ChangeView3` message has been received which means that it's possible
-to produce block in the current view.
+to produce block in the current view. This path handles a corner case of missing
+stage `I` messages, in fact, because `Commit` messages prove that there are at
+least `M` preparation messages exist, but the node went `cv2` path just because
+it missed some of them.
 
 #### Stage III
 
@@ -206,8 +227,8 @@ stage `III` gives the ability to escape from the commit phase via collecting the
 of `M` `ChangeView3` messages. This phase is reachable as soon as at least `M` nodes
 has reached the phase `II` (have `ChangeView2` or `Commit` messages sent) and if
 there's not enough `Commit` messages (<=`F`) to accept the block. This stage is
-added to avoid situation when the node is being locked on the commit whereas the
-majority (>`F`) is willing to go to the next view.
+added to avoid situation when the node is being locked on the `commitSent` state
+whereas the rest of the nodes (>`F`) is willing to go to the next view.
 
 Here's the scheme of transitions between consensus node states for the improved
 dBFT 2.1 stages-based model:
@@ -227,10 +248,10 @@ algorithm and is as follows.
 The consensus process is split into two stages with the following meaning:
 
 * Stage `I` holds the node states from which it's allowed to transmit to the subsequent
-  view under assumption that the new proposal will be generated (as the basic dBFT 2.0
+  view under assumption that the *new* proposal will be generated (as the basic dBFT 2.0
   model does).
 * Stage `II` holds the node states from which it's allowed to perform view change
-  preserving the proposal from the previous view.
+  *preserving* the proposal from the previous view.
 
 Another vital difference from the basic dBFT 2.0 model is that view changes are
 being performed by the node on the `DoCV[1,2]` command (consensus message) sent by the
@@ -346,5 +367,5 @@ configuration:
 5. Open the `Model Overview` window in the TLA⁺ Toolbox  and check that behaviour
    specification, declared constants, invariants and properties of the model are
    filled in with some values.
-6. Press `Run TLC on the model` bottom to start the model checking process and
+6. Press `Run TLC on the model` button to start the model checking process and
    explore the progress in the `Model Checkng Results` window.
