@@ -26,7 +26,7 @@
     <stringAttribute key="modelParameterActionConstraint" value=""/>
     <listAttribute key="modelParameterConstants">
         <listEntry value="RMFault;;{};0;0"/>
-        <listEntry value="MaxView;;2;0;0"/>
+        <listEntry value="MaxView;;1;0;0"/>
         <listEntry value="RMDead;;{};0;0"/>
         <listEntry value="RM;;{0, 1, 2, 3};0;0"/>
     </listAttribute>
