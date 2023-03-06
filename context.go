@@ -56,7 +56,12 @@ type Context struct {
 
 	// PreparationPayloads stores consensus Prepare* payloads for the current epoch.
 	PreparationPayloads []payload.ConsensusPayload
-	// CommitPayloads stores consensus Commit payloads for the current epoch.
+	// CommitPayloads stores consensus Commit payloads sent throughout all epochs. It
+	// is assumed that valid Commit payload can only be sent once by a single node per
+	// the whole set of consensus epochs for particular block. Invalid commit payloads
+	// are kicked off this list immediately (if PrepareRequest was received for the
+	// current round, so it's possible to verify Commit against it) or stored till
+	// the corresponding PrepareRequest receiving.
 	CommitPayloads []payload.ConsensusPayload
 	// ChangeViewPayloads stores consensus ChangeView payloads for the current epoch.
 	ChangeViewPayloads []payload.ConsensusPayload
@@ -101,7 +106,8 @@ func (c *Context) IsBackup() bool {
 // WatchOnly returns true iff node takes no active part in consensus.
 func (c *Context) WatchOnly() bool { return c.MyIndex < 0 || c.Config.WatchOnly() }
 
-// CountCommitted returns number of received Commit messages for the current epoch.
+// CountCommitted returns number of received Commit messages not only for the current
+// epoch but also for any other epoch.
 func (c *Context) CountCommitted() (count int) {
 	for i := range c.CommitPayloads {
 		if c.CommitPayloads[i] != nil {
@@ -135,7 +141,8 @@ func (c *Context) ResponseSent() bool {
 	return !c.WatchOnly() && c.PreparationPayloads[c.MyIndex] != nil
 }
 
-// CommitSent returns true iff Commit message was sent for the current epoch.
+// CommitSent returns true iff Commit message was sent for the current epoch
+// assuming that the node can't go further than current epoch after commit was sent.
 func (c *Context) CommitSent() bool {
 	return !c.WatchOnly() && c.CommitPayloads[c.MyIndex] != nil
 }
@@ -203,7 +210,9 @@ func (c *Context) reset(view byte, ts uint64) {
 
 	n := len(c.Validators)
 	c.ChangeViewPayloads = make([]payload.ConsensusPayload, n)
-	c.CommitPayloads = make([]payload.ConsensusPayload, n)
+	if view == 0 {
+		c.CommitPayloads = make([]payload.ConsensusPayload, n)
+	}
 	c.PreparationPayloads = make([]payload.ConsensusPayload, n)
 
 	c.Transactions = make(map[util.Uint256]block.Transaction)
