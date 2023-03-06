@@ -103,11 +103,19 @@ GetPrimary(view) == CHOOSE r \in RM : view % N = r
 GetNewView(oldView) == oldView + 1
 
 \* CountCommitted returns the number of nodes that have sent the Commit message
-\* in the current round (as the node r sees it).
-CountCommitted(r) == Cardinality({rm \in RM : Cardinality({msg \in msgs : msg.rm = rm /\ msg.type = "Commit" /\ msg.view = rmState[r].view}) /= 0})
+\* in the current round or in some other round.
+CountCommitted(r) == Cardinality({rm \in RM : Cardinality({msg \in msgs : msg.rm = rm /\ msg.type = "Commit"}) /= 0})
 
 \* MoreThanFNodesCommitted returns whether more than F nodes have been committed
 \* in the current round (as the node r sees it).
+\*
+\* IMPORTANT NOTE: we intentionally do not add the "lost" nodes calculation to the specification, and here's
+\* the reason: from the node's point of view we can't reliably check that some neighbour is completely
+\* out of the network. It is possible that the node doesn't receive consensus messages from some other member
+\* due to network delays. On the other hand, real nodes can go down at any time. The absence of the
+\* member's message doesn't mean that the member is out of the network, we never can be sure about
+\* that, thus, this information is unreliable and can't be trusted during the consensus process.
+\* What can be trusted is whether there's a Commit message from some member was received by the node.
 MoreThanFNodesCommitted(r) == CountCommitted(r) > F
 
 \* PrepareRequestSentOrReceived denotes whether there's a PrepareRequest
@@ -147,7 +155,7 @@ RMSendPrepareResponse(r) ==
      \* condition specifies only the thing that may happen given some particular set of enabling conditions.
      \* Thus, we've extended the NotAcceptingPayloadsDueToViewChanging condition to consider only MoreThanFNodesCommitted.
      \* It should be noted that the logic of MoreThanFNodesCommittedOrLost can't be reliable in detecting lost nodes
-     \* (even with neo-project/neo#2057), because real nodes can go down at any time.
+     \* (even with neo-project/neo#2057), because real nodes can go down at any time. See the comment above the MoreThanFNodesCommitted.
      \/ /\ rmState[r].type = "cv"
         /\ MoreThanFNodesCommitted(r)
   /\ \neg IsPrimary(r)
@@ -374,7 +382,7 @@ THEOREM Spec => [](TypeOK /\ InvTwoBlocksAccepted /\ InvFaultNodesCount)
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 27 16:46:19 MSK 2023 by root
+\* Last modified Mon Mar 06 15:36:57 MSK 2023 by root
 \* Last modified Fri Feb 17 15:47:41 MSK 2023 by anna
 \* Last modified Sat Jan 21 01:26:16 MSK 2023 by rik
 \* Created Thu Dec 15 16:06:17 MSK 2022 by anna
