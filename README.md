@@ -51,6 +51,10 @@ very easy to extend `PrepareRequest` to also include proposed transactions.
 2. NEO has the ability to change the list nodes which verify the block (they are called Validators). This is done through `GetValidators`
 callback which is called at the start of every epoch. In the simple case where validators are constant
 it can return the same value everytime it is called.
-3. `ProcessBlock` is a callback which is called synchronously everytime new block is accepted.
-It can or can not persist block but it MUST update all blockchain state
-so that other callbacks including `CurrentHeight` and `CurrentHash` return new values.
+3. `ProcessBlock` is a callback which is called synchronously every time new block is accepted.
+It can or can not persist block; it also may keep the blockchain state unchanged. dBFT will NOT
+be initialized at the next height by itself to collect the next block until the `InitializeConsensus`
+is called. In other words, it's the caller's responsibility to initialize dBFT at the next height even
+after block collection at the current height. It's also the caller's responsibility to update the
+blockchain state before the next height initialization so that other callbacks including
+`CurrentHeight` and `CurrentHash` return new values.

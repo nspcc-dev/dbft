@@ -72,7 +72,9 @@ func (d *DBFT) checkCommit() {
 
 	d.ProcessBlock(d.block)
 
-	d.InitializeConsensus(0, d.Timestamp)
+	// Do not initialize consensus process immediately. It's the caller's duty to
+	// start the new block acceptance process and call InitializeConsensus at the
+	// new height.
 }
 
 func (d *DBFT) checkChangeView(view byte) {
