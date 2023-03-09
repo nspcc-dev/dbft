@@ -70,6 +70,7 @@ func (d *DBFT) checkCommit() {
 		zap.Stringer("merkle", d.block.MerkleRoot()),
 		zap.Stringer("prev", d.block.PrevHash()))
 
+	d.blockProcessed = true
 	d.ProcessBlock(d.block)
 
 	// Do not initialize consensus process immediately. It's the caller's duty to

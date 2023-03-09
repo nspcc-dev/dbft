@@ -25,6 +25,11 @@ type Context struct {
 
 	block  block.Block
 	header block.Block
+	// blockProcessed denotes whether Config.ProcessBlock callback was called for the current
+	// height. If so, then no second call must happen. After new block is received by the user,
+	// dBFT stops any new transaction or messages processing as far as timeouts handling till
+	// the next call to InitializeConsensus.
+	blockProcessed bool
 
 	// BlockIndex is current block index.
 	BlockIndex uint32
@@ -140,8 +145,20 @@ func (c *Context) CommitSent() bool {
 	return !c.WatchOnly() && c.CommitPayloads[c.MyIndex] != nil
 }
 
-// BlockSent returns true iff block was already formed for the current epoch.
-func (c *Context) BlockSent() bool { return c.block != nil }
+// BlockSent returns true iff block was formed AND sent for the current height.
+// Once block is sent, the consensus stops new transactions and messages processing
+// as far as timeouts handling.
+//
+// Implementation note: the implementation of BlockSent differs from the C#'s one.
+// In C# algorithm they use ConsensusContext's Block.Transactions null check to define
+// whether block was formed, and the only place where the block can be formed is
+// in the ConsensusContext's CreateBlock function right after enough Commits receiving.
+// On the contrary, in our implementation we don't have access to the block's
+// Transactions field as far as we can't use block null check, because there are
+// several places where the call to CreateBlock happens (one of them is right after
+// PrepareRequest receiving). Thus, we have a separate Context.blockProcessed field
+// for the described purpose.
+func (c *Context) BlockSent() bool { return c.blockProcessed }
 
 // ViewChanging returns true iff node is in a process of changing view.
 func (c *Context) ViewChanging() bool {
@@ -185,6 +202,7 @@ func (c *Context) reset(view byte, ts uint64) {
 		if c.LastSeenMessage == nil {
 			c.LastSeenMessage = make([]*timer.HV, n)
 		}
+		c.blockProcessed = false
 	} else {
 		for i := range c.Validators {
 			m := c.ChangeViewPayloads[i]

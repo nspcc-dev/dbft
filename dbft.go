@@ -170,7 +170,7 @@ func (d *DBFT) OnTransaction(tx block.Transaction) {
 
 // OnTimeout advances state machine as if timeout was fired.
 func (d *DBFT) OnTimeout(hv timer.HV) {
-	if d.Context.WatchOnly() {
+	if d.Context.WatchOnly() || d.BlockSent() {
 		return
 	}
 
@@ -242,6 +242,11 @@ func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
 			Height: msg.Height(),
 			View:   msg.ViewNumber(),
 		}
+	}
+
+	if d.BlockSent() && msg.Type() != payload.RecoveryRequestType {
+		// We've already collected the block, only recovery request must be handled.
+		return
 	}
 
 	switch msg.Type() {
