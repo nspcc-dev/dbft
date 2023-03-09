@@ -367,7 +367,7 @@ func (d *DBFT) processMissingTx() {
 
 // createAndCheckBlock is a prepareRequest-level helper that creates and checks
 // the new proposed block, if it's fine it returns true, if something is wrong
-// with it it send a changeView request and returns false. It's only valid to
+// with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
 func (d *DBFT) createAndCheckBlock() bool {
 	txx := make([]block.Transaction, 0, len(d.TransactionHashes))
