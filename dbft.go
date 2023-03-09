@@ -490,6 +490,19 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 }
 
 func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
+	existing := d.CommitPayloads[msg.ValidatorIndex()]
+	if existing != nil {
+		if !existing.Hash().Equals(msg.Hash()) {
+			d.Logger.Warn("rejecting commit due to existing",
+				zap.Uint("validator", uint(msg.ValidatorIndex())),
+				zap.Uint("existing view", uint(existing.ViewNumber())),
+				zap.Uint("view", uint(msg.ViewNumber())),
+				zap.String("existing hash", existing.Hash().StringLE()),
+				zap.String("hash", msg.Hash().StringLE()),
+			)
+		}
+		return
+	}
 	if d.ViewNumber == msg.ViewNumber() {
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
