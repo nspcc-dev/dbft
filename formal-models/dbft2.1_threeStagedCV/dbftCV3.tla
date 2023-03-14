@@ -1,4 +1,4 @@
--------------------------------- MODULE dbft --------------------------------
+-------------------------------- MODULE dbftCV3 --------------------------------
 
 EXTENDS
   Integers,
@@ -79,13 +79,13 @@ ASSUME
 \* RMStates is a set of records where each record holds the node state and
 \* the node current view.
 RMStates == [
-              type: {"initialized", "prepareSent", "commitSent", "cv", "blockAccepted", "bad", "dead"},
+              type: {"initialized", "prepareSent", "commitSent", "blockAccepted", "cv1", "cv2", "cv3", "bad", "dead"},
               view : Nat
             ]
 
 \* Messages is a set of records where each record holds the message type,
 \* the message sender and sender's view by the moment when message was sent.
-Messages == [type : {"PrepareRequest", "PrepareResponse", "Commit", "ChangeView"}, rm : RM, view : Nat]
+Messages == [type : {"PrepareRequest", "PrepareResponse", "Commit", "ChangeView1", "ChangeView2", "ChangeView3"}, rm : RM, view : Nat]
 
 \* -------------- Useful operators --------------
 
@@ -101,22 +101,6 @@ GetPrimary(view) == CHOOSE r \in RM : view % N = r
 \* GetNewView returns new view number based on the previous node view value.
 \* Current specifications only allows to increment view.
 GetNewView(oldView) == oldView + 1
-
-\* CountCommitted returns the number of nodes that have sent the Commit message
-\* in the current round or in some other round.
-CountCommitted(r) == Cardinality({rm \in RM : Cardinality({msg \in msgs : msg.rm = rm /\ msg.type = "Commit"}) /= 0})
-
-\* MoreThanFNodesCommitted returns whether more than F nodes have been committed
-\* in the current round (as the node r sees it).
-\*
-\* IMPORTANT NOTE: we intentionally do not add the "lost" nodes calculation to the specification, and here's
-\* the reason: from the node's point of view we can't reliably check that some neighbour is completely
-\* out of the network. It is possible that the node doesn't receive consensus messages from some other member
-\* due to network delays. On the other hand, real nodes can go down at any time. The absence of the
-\* member's message doesn't mean that the member is out of the network, we never can be sure about
-\* that, thus, this information is unreliable and can't be trusted during the consensus process.
-\* What can be trusted is whether there's a Commit message from some member was received by the node.
-MoreThanFNodesCommitted(r) == CountCommitted(r) > F
 
 \* PrepareRequestSentOrReceived denotes whether there's a PrepareRequest
 \* message received from the current round's speaker (as the node r sees it).
@@ -143,39 +127,29 @@ RMSendPrepareRequest(r) ==
 \* This step assumes that PrepareRequest always contains valid transactions and
 \* signatures.
 RMSendPrepareResponse(r) ==
-  /\ \/ rmState[r].type = "initialized"
-     \* We do allow the transition from the "cv" state to the "prepareSent" or "commitSent" stage
-     \* as it is done in the code-level dBFT implementation by checking the NotAcceptingPayloadsDueToViewChanging
-     \* condition (see
-     \* https://github.com/nspcc-dev/dbft/blob/31c1bbdc74f2faa32ec9025062e3a4e2ccfd4214/dbft.go#L419
-     \* and
-     \* https://github.com/neo-project/neo-modules/blob/d00d90b9c27b3d0c3c57e9ca1f560a09975df241/src/DBFTPlugin/Consensus/ConsensusService.OnMessage.cs#L79).
-     \* However, we can't easily count the number of "lost" nodes in this specification to match precisely
-     \* the implementation. Moreover, we don't need it to be counted as the RMSendPrepareResponse enabling
-     \* condition specifies only the thing that may happen given some particular set of enabling conditions.
-     \* Thus, we've extended the NotAcceptingPayloadsDueToViewChanging condition to consider only MoreThanFNodesCommitted.
-     \* It should be noted that the logic of MoreThanFNodesCommittedOrLost can't be reliable in detecting lost nodes
-     \* (even with neo-project/neo#2057), because real nodes can go down at any time. See the comment above the MoreThanFNodesCommitted.
-     \/ /\ rmState[r].type = "cv"
-        /\ MoreThanFNodesCommitted(r)
+  /\ rmState[r].type = "initialized"
   /\ \neg IsPrimary(r)
   /\ PrepareRequestSentOrReceived(r)
   /\ rmState' = [rmState EXCEPT ![r].type = "prepareSent"]
   /\ msgs' = msgs \cup {[type |-> "PrepareResponse", rm |-> r, view |-> rmState[r].view]}
   /\ UNCHANGED <<>>
 
-\* RMSendCommit describes node r sending Commit if there's enough PrepareResponse
-\* messages.
+\* RMSendCommit describes node r sending Commit if there's enough PrepareRequest/PrepareResponse
+\* messages and no node has sent the ChangeView3 message. It is possible to send the Commit after
+\* the ChangeView1 or ChangeView2 message was sent with additional constraints.
 RMSendCommit(r) ==
   /\ \/ rmState[r].type = "prepareSent"
-     \* We do allow the transition from the "cv" state to the "prepareSent" or "commitSent" stage,
-     \* see the related comment inside the RMSendPrepareResponse definition.
-     \/ /\ rmState[r].type = "cv"
-        /\ MoreThanFNodesCommitted(r)
+     \/ rmState[r].type = "cv1"
+     \/ /\ rmState[r].type = "cv2"
+        /\ Cardinality({
+                         msg \in msgs : msg.type = "Commit" /\ msg.view = rmState[r].view
+                      }) > F
   /\ Cardinality({
-                   msg \in msgs : /\ (msg.type = "PrepareResponse" \/ msg.type = "PrepareRequest")
-                                  /\ msg.view = rmState[r].view
-                 }) >= M
+                   msg \in msgs : (msg.type = "PrepareResponse" \/ msg.type = "PrepareRequest") /\ msg.view = rmState[r].view
+                }) >= M
+  /\ Cardinality({
+                   msg \in msgs : msg.type = "ChangeView3" /\ msg.view = rmState[r].view
+                }) = 0
   /\ PrepareRequestSentOrReceived(r)
   /\ rmState' = [rmState EXCEPT ![r].type = "commitSent"]
   /\ msgs' = msgs \cup {[type |-> "Commit", rm |-> r, view |-> rmState[r].view]}
@@ -186,34 +160,84 @@ RMSendCommit(r) ==
 RMAcceptBlock(r) ==
   /\ rmState[r].type /= "bad"
   /\ rmState[r].type /= "dead"
+  /\ rmState[r].type /= "blockAccepted"
   /\ PrepareRequestSentOrReceived(r)
-  /\ Cardinality({msg \in msgs : msg.type = "Commit" /\ msg.view = rmState[r].view}) >= M
+  /\ Cardinality({
+                   msg \in msgs : msg.type = "Commit" /\ msg.view = rmState[r].view
+                }) >= M
   /\ rmState' = [rmState EXCEPT ![r].type = "blockAccepted"]
   /\ UNCHANGED <<msgs>>
 
-\* RMSendChangeView describes node r sending ChangeView message on timeout.
-RMSendChangeView(r) ==
-  /\ \/ (rmState[r].type = "initialized" /\ \neg IsPrimary(r))
-     \/ rmState[r].type = "prepareSent"
-  /\ LET cv == [type |-> "ChangeView", rm |-> r, view |-> rmState[r].view]
-     IN /\ cv \notin msgs
-        /\ rmState' = [rmState EXCEPT ![r].type = "cv"]
-        /\ msgs' = msgs \cup {[type |-> "ChangeView", rm |-> r, view |-> rmState[r].view]}
+\* FetchBlock describes node r that fetches the accepted block from some other node.
+RMFetchBlock(r) ==
+  /\ rmState[r].type /= "bad"
+  /\ rmState[r].type /= "dead"
+  /\ rmState[r].type /= "blockAccepted"
+  /\ \E rmAccepted \in RM : /\ rmState[rmAccepted].type = "blockAccepted"
+                            /\ rmState' = [rmState EXCEPT ![r].type = "blockAccepted", ![r].view = rmState[rmAccepted].view]
+                            /\ UNCHANGED <<msgs>>
 
-\* RMReceiveChangeView describes node r receiving enough ChangeView messages for
+\* RMSendChangeView1 describes node r sending ChangeView1 message on timeout.
+\* Only non-primary node is allowed to send ChangeView1 message, as the primary
+\* must send the PrepareRequest if the timer fires.
+RMSendChangeView1(r) ==
+  /\ rmState[r].type = "initialized"
+  /\ \neg IsPrimary(r)
+  /\ rmState' = [rmState EXCEPT ![r].type = "cv1"]
+  /\ msgs' = msgs \cup {[type |-> "ChangeView1", rm |-> r, view |-> rmState[r].view]}
+
+\* RMSendChangeView2 describes node r sending ChangeView2 message on timeout either from
+\* "cv1" state or after the node has sent the PrepareRequest or PrepareResponse message.
+RMSendChangeView2(r) ==
+  /\ \/ /\ rmState[r].type = "prepareSent"
+        /\ Cardinality({
+                        msg \in msgs : msg.type = "ChangeView1" /\ msg.view = rmState[r].view
+                      }) > 0
+     \/ rmState[r].type = "cv1"
+  /\ Cardinality({
+                   msg \in msgs : (msg.type = "ChangeView1" \/ msg.type = "PrepareRequest" \/ msg.type = "PrepareResponse") /\ msg.view = rmState[r].view
+                }) >= M
+  /\ \/ Cardinality({
+                      msg \in msgs : msg.type = "Commit" /\ msg.view = rmState[r].view
+                   }) <= F
+     \/ Cardinality({
+                     msg \in msgs : msg.type = "ChangeView3" /\ msg.view = rmState[r].view
+                   }) > 0
+  /\ rmState' = [rmState EXCEPT ![r].type = "cv2"]
+  /\ msgs' = msgs \cup {[type |-> "ChangeView2", rm |-> r, view |-> rmState[r].view]}
+
+\* RMSendChangeView3 describes node r sending ChangeView3 message on timeout either from
+\* "cv2" state or after the node has sent the Commit message.
+RMSendChangeView3(r) ==
+  /\ \/ rmState[r].type = "cv2"
+     \/ rmState[r].type = "commitSent"
+  /\ Cardinality({msg \in msgs : (msg.type = "ChangeView2" \/ msg.type = "Commit") /\ msg.view = rmState[r].view}) >= M
+  /\ Cardinality({msg \in msgs : (msg.type = "ChangeView2") /\ msg.view = rmState[r].view}) > 0
+  /\ Cardinality({msg \in msgs : msg.type = "Commit" /\ msg.view = rmState[r].view}) <= F
+  /\ rmState' = [rmState EXCEPT ![r].type = "cv3"]
+  /\ msgs' = msgs \cup {[type |-> "ChangeView3", rm |-> r, view |-> rmState[r].view]}
+
+\* RMReceiveChangeView describes node r receiving enough ChangeView[1,2,3] messages for
 \* view changing.
 RMReceiveChangeView(r) ==
   /\ rmState[r].type /= "bad"
   /\ rmState[r].type /= "dead"
   /\ rmState[r].type /= "blockAccepted"
-  /\ rmState[r].type /= "commitSent"
-  /\ Cardinality({
-                  rm \in RM : Cardinality({
-                                            msg \in msgs : /\ msg.type = "ChangeView"
-                                                           /\ msg.rm = rm
-                                                           /\ GetNewView(msg.view) >= GetNewView(rmState[r].view)
-                                         }) /= 0
-                 }) >= M
+  /\ \/ Cardinality({rm \in RM : Cardinality({msg \in msgs : /\ msg.rm = rm
+                                                             /\ msg.type = "ChangeView1"
+                                                             /\ GetNewView(msg.view) >= GetNewView(rmState[r].view)
+                                            }) # 0
+                   }) >= M
+     \/ Cardinality({rm \in RM : Cardinality({msg \in msgs : /\ msg.rm = rm
+                                                             /\ msg.type = "ChangeView2"
+                                                             /\ GetNewView(msg.view) >= GetNewView(rmState[r].view)
+                                            }) # 0
+                   }) >= M
+     \/ Cardinality({rm \in RM : Cardinality({msg \in msgs : /\ msg.rm = rm
+                                                             /\ msg.type = "ChangeView3"
+                                                             /\ GetNewView(msg.view) >= GetNewView(rmState[r].view)
+                                            }) # 0
+                   }) >= M
   /\ rmState' = [rmState EXCEPT ![r].type = "initialized", ![r].view = GetNewView(rmState[r].view)]
   /\ UNCHANGED <<msgs>>
 
@@ -225,10 +249,26 @@ RMBeBad(r) ==
   /\ rmState' = [rmState EXCEPT ![r].type = "bad"]
   /\ UNCHANGED <<msgs>>
 
-\* RMFaultySendCV describes sending CV message by the faulty node r.
-RMFaultySendCV(r) ==
+\* RMFaultySendCV describes sending CV1 message by the faulty node r.
+RMFaultySendCV1(r) ==
   /\ rmState[r].type = "bad"
-  /\ LET cv == [type |-> "ChangeView", rm |-> r, view |-> rmState[r].view]
+  /\ LET cv == [type |-> "ChangeView1", rm |-> r, view |-> rmState[r].view]
+     IN /\ cv \notin msgs
+        /\ msgs' = msgs \cup {cv}
+        /\ UNCHANGED <<rmState>>
+
+\* RMFaultySendCV2 describes sending CV2 message by the faulty node r.
+RMFaultySendCV2(r) ==
+  /\ rmState[r].type = "bad"
+  /\ LET cv == [type |-> "ChangeView2", rm |-> r, view |-> rmState[r].view]
+     IN /\ cv \notin msgs
+        /\ msgs' = msgs \cup {cv}
+        /\ UNCHANGED <<rmState>>
+
+\* RMFaultySendCV3 describes sending CV3 message by the faulty node r.
+RMFaultySendCV3(r) ==
+  /\ rmState[r].type = "bad"
+  /\ LET cv == [type |-> "ChangeView3", rm |-> r, view |-> rmState[r].view]
      IN /\ cv \notin msgs
         /\ msgs' = msgs \cup {cv}
         /\ UNCHANGED <<rmState>>
@@ -280,15 +320,14 @@ Terminating ==
   /\ Cardinality({rm \in RM : rmState[rm].type = "blockAccepted"}) >= M
   /\ UNCHANGED <<msgs, rmState>>
 
-\* Next is the next-state action describing the transition from the current state
-\* to the next state of the behaviour.
+\* The next-state action.
 Next ==
   \/ Terminating
   \/ \E r \in RM:
        RMSendPrepareRequest(r) \/ RMSendPrepareResponse(r) \/ RMSendCommit(r)
-         \/ RMAcceptBlock(r) \/ RMSendChangeView(r) \/ RMReceiveChangeView(r)
-         \/ RMDie(r) \/ RMBeBad(r)
-         \/ RMFaultySendCV(r) \/ RMFaultyDoCV(r) \/ RMFaultySendCommit(r) \/ RMFaultySendPReq(r) \/ RMFaultySendPResp(r)
+         \/ RMAcceptBlock(r) \/ RMSendChangeView1(r) \/ RMReceiveChangeView(r) \/ RMBeBad(r) \/ RMSendChangeView2(r) \/ RMSendChangeView3(r)
+         \/ RMFaultySendCV1(r) \/ RMFaultyDoCV(r) \/ RMFaultySendCommit(r) \/ RMFaultySendPReq(r) \/ RMFaultySendPResp(r) \/ RMFaultySendCV2(r) \/ RMFaultySendCV3(r)
+         \/ RMDie(r) \/ RMFetchBlock(r)
 
 \* Safety is a temporal formula that describes the whole set of allowed
 \* behaviours. It specifies only what the system MAY do (i.e. the set of
@@ -382,7 +421,7 @@ THEOREM Spec => [](TypeOK /\ InvTwoBlocksAccepted /\ InvFaultNodesCount)
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Mar 06 15:36:57 MSK 2023 by root
-\* Last modified Fri Feb 17 15:47:41 MSK 2023 by anna
-\* Last modified Sat Jan 21 01:26:16 MSK 2023 by rik
+\* Last modified Wed Mar 01 12:11:07 MSK 2023 by root
+\* Last modified Tue Feb 07 23:11:19 MSK 2023 by rik
+\* Last modified Fri Feb 03 18:09:33 MSK 2023 by anna
 \* Created Thu Dec 15 16:06:17 MSK 2022 by anna

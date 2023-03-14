@@ -170,7 +170,7 @@ func (d *DBFT) OnTransaction(tx block.Transaction) {
 
 // OnTimeout advances state machine as if timeout was fired.
 func (d *DBFT) OnTimeout(hv timer.HV) {
-	if d.Context.WatchOnly() {
+	if d.Context.WatchOnly() || d.BlockSent() {
 		return
 	}
 
@@ -242,6 +242,11 @@ func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
 			Height: msg.Height(),
 			View:   msg.ViewNumber(),
 		}
+	}
+
+	if d.BlockSent() && msg.Type() != payload.RecoveryRequestType {
+		// We've already collected the block, only recovery request must be handled.
+		return
 	}
 
 	switch msg.Type() {
@@ -362,7 +367,7 @@ func (d *DBFT) processMissingTx() {
 
 // createAndCheckBlock is a prepareRequest-level helper that creates and checks
 // the new proposed block, if it's fine it returns true, if something is wrong
-// with it it send a changeView request and returns false. It's only valid to
+// with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
 func (d *DBFT) createAndCheckBlock() bool {
 	txx := make([]block.Transaction, 0, len(d.TransactionHashes))
@@ -485,6 +490,19 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 }
 
 func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
+	existing := d.CommitPayloads[msg.ValidatorIndex()]
+	if existing != nil {
+		if !existing.Hash().Equals(msg.Hash()) {
+			d.Logger.Warn("rejecting commit due to existing",
+				zap.Uint("validator", uint(msg.ValidatorIndex())),
+				zap.Uint("existing view", uint(existing.ViewNumber())),
+				zap.Uint("view", uint(msg.ViewNumber())),
+				zap.String("existing hash", existing.Hash().StringLE()),
+				zap.String("hash", msg.Hash().StringLE()),
+			)
+		}
+		return
+	}
 	if d.ViewNumber == msg.ViewNumber() {
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)

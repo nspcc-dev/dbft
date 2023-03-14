@@ -5,8 +5,8 @@
     <stringAttribute key="distributedNetworkInterface" value="172.200.0.254"/>
     <intAttribute key="distributedNodesCount" value="1"/>
     <stringAttribute key="distributedTLC" value="off"/>
-    <intAttribute key="fpIndex" value="70"/>
-    <intAttribute key="maxHeapSize" value="50"/>
+    <intAttribute key="fpIndex" value="96"/>
+    <intAttribute key="maxHeapSize" value="25"/>
     <stringAttribute key="modelBehaviorInit" value=""/>
     <stringAttribute key="modelBehaviorNext" value=""/>
     <stringAttribute key="modelBehaviorSpec" value="Spec"/>
@@ -17,7 +17,6 @@
     <listAttribute key="modelCorrectnessInvariants">
         <listEntry value="1TypeOK"/>
         <listEntry value="1InvTwoBlocksAccepted"/>
-        <listEntry value="1InvDeadlock"/>
         <listEntry value="1InvFaultNodesCount"/>
     </listAttribute>
     <listAttribute key="modelCorrectnessProperties">
@@ -30,15 +29,14 @@
         <listEntry value="MaxView;;1;0;0"/>
         <listEntry value="RMDead;;{};0;0"/>
         <listEntry value="RM;;{0, 1, 2, 3};0;0"/>
-        <listEntry value="MaxUndeliveredMessages;;6;0;0"/>
     </listAttribute>
-    <stringAttribute key="modelParameterContraint" value="ModelConstraint"/>
+    <stringAttribute key="modelParameterContraint" value="MaxViewConstraint"/>
     <listAttribute key="modelParameterDefinitions"/>
     <stringAttribute key="modelParameterModelValues" value="{}"/>
     <stringAttribute key="modelParameterNewDefinitions" value=""/>
     <intAttribute key="modelVersion" value="20191005"/>
-    <intAttribute key="numberOfWorkers" value="8"/>
+    <intAttribute key="numberOfWorkers" value="4"/>
     <stringAttribute key="result.mail.address" value=""/>
-    <stringAttribute key="specName" value="dbftMultipool"/>
+    <stringAttribute key="specName" value="dbftCV3"/>
     <stringAttribute key="tlcResourcesProfile" value="local custom"/>
 </launchConfiguration>
