@@ -451,6 +451,224 @@ func TestDBFT_Invalid(t *testing.T) {
 	})
 }
 
+// TestDBFT_FourGoodNodesDeadlock checks that the following liveness lock is not really
+// a liveness lock and there's a way to accept block in this situation.
+// 0 :> [type |-> "cv", view |-> 1]           <--- this is the primary at view 1
+// 1 :> [type |-> "cv", view |-> 1]           <--- this is the primary at view 0
+// 2 :> [type |-> "commitSent", view |-> 0]
+// 3 :> [type |-> "commitSent", view |-> 1]
+//
+// Test structure note: the test is organized to reproduce the liveness lock scenario
+// described in https://github.com/neo-project/neo-modules/issues/792#issue-1609058923
+// at the section named "1. Liveness lock with four non-faulty nodes". However, some
+// steps are rearranged so that it's possible to reach the target network state described
+// above. It is done because dbft implementation contains additional constraints comparing
+// to the TLA+ model. See the steps
+func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
+	r0 := newTestState(0, 4)
+	r0.currHeight = 4
+	s0 := New(r0.getOptions()...)
+	s0.Start(0)
+
+	r1 := r0.copyWithIndex(1)
+	s1 := New(r1.getOptions()...)
+	s1.Start(0)
+
+	r2 := r0.copyWithIndex(2)
+	s2 := New(r2.getOptions()...)
+	s2.Start(0)
+
+	r3 := r0.copyWithIndex(3)
+	s3 := New(r3.getOptions()...)
+	s3.Start(0)
+
+	// Step 1. The primary (at view 0) replica 1 sends the PrepareRequest message.
+	reqV0 := r1.tryRecv()
+	require.NotNil(t, reqV0)
+	require.Equal(t, payload.PrepareRequestType, reqV0.Type())
+
+	// Step 2 will be performed later, see the comment to Step 2.
+
+	// Step 3. The backup (at view 0) replica 0 receives the PrepareRequest of
+	// view 0 and broadcasts its PrepareResponse.
+	s0.OnReceive(reqV0)
+	resp0V0 := r0.tryRecv()
+	require.NotNil(t, resp0V0)
+	require.Equal(t, payload.PrepareResponseType, resp0V0.Type())
+
+	// Step 4 will be performed later, see the comment to Step 4.
+
+	// Step 5. The backup (at view 0) replica 2 receives the PrepareRequest of
+	// view 0 and broadcasts its PrepareResponse.
+	s2.OnReceive(reqV0)
+	resp2V0 := r2.tryRecv()
+	require.NotNil(t, resp2V0)
+	require.Equal(t, payload.PrepareResponseType, resp2V0.Type())
+
+	// Step 6. The backup (at view 0) replica 2 collects M prepare messages (from
+	// itself and replicas 0, 1) and broadcasts the Commit message for view 0.
+	s2.OnReceive(resp0V0)
+	cm2V0 := r2.tryRecv()
+	require.NotNil(t, cm2V0)
+	require.Equal(t, payload.CommitType, cm2V0.Type())
+
+	// Step 7. The backup (at view 0) replica 3 decides to change its view
+	// (possible on timeout) and sends the ChangeView message.
+	s3.OnReceive(resp0V0)
+	s3.OnReceive(resp2V0)
+	s3.OnTimeout(timer.HV{Height: r3.currHeight + 1, View: 0})
+	cv3V0 := r3.tryRecv()
+	require.NotNil(t, cv3V0)
+	require.Equal(t, payload.ChangeViewType, cv3V0.Type())
+
+	// Step 2. The primary (at view 0) replica 1 decides to change its view
+	// (possible on timeout after receiving at least M non-commit messages from the
+	// current view) and sends the ChangeView message.
+	s1.OnReceive(resp0V0)
+	s1.OnReceive(cv3V0)
+	s1.OnTimeout(timer.HV{Height: r1.currHeight + 1, View: 0})
+	cv1V0 := r1.tryRecv()
+	require.NotNil(t, cv1V0)
+	require.Equal(t, payload.ChangeViewType, cv1V0.Type())
+
+	// Step 4. The backup (at view 0) replica 0 decides to change its view
+	// (possible on timeout after receiving at least M non-commit messages from the
+	// current view) and sends the ChangeView message.
+	s0.OnReceive(cv3V0)
+	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 0})
+	cv0V0 := r0.tryRecv()
+	require.NotNil(t, cv0V0)
+	require.Equal(t, payload.ChangeViewType, cv0V0.Type())
+
+	// Step 8. The primary (at view 0) replica 1 collects M ChangeView messages
+	// (from itself and replicas 1, 3) and changes its view to 1.
+	s1.OnReceive(cv0V0)
+	require.Equal(t, uint8(1), s1.ViewNumber)
+
+	// Step 9. The backup (at view 0) replica 0 collects M ChangeView messages
+	// (from itself and replicas 0, 3) and changes its view to 1.
+	s0.OnReceive(cv1V0)
+	require.Equal(t, uint8(1), s0.ViewNumber)
+
+	// Step 10. The primary (at view 1) replica 0 sends the PrepareRequest message.
+	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 1})
+	reqV1 := r0.tryRecv()
+	require.NotNil(t, reqV1)
+	require.Equal(t, payload.PrepareRequestType, reqV1.Type())
+
+	// Step 11. The backup (at view 1) replica 1 receives the PrepareRequest of
+	// view 1 and sends the PrepareResponse.
+	s1.OnReceive(reqV1)
+	resp1V1 := r1.tryRecv()
+	require.NotNil(t, resp1V1)
+	require.Equal(t, payload.PrepareResponseType, resp1V1.Type())
+
+	// Steps 12, 13 will be performed later, see the comments to Step 12, 13.
+
+	// Step 14. The backup (at view 0) replica 3 collects M ChangeView messages
+	// (from itself and replicas 0, 1) and changes its view to 1.
+	s3.OnReceive(cv0V0)
+	s3.OnReceive(cv1V0)
+	require.Equal(t, uint8(1), s3.ViewNumber)
+
+	// Intermediate step A. It is added to make step 14 possible. The backup (at
+	// view 1) replica 3 doesn't receive anything for a long time and sends
+	// RecoveryRequest.
+	s3.OnTimeout(timer.HV{Height: r3.currHeight + 1, View: 1})
+	rcvr3V1 := r3.tryRecv()
+	require.NotNil(t, rcvr3V1)
+	require.Equal(t, payload.RecoveryRequestType, rcvr3V1.Type())
+
+	// Intermediate step B. The backup (at view 1) replica 1 should receive any
+	// message from replica 3 to be able to change view. However, it couldn't be
+	// PrepareResponse because replica 1 will immediately commit then. Thus, the
+	// only thing that remains is to receive RecoveryRequest from replica 3.
+	// Replica 1 then should answer with Recovery message.
+	s1.OnReceive(rcvr3V1)
+	rcvrResp1V1 := r1.tryRecv()
+	require.NotNil(t, rcvrResp1V1)
+	require.Equal(t, payload.RecoveryMessageType, rcvrResp1V1.Type())
+
+	// Intermediate step C. The primary (at view 1) replica 0 should receive
+	// RecoveryRequest from replica 3. The purpose of this step is the same as
+	// in Intermediate step B.
+	s0.OnReceive(rcvr3V1)
+	rcvrResp0V1 := r0.tryRecv()
+	require.NotNil(t, rcvrResp0V1)
+	require.Equal(t, payload.RecoveryMessageType, rcvrResp0V1.Type())
+
+	// Step 12. According to the neo-project/neo#792, at this step the backup (at view 1)
+	// replica 1 decides to change its view (possible on timeout) and sends the
+	// ChangeView message. However, the recovery message will be broadcast instead
+	// of CV, because there's additional condition: too much (>F) "lost" or committed
+	// nodes are present, see https://github.com/roman-khimov/dbft/blob/b769eb3e0f070d6eabb9443a5931eb4a2e46c538/send.go#L68.
+	// Replica 1 aware of replica 0 that has sent the PrepareRequest for view 1.
+	// It can also be aware of replica 2 that has committed at view 0, but it won't
+	// change the situation. The final way to allow CV is to receive something
+	// except from PrepareResponse from replica 3 to remove replica 3 from the list
+	// of "lost" nodes. That's why we'he added Intermediate steps A and B.
+	//
+	// After that replica 1 is allowed to send the CV message.
+	s1.OnTimeout(timer.HV{Height: r1.currHeight + 1, View: 1})
+	cv1V1 := r1.tryRecv()
+	require.NotNil(t, cv1V1)
+	require.Equal(t, payload.ChangeViewType, cv1V1.Type())
+
+	// Step 13. The primary (at view 1) replica 0 decides to change its view
+	// (possible on timeout) and sends the ChangeView message.
+	s0.OnReceive(resp1V1)
+	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 1})
+	cv0V1 := r0.tryRecv()
+	require.NotNil(t, cv0V1)
+	require.Equal(t, payload.ChangeViewType, cv0V1.Type())
+
+	// Step 15. The backup (at view 1) replica 3 receives PrepareRequest of view
+	// 1 and broadcasts its PrepareResponse.
+	s3.OnReceive(reqV1)
+	resp3V1 := r3.tryRecv()
+	require.NotNil(t, resp3V1)
+	require.Equal(t, payload.PrepareResponseType, resp3V1.Type())
+
+	// Step 16. The backup (at view 1) replica 3 collects M prepare messages and
+	// broadcasts the Commit message for view 1.
+	s3.OnReceive(resp1V1)
+	cm3V1 := r3.tryRecv()
+	require.NotNil(t, cm3V1)
+	require.Equal(t, payload.CommitType, cm3V1.Type())
+
+	// Intermediate step D. It is needed to enable step 17 and to check that
+	// MoreThanFNodesCommittedOrLost works properly and counts Commit messages from
+	// any view.
+	s0.OnReceive(cm2V0)
+	s0.OnReceive(cm3V1)
+
+	// Step 17. The issue says that "The rest of undelivered messages eventually
+	// reaches their receivers, but it doesn't change the node's states.", but it's
+	// not true, the aim of the test is to show that replicas 0 and 1 still can
+	// commit at view 1 even after CV sent.
+	s0.OnReceive(resp3V1)
+	cm0V1 := r0.tryRecv()
+	require.NotNil(t, cm0V1)
+	require.Equal(t, payload.CommitType, cm0V1.Type())
+
+	s1.OnReceive(cm0V1)
+	s1.OnReceive(resp3V1)
+	cm1V1 := r1.tryRecv()
+	require.NotNil(t, cm1V1)
+	require.Equal(t, payload.CommitType, cm1V1.Type())
+
+	// Finally, send missing Commit message to replicas 0 and 1, they should accept
+	// the block.
+	require.Nil(t, r0.nextBlock())
+	s0.OnReceive(cm1V1)
+	require.NotNil(t, r0.nextBlock())
+
+	require.Nil(t, r1.nextBlock())
+	s1.OnReceive(cm3V1)
+	require.NotNil(t, r1.nextBlock())
+
+}
+
 func (s testState) getChangeView(from uint16, view byte) Payload {
 	cv := payload.NewChangeView()
 	cv.SetNewViewNumber(view)
