@@ -119,10 +119,10 @@ func (c *Context) CountCommitted() (count int) {
 }
 
 // CountFailed returns number of nodes with which no communication was performed
-// for this block/view.
+// for this view and that hasn't sent the Commit message at the previous views.
 func (c *Context) CountFailed() (count int) {
-	for _, hv := range c.LastSeenMessage {
-		if hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber {
+	for i, hv := range c.LastSeenMessage {
+		if c.CommitPayloads[i] == nil && (hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber) {
 			count++
 		}
 	}
