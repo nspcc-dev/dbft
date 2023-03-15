@@ -463,7 +463,7 @@ func TestDBFT_Invalid(t *testing.T) {
 // at the section named "1. Liveness lock with four non-faulty nodes". However, some
 // steps are rearranged so that it's possible to reach the target network state described
 // above. It is done because dbft implementation contains additional constraints comparing
-// to the TLA+ model. See the steps
+// to the TLA+ model.
 func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	r0 := newTestState(0, 4)
 	r0.currHeight = 4
@@ -666,7 +666,6 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	require.Nil(t, r1.nextBlock())
 	s1.OnReceive(cm3V1)
 	require.NotNil(t, r1.nextBlock())
-
 }
 
 func (s testState) getChangeView(from uint16, view byte) Payload {
