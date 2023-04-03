@@ -75,9 +75,9 @@ func TestNeoBlock_Setters(t *testing.T) {
 
 type testKey struct{}
 
-func (t testKey) MarshalBinary() (data []byte, err error) { return []byte{}, nil }
-func (t testKey) UnmarshalBinary(data []byte) error       { return nil }
-func (t testKey) Sign(msg []byte) (sig []byte, err error) {
+func (t testKey) MarshalBinary() ([]byte, error) { return []byte{}, nil }
+func (t testKey) UnmarshalBinary([]byte) error   { return nil }
+func (t testKey) Sign([]byte) ([]byte, error) {
 	return nil, errors.New("can't sign")
 }
 

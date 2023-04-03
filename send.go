@@ -182,7 +182,7 @@ func (d *DBFT) sendRecoveryMessage() {
 
 // defaultNewConsensusPayload is default function for creating
 // consensus payload of specific type.
-func defaultNewConsensusPayload(c *Context, t payload.MessageType, msg interface{}) payload.ConsensusPayload {
+func defaultNewConsensusPayload(c *Context, t payload.MessageType, msg any) payload.ConsensusPayload {
 	cp := payload.NewConsensusPayload()
 	cp.SetHeight(c.BlockIndex)
 	cp.SetValidatorIndex(uint16(c.MyIndex))
