@@ -23,9 +23,9 @@ type (
 		SetType(t MessageType)
 
 		// Payload returns this message's actual payload.
-		Payload() interface{}
+		Payload() any
 		// SetPayload sets this message's payload to p.
-		SetPayload(p interface{})
+		SetPayload(p any)
 
 		// GetChangeView returns payload as if it was ChangeView.
 		GetChangeView() ChangeView
@@ -45,7 +45,7 @@ type (
 		cmType     MessageType
 		viewNumber byte
 
-		payload interface{}
+		payload any
 	}
 )
 
@@ -144,11 +144,11 @@ func (m *message) SetType(t MessageType) {
 }
 
 // Payload implements ConsensusMessage interface.
-func (m message) Payload() interface{} {
+func (m message) Payload() any {
 	return m.payload
 }
 
 // SetPayload implements ConsensusMessage interface.
-func (m *message) SetPayload(p interface{}) {
+func (m *message) SetPayload(p any) {
 	m.payload = p
 }
