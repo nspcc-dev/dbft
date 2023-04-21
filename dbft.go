@@ -593,9 +593,9 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 			if prepReq != nil {
 				totalPrepReq, validPrepReq = 1, 1
 				d.OnReceive(prepReq)
-			} else if d.IsPrimary() {
-				d.sendPrepareRequest()
 			}
+			// If the node is primary, then wait until timer fires to send PrepareRequest
+			// to avoid rush in blocks submission, #74.
 		}
 
 		for _, m := range recovery.GetPrepareResponses(msg, d.Validators) {
