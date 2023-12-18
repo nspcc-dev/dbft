@@ -9,7 +9,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.1.0
+	golang.org/x/crypto v0.17.0
 )
 
 require (
