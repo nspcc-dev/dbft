@@ -295,7 +295,7 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	// ignore prepareRequest if we had already received it or
 	// are in process of changing view
 	if d.RequestSentOrReceived() { //|| (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
-		d.Logger.Debug("ignoring PrepareRequest due to view changing",
+		d.Logger.Debug("ignoring PrepareRequest",
 			zap.Bool("sor", d.RequestSentOrReceived()),
 			zap.Bool("viewChanging", d.ViewChanging()),
 			zap.Bool("moreThanF", d.MoreThanFNodesCommittedOrLost()))
@@ -422,7 +422,11 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 	// ignore PrepareResponse if in process of changing view
 	m := d.PreparationPayloads[msg.ValidatorIndex()]
 	if m != nil || d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost() {
-		d.Logger.Debug("ignoring PrepareResponse because of view changing")
+		d.Logger.Debug("ignoring PrepareResponse",
+			zap.Bool("dup", m != nil),
+			zap.Bool("sor", d.RequestSentOrReceived()),
+			zap.Bool("viewChanging", d.ViewChanging()),
+			zap.Bool("moreThanF", d.MoreThanFNodesCommittedOrLost()))
 		return
 	}
 
