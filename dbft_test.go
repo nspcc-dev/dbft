@@ -790,7 +790,7 @@ func (s *testState) getOptions() []Option {
 		WithProcessBlock(func(b block.Block) { s.blocks = append(s.blocks, b) }),
 		WithGetConsensusAddress(s.nextConsensus),
 		WithWatchOnly(func() bool { return false }),
-		WithGetBlock(func(h util.Uint256) block.Block { return nil }),
+		WithGetBlock(func(util.Uint256) block.Block { return nil }),
 		WithTimer(timer.New()),
 		WithLogger(zap.NewNop()),
 		WithNewBlockFromContext(NewBlockFromContext),
@@ -809,7 +809,7 @@ func (s *testState) getOptions() []Option {
 
 	verify := s.verify
 	if verify == nil {
-		verify = func(b block.Block) bool { return true }
+		verify = func(block.Block) bool { return true }
 	}
 
 	opts = append(opts, WithVerifyBlock(verify))

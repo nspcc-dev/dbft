@@ -1,8 +1,10 @@
 package payload
 
 import (
+	"bytes"
+	"encoding/gob"
+
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
@@ -16,7 +18,7 @@ type (
 		// payload was originated from.
 		ValidatorIndex() uint16
 
-		// SetValidator index sets validator index.
+		// SetValidatorIndex sets validator index.
 		SetValidatorIndex(i uint16)
 
 		Height() uint32
@@ -37,49 +39,68 @@ type (
 
 		hash *util.Uint256
 	}
+
+	// payloadAux is an auxiliary structure for Payload encoding.
+	payloadAux struct {
+		Version        uint32
+		ValidatorIndex uint16
+		PrevHash       util.Uint256
+		Height         uint32
+
+		Data []byte
+	}
 )
 
 var _ ConsensusPayload = (*Payload)(nil)
 
-// EncodeBinary implements io.Serializable interface.
-func (p Payload) EncodeBinary(w *io.BinWriter) {
-	ww := io.NewBufBinWriter()
-	p.message.EncodeBinary(ww.BinWriter)
-	data := ww.Bytes()
+// EncodeBinary implements Serializable interface.
+func (p Payload) EncodeBinary(w *gob.Encoder) error {
+	ww := bytes.Buffer{}
+	enc := gob.NewEncoder(&ww)
+	if err := p.message.EncodeBinary(enc); err != nil {
+		return err
+	}
 
-	w.WriteU32LE(p.version)
-	w.WriteBytes(p.prevHash[:])
-	w.WriteU32LE(p.height)
-	w.WriteU16LE(p.validatorIndex)
-	w.WriteVarBytes(data)
+	return w.Encode(&payloadAux{
+		Version:        p.version,
+		ValidatorIndex: p.validatorIndex,
+		PrevHash:       p.prevHash,
+		Height:         p.height,
+		Data:           ww.Bytes(),
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (p *Payload) DecodeBinary(r *io.BinReader) {
-	p.version = r.ReadU32LE()
-	p.prevHash.DecodeBinary(r)
-	p.height = r.ReadU32LE()
-	p.validatorIndex = r.ReadU16LE()
+// DecodeBinary implements Serializable interface.
+func (p *Payload) DecodeBinary(r *gob.Decoder) error {
+	aux := new(payloadAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
 
-	data := r.ReadVarBytes()
-	rr := io.NewBinReaderFromBuf(data)
-	p.message.DecodeBinary(rr)
+	p.version = aux.Version
+	p.prevHash = aux.PrevHash
+	p.height = aux.Height
+	p.validatorIndex = aux.ValidatorIndex
+
+	rr := bytes.NewReader(aux.Data)
+	dec := gob.NewDecoder(rr)
+	return p.message.DecodeBinary(dec)
 }
 
 // MarshalUnsigned implements ConsensusPayload interface.
 func (p Payload) MarshalUnsigned() []byte {
-	w := io.NewBufBinWriter()
-	p.EncodeBinary(w.BinWriter)
+	buf := bytes.Buffer{}
+	enc := gob.NewEncoder(&buf)
+	_ = p.EncodeBinary(enc)
 
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 // UnmarshalUnsigned implements ConsensusPayload interface.
 func (p *Payload) UnmarshalUnsigned(data []byte) error {
-	r := io.NewBinReaderFromBuf(data)
-	p.DecodeBinary(r)
-
-	return r.Err
+	r := bytes.NewReader(data)
+	dec := gob.NewDecoder(r)
+	return p.DecodeBinary(dec)
 }
 
 // Hash implements ConsensusPayload interface.

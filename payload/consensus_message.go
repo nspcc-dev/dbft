@@ -1,15 +1,22 @@
 package payload
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 
-	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/pkg/errors"
 )
 
 type (
 	// MessageType is a type for dBFT consensus messages.
 	MessageType byte
+
+	// Serializable is an interface for serializing consensus messages.
+	Serializable interface {
+		EncodeBinary(encoder *gob.Encoder) error
+		DecodeBinary(decoder *gob.Decoder) error
+	}
 
 	consensusMessage interface {
 		// ViewNumber returns view number when this message was originated.
@@ -47,6 +54,13 @@ type (
 
 		payload any
 	}
+
+	// messageAux is an auxiliary structure for message marshalling.
+	messageAux struct {
+		CMType     byte
+		ViewNumber byte
+		Payload    []byte
+	}
 )
 
 // 6 following constants enumerate all possible type of consensus message.
@@ -81,17 +95,28 @@ func (m MessageType) String() string {
 	}
 }
 
-// EncodeBinary implements io.Serializable interface.
-func (m message) EncodeBinary(w *io.BinWriter) {
-	w.WriteB(byte(m.cmType))
-	w.WriteB(m.viewNumber)
-	m.payload.(io.Serializable).EncodeBinary(w)
+// EncodeBinary implements Serializable interface.
+func (m message) EncodeBinary(w *gob.Encoder) error {
+	ww := bytes.Buffer{}
+	enc := gob.NewEncoder(&ww)
+	if err := m.payload.(Serializable).EncodeBinary(enc); err != nil {
+		return err
+	}
+	return w.Encode(&messageAux{
+		CMType:     byte(m.cmType),
+		ViewNumber: m.viewNumber,
+		Payload:    ww.Bytes(),
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (m *message) DecodeBinary(r *io.BinReader) {
-	m.cmType = MessageType(r.ReadB())
-	m.viewNumber = r.ReadB()
+// DecodeBinary implements Serializable interface.
+func (m *message) DecodeBinary(r *gob.Decoder) error {
+	aux := new(messageAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
+	m.cmType = MessageType(aux.CMType)
+	m.viewNumber = aux.ViewNumber
 
 	switch m.cmType {
 	case ChangeViewType:
@@ -109,11 +134,12 @@ func (m *message) DecodeBinary(r *io.BinReader) {
 	case RecoveryMessageType:
 		m.payload = new(recoveryMessage)
 	default:
-		r.Err = errors.Errorf("invalid type: 0x%02x", byte(m.cmType))
-		return
+		return errors.Errorf("invalid type: 0x%02x", byte(m.cmType))
 	}
 
-	m.payload.(io.Serializable).DecodeBinary(r)
+	rr := bytes.NewReader(aux.Payload)
+	dec := gob.NewDecoder(rr)
+	return m.payload.(Serializable).DecodeBinary(dec)
 }
 
 func (m message) GetChangeView() ChangeView           { return m.payload.(ChangeView) }

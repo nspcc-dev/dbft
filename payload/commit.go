@@ -1,6 +1,8 @@
 package payload
 
-import "github.com/nspcc-dev/neo-go/pkg/io"
+import (
+	"encoding/gob"
+)
 
 // Commit is an interface for dBFT Commit message.
 type Commit interface {
@@ -12,22 +14,35 @@ type Commit interface {
 	SetSignature(signature []byte)
 }
 
-type commit struct {
-	signature [signatureSize]byte
-}
+type (
+	commit struct {
+		signature [signatureSize]byte
+	}
+	// commitAux is an auxiliary structure for commit encoding.
+	commitAux struct {
+		Signature [signatureSize]byte
+	}
+)
 
 const signatureSize = 64
 
 var _ Commit = (*commit)(nil)
 
-// EncodeBinary implements io.Serializable interface.
-func (c commit) EncodeBinary(w *io.BinWriter) {
-	w.WriteBytes(c.signature[:])
+// EncodeBinary implements Serializable interface.
+func (c commit) EncodeBinary(w *gob.Encoder) error {
+	return w.Encode(commitAux{
+		Signature: c.signature,
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (c *commit) DecodeBinary(r *io.BinReader) {
-	r.ReadBytes(c.signature[:])
+// DecodeBinary implements Serializable interface.
+func (c *commit) DecodeBinary(r *gob.Decoder) error {
+	aux := new(commitAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
+	c.signature = aux.Signature
+	return nil
 }
 
 // Signature implements Commit interface.

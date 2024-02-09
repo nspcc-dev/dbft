@@ -1,13 +1,14 @@
 package block
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/gob"
 	"errors"
 	"testing"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,14 +46,15 @@ func TestNeoBlock_Setters(t *testing.T) {
 	assert.EqualValues(t, 100, b.Index())
 
 	t.Run("marshal block", func(t *testing.T) {
-		w := io.NewBufBinWriter()
-		b.EncodeBinary(w.BinWriter)
-		require.NoError(t, w.Err)
+		buf := bytes.Buffer{}
+		w := gob.NewEncoder(&buf)
+		err := b.EncodeBinary(w)
+		require.NoError(t, err)
 
-		r := io.NewBinReaderFromBuf(w.Bytes())
+		r := gob.NewDecoder(bytes.NewReader(buf.Bytes()))
 		newb := new(neoBlock)
-		newb.DecodeBinary(r)
-		require.NoError(t, r.Err)
+		err = newb.DecodeBinary(r)
+		require.NoError(t, err)
 		require.Equal(t, b.base, newb.base)
 	})
 

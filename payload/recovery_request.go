@@ -1,6 +1,8 @@
 package payload
 
-import "github.com/nspcc-dev/neo-go/pkg/io"
+import (
+	"encoding/gob"
+)
 
 // RecoveryRequest represents dBFT RecoveryRequest message.
 type RecoveryRequest interface {
@@ -10,20 +12,34 @@ type RecoveryRequest interface {
 	SetTimestamp(ts uint64)
 }
 
-type recoveryRequest struct {
-	timestamp uint32
-}
+type (
+	recoveryRequest struct {
+		timestamp uint32
+	}
+	// recoveryRequestAux is an auxiliary structure for recoveryRequest encoding.
+	recoveryRequestAux struct {
+		Timestamp uint32
+	}
+)
 
 var _ RecoveryRequest = (*recoveryRequest)(nil)
 
-// EncodeBinary implements io.Serializable interface.
-func (m recoveryRequest) EncodeBinary(w *io.BinWriter) {
-	w.WriteU32LE(m.timestamp)
+// EncodeBinary implements Serializable interface.
+func (m recoveryRequest) EncodeBinary(w *gob.Encoder) error {
+	return w.Encode(&recoveryRequestAux{
+		Timestamp: m.timestamp,
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (m *recoveryRequest) DecodeBinary(r *io.BinReader) {
-	m.timestamp = r.ReadU32LE()
+// DecodeBinary implements Serializable interface.
+func (m *recoveryRequest) DecodeBinary(r *gob.Decoder) error {
+	aux := new(recoveryRequestAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
+
+	m.timestamp = aux.Timestamp
+	return nil
 }
 
 // Timestamp implements RecoveryRequest interface.
