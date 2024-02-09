@@ -17,7 +17,7 @@ type (
 		GetPrepareRequest(p ConsensusPayload, validators []crypto.PublicKey, primary uint16) ConsensusPayload
 		// GetPrepareResponses returns a slice of PrepareResponse in any order.
 		GetPrepareResponses(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
-		// GetChangeView returns a slice of ChangeView in any order.
+		// GetChangeViews returns a slice of ChangeView in any order.
 		GetChangeViews(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
 		// GetCommits returns a slice of Commit in any order.
 		GetCommits(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload

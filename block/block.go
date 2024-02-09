@@ -50,7 +50,7 @@ type (
 
 		// Transactions returns block's transaction list.
 		Transactions() []Transaction
-		// SetTransaction sets block's transaction list.
+		// SetTransactions sets block's transaction list.
 		SetTransactions([]Transaction)
 	}
 

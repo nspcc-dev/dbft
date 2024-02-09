@@ -18,7 +18,7 @@ type (
 		// payload was originated from.
 		ValidatorIndex() uint16
 
-		// SetValidator index sets validator index.
+		// SetValidatorIndex sets validator index.
 		SetValidatorIndex(i uint16)
 
 		Height() uint32
