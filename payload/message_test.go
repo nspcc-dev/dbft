@@ -1,11 +1,12 @@
 package payload
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/gob"
 	"testing"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -70,16 +71,16 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		m.SetPayload(&recoveryMessage{
 			changeViewPayloads: []changeViewCompact{
 				{
-					timestamp:          123,
-					validatorIndex:     1,
-					originalViewNumber: 3,
+					Timestamp:          123,
+					ValidatorIndex:     1,
+					OriginalViewNumber: 3,
 				},
 			},
 			commitPayloads: []commitCompact{},
 			preparationPayloads: []preparationCompact{
-				1: {validatorIndex: 1},
-				3: {validatorIndex: 3},
-				4: {validatorIndex: 4},
+				1: {ValidatorIndex: 1},
+				3: {ValidatorIndex: 3},
+				4: {ValidatorIndex: 4},
 			},
 			prepareRequest: &prepareRequest{
 				nonce:     123,
@@ -139,9 +140,9 @@ func TestRecoveryMessage_NoPayloads(t *testing.T) {
 func TestCompact_EncodeDecode(t *testing.T) {
 	t.Run("ChangeView", func(t *testing.T) {
 		p := &changeViewCompact{
-			validatorIndex:     10,
-			originalViewNumber: 31,
-			timestamp:          98765,
+			ValidatorIndex:     10,
+			OriginalViewNumber: 31,
+			Timestamp:          98765,
 		}
 
 		testEncodeDecode(t, p, new(changeViewCompact))
@@ -149,7 +150,7 @@ func TestCompact_EncodeDecode(t *testing.T) {
 
 	t.Run("Preparation", func(t *testing.T) {
 		p := &preparationCompact{
-			validatorIndex: 10,
+			ValidatorIndex: 10,
 		}
 
 		testEncodeDecode(t, p, new(preparationCompact))
@@ -157,10 +158,10 @@ func TestCompact_EncodeDecode(t *testing.T) {
 
 	t.Run("Commit", func(t *testing.T) {
 		p := &commitCompact{
-			validatorIndex: 10,
-			viewNumber:     77,
+			ValidatorIndex: 10,
+			ViewNumber:     77,
 		}
-		fillRandom(t, p.signature[:])
+		fillRandom(t, p.Signature[:])
 
 		testEncodeDecode(t, p, new(commitCompact))
 	})
@@ -201,16 +202,17 @@ func TestMessageType_String(t *testing.T) {
 	require.Equal(t, "RecoveryMessage", RecoveryMessageType.String())
 }
 
-func testEncodeDecode(t *testing.T, expected, actual io.Serializable) {
-	w := io.NewBufBinWriter()
-	expected.EncodeBinary(w.BinWriter)
-	require.NoError(t, w.Err)
+func testEncodeDecode(t *testing.T, expected, actual Serializable) {
+	var buf bytes.Buffer
+	w := gob.NewEncoder(&buf)
+	err := expected.EncodeBinary(w)
+	require.NoError(t, err)
 
-	buf := w.Bytes()
-	r := io.NewBinReaderFromBuf(buf)
+	b := buf.Bytes()
+	r := gob.NewDecoder(bytes.NewReader(b))
 
-	actual.DecodeBinary(r)
-	require.NoError(t, r.Err)
+	err = actual.DecodeBinary(r)
+	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
 

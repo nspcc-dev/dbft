@@ -1,10 +1,10 @@
 package payload
 
 import (
+	"encoding/gob"
 	"errors"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
@@ -36,6 +36,12 @@ type (
 		changeViewPayloads  []changeViewCompact
 		prepareRequest      PrepareRequest
 	}
+	// recoveryMessageAux is an auxiliary structure for recoveryMessage encoding.
+	recoveryMessageAux struct {
+		PreparationPayloads []preparationCompact
+		CommitPayloads      []commitCompact
+		ChangeViewPayloads  []changeViewCompact
+	}
 )
 
 var _ RecoveryMessage = (*recoveryMessage)(nil)
@@ -59,25 +65,25 @@ func (m *recoveryMessage) AddPayload(p ConsensusPayload) {
 		m.preparationHash = &prepHash
 	case PrepareResponseType:
 		m.preparationPayloads = append(m.preparationPayloads, preparationCompact{
-			validatorIndex: p.ValidatorIndex(),
+			ValidatorIndex: p.ValidatorIndex(),
 		})
 	case ChangeViewType:
 		m.changeViewPayloads = append(m.changeViewPayloads, changeViewCompact{
-			validatorIndex:     p.ValidatorIndex(),
-			originalViewNumber: p.ViewNumber(),
-			timestamp:          0,
+			ValidatorIndex:     p.ValidatorIndex(),
+			OriginalViewNumber: p.ViewNumber(),
+			Timestamp:          0,
 		})
 	case CommitType:
 		cc := commitCompact{
-			viewNumber:     p.ViewNumber(),
-			validatorIndex: p.ValidatorIndex(),
+			ViewNumber:     p.ViewNumber(),
+			ValidatorIndex: p.ValidatorIndex(),
 		}
-		copy(cc.signature[:], p.GetCommit().Signature())
+		copy(cc.Signature[:], p.GetCommit().Signature())
 		m.commitPayloads = append(m.commitPayloads, cc)
 	}
 }
 
-func fromPayload(t MessageType, recovery ConsensusPayload, p any) *Payload {
+func fromPayload(t MessageType, recovery ConsensusPayload, p Serializable) *Payload {
 	return &Payload{
 		message: message{
 			cmType:     t,
@@ -118,7 +124,7 @@ func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload, _ []crypto.Pub
 		payloads[i] = fromPayload(PrepareResponseType, p, &prepareResponse{
 			preparationHash: *m.preparationHash,
 		})
-		payloads[i].SetValidatorIndex(resp.validatorIndex)
+		payloads[i].SetValidatorIndex(resp.ValidatorIndex)
 	}
 
 	return payloads
@@ -130,10 +136,10 @@ func (m *recoveryMessage) GetChangeViews(p ConsensusPayload, _ []crypto.PublicKe
 
 	for i, cv := range m.changeViewPayloads {
 		payloads[i] = fromPayload(ChangeViewType, p, &changeView{
-			newViewNumber: cv.originalViewNumber + 1,
-			timestamp:     cv.timestamp,
+			newViewNumber: cv.OriginalViewNumber + 1,
+			timestamp:     cv.Timestamp,
 		})
-		payloads[i].SetValidatorIndex(cv.validatorIndex)
+		payloads[i].SetValidatorIndex(cv.ValidatorIndex)
 	}
 
 	return payloads
@@ -144,56 +150,89 @@ func (m *recoveryMessage) GetCommits(p ConsensusPayload, _ []crypto.PublicKey) [
 	payloads := make([]ConsensusPayload, len(m.commitPayloads))
 
 	for i, c := range m.commitPayloads {
-		payloads[i] = fromPayload(CommitType, p, &commit{signature: c.signature})
-		payloads[i].SetValidatorIndex(c.validatorIndex)
+		payloads[i] = fromPayload(CommitType, p, &commit{signature: c.Signature})
+		payloads[i].SetValidatorIndex(c.ValidatorIndex)
 	}
 
 	return payloads
 }
 
-// EncodeBinary implements io.Serializable interface.
-func (m recoveryMessage) EncodeBinary(w *io.BinWriter) {
-	w.WriteArray(m.changeViewPayloads)
-
+// EncodeBinary implements Serializable interface.
+func (m recoveryMessage) EncodeBinary(w *gob.Encoder) error {
 	hasReq := m.prepareRequest != nil
-	w.WriteBool(hasReq)
-
+	if err := w.Encode(hasReq); err != nil {
+		return err
+	}
 	if hasReq {
-		m.prepareRequest.(io.Serializable).EncodeBinary(w)
+		if err := m.prepareRequest.(Serializable).EncodeBinary(w); err != nil {
+			return err
+		}
 	} else {
 		if m.preparationHash == nil {
-			w.WriteVarUint(0)
+			if err := w.Encode(0); err != nil {
+				return err
+			}
 		} else {
-			w.WriteVarUint(util.Uint256Size)
-			m.preparationHash.EncodeBinary(w)
+			if err := w.Encode(util.Uint256Size); err != nil {
+				return err
+			}
+			if err := w.Encode(m.preparationHash); err != nil {
+				return err
+			}
 		}
 	}
-
-	w.WriteArray(m.preparationPayloads)
-	w.WriteArray(m.commitPayloads)
+	return w.Encode(&recoveryMessageAux{
+		PreparationPayloads: m.preparationPayloads,
+		CommitPayloads:      m.commitPayloads,
+		ChangeViewPayloads:  m.changeViewPayloads,
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (m *recoveryMessage) DecodeBinary(r *io.BinReader) {
-	r.ReadArray(&m.changeViewPayloads)
-
-	if hasReq := r.ReadBool(); hasReq {
+// DecodeBinary implements Serializable interface.
+func (m *recoveryMessage) DecodeBinary(r *gob.Decoder) error {
+	var hasReq bool
+	if err := r.Decode(&hasReq); err != nil {
+		return err
+	}
+	if hasReq {
 		m.prepareRequest = new(prepareRequest)
-		m.prepareRequest.(io.Serializable).DecodeBinary(r)
+		if err := m.prepareRequest.(Serializable).DecodeBinary(r); err != nil {
+			return err
+		}
 	} else {
-		l := r.ReadVarUint()
+		var l int
+		if err := r.Decode(&l); err != nil {
+			return err
+		}
 		if l != 0 {
 			if l == util.Uint256Size {
 				m.preparationHash = new(util.Uint256)
-				m.preparationHash.DecodeBinary(r)
+				if err := r.Decode(m.preparationHash); err != nil {
+					return err
+				}
 			} else {
-				r.Err = errors.New("wrong util.Uint256 length")
+				return errors.New("wrong util.Uint256 length")
 			}
 		} else {
 			m.preparationHash = nil
 		}
 	}
 
-	r.ReadArray(&m.preparationPayloads)
-	r.ReadArray(&m.commitPayloads)
+	aux := new(recoveryMessageAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
+	m.preparationPayloads = aux.PreparationPayloads
+	if m.preparationPayloads == nil {
+		m.preparationPayloads = []preparationCompact{}
+	}
+	m.commitPayloads = aux.CommitPayloads
+	if m.commitPayloads == nil {
+		m.commitPayloads = []commitCompact{}
+	}
+	m.changeViewPayloads = aux.ChangeViewPayloads
+	if m.changeViewPayloads == nil {
+		m.changeViewPayloads = []changeViewCompact{}
+	}
+	return nil
 }

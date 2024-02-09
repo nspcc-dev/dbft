@@ -1,9 +1,11 @@
 package block
 
 import (
+	"bytes"
+	"encoding/gob"
+
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/merkle"
-	"github.com/nspcc-dev/neo-go/pkg/io"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
@@ -135,10 +137,11 @@ func (b *neoBlock) Signature() []byte {
 // 1. It must have only one valid result for one block.
 // 2. Two different blocks must have different hash data.
 func (b *neoBlock) GetHashData() []byte {
-	w := io.NewBufBinWriter()
-	b.EncodeBinary(w.BinWriter)
+	buf := bytes.Buffer{}
+	w := gob.NewEncoder(&buf)
+	_ = b.EncodeBinary(w)
 
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 // Sign implements Block interface.
@@ -175,24 +178,12 @@ func (b *neoBlock) Hash() (h util.Uint256) {
 	return hash
 }
 
-// EncodeBinary implements io.Serializable interface.
-func (b base) EncodeBinary(w *io.BinWriter) {
-	w.WriteU32LE(b.Version)
-	w.WriteBytes(b.PrevHash[:])
-	w.WriteBytes(b.MerkleRoot[:])
-	w.WriteU32LE(b.Timestamp)
-	w.WriteU32LE(b.Index)
-	w.WriteU64LE(b.ConsensusData)
-	w.WriteBytes(b.NextConsensus[:])
+// EncodeBinary implements Serializable interface.
+func (b base) EncodeBinary(w *gob.Encoder) error {
+	return w.Encode(b)
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (b *base) DecodeBinary(r *io.BinReader) {
-	b.Version = r.ReadU32LE()
-	r.ReadBytes(b.PrevHash[:])
-	r.ReadBytes(b.MerkleRoot[:])
-	b.Timestamp = r.ReadU32LE()
-	b.Index = r.ReadU32LE()
-	b.ConsensusData = r.ReadU64LE()
-	r.ReadBytes(b.NextConsensus[:])
+// DecodeBinary implements Serializable interface.
+func (b *base) DecodeBinary(r *gob.Decoder) error {
+	return r.Decode(b)
 }

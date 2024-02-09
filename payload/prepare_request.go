@@ -1,7 +1,8 @@
 package payload
 
 import (
-	"github.com/nspcc-dev/neo-go/pkg/io"
+	"encoding/gob"
+
 	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
@@ -29,29 +30,46 @@ type PrepareRequest interface {
 	SetNextConsensus(nc util.Uint160)
 }
 
-type prepareRequest struct {
-	transactionHashes []util.Uint256
-	nonce             uint64
-	timestamp         uint32
-	nextConsensus     util.Uint160
-}
+type (
+	prepareRequest struct {
+		transactionHashes []util.Uint256
+		nonce             uint64
+		timestamp         uint32
+		nextConsensus     util.Uint160
+	}
+	// prepareRequestAux is an auxiliary structure for prepareRequest encoding.
+	prepareRequestAux struct {
+		TransactionHashes []util.Uint256
+		Nonce             uint64
+		Timestamp         uint32
+		NextConsensus     util.Uint160
+	}
+)
 
 var _ PrepareRequest = (*prepareRequest)(nil)
 
-// EncodeBinary implements io.Serializable interface.
-func (p prepareRequest) EncodeBinary(w *io.BinWriter) {
-	w.WriteU32LE(p.timestamp)
-	w.WriteU64LE(p.nonce)
-	w.WriteBytes(p.nextConsensus[:])
-	w.WriteArray(p.transactionHashes)
+// EncodeBinary implements Serializable interface.
+func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {
+	return w.Encode(&prepareRequestAux{
+		TransactionHashes: p.transactionHashes,
+		Nonce:             p.nonce,
+		Timestamp:         p.timestamp,
+		NextConsensus:     p.nextConsensus,
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (p *prepareRequest) DecodeBinary(r *io.BinReader) {
-	p.timestamp = r.ReadU32LE()
-	p.nonce = r.ReadU64LE()
-	r.ReadBytes(p.nextConsensus[:])
-	r.ReadArray(&p.transactionHashes)
+// DecodeBinary implements Serializable interface.
+func (p *prepareRequest) DecodeBinary(r *gob.Decoder) error {
+	aux := new(prepareRequestAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
+
+	p.timestamp = aux.Timestamp
+	p.nonce = aux.Nonce
+	p.nextConsensus = aux.NextConsensus
+	p.transactionHashes = aux.TransactionHashes
+	return nil
 }
 
 // Timestamp implements PrepareRequest interface.

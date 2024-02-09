@@ -1,6 +1,8 @@
 package payload
 
-import "github.com/nspcc-dev/neo-go/pkg/io"
+import (
+	"encoding/gob"
+)
 
 // ChangeView represents dBFT ChangeView message.
 type ChangeView interface {
@@ -23,21 +25,34 @@ type ChangeView interface {
 	SetReason(reason ChangeViewReason)
 }
 
-type changeView struct {
-	newViewNumber byte
-	timestamp     uint32
-}
+type (
+	changeView struct {
+		newViewNumber byte
+		timestamp     uint32
+	}
+	// changeViewAux is an auxiliary structure for changeView encoding.
+	changeViewAux struct {
+		Timestamp uint32
+	}
+)
 
 var _ ChangeView = (*changeView)(nil)
 
-// EncodeBinary implements io.Serializable interface.
-func (c changeView) EncodeBinary(w *io.BinWriter) {
-	w.WriteU32LE(c.timestamp)
+// EncodeBinary implements Serializable interface.
+func (c changeView) EncodeBinary(w *gob.Encoder) error {
+	return w.Encode(&changeViewAux{
+		Timestamp: c.timestamp,
+	})
 }
 
-// DecodeBinary implements io.Serializable interface.
-func (c *changeView) DecodeBinary(r *io.BinReader) {
-	c.timestamp = r.ReadU32LE()
+// DecodeBinary implements Serializable interface.
+func (c *changeView) DecodeBinary(r *gob.Decoder) error {
+	aux := new(changeViewAux)
+	if err := r.Decode(aux); err != nil {
+		return err
+	}
+	c.timestamp = aux.Timestamp
+	return nil
 }
 
 // NewViewNumber implements ChangeView interface.
