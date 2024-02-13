@@ -36,8 +36,10 @@ concerning dBFT's time depending behaviour.
 
 ## Usage
 A client of the library must implement its own event loop.
-The library provides 4 callbacks:
+The library provides 5 callbacks that change the state of the consensus
+process:
 - `Start()` which initializes internal dBFT structures
+- `Reset()` which reinitializes the consensus process
 - `OnTransaction()` which must be called everytime new transaction appears
 - `OnReceive()` which must be called everytime new payload is received
 - `OnTimer()` which must be called everytime timer fires
@@ -59,7 +61,7 @@ callback which is called at the start of every epoch. In the simple case where v
 it can return the same value everytime it is called.
 3. `ProcessBlock` is a callback which is called synchronously every time new block is accepted.
 It can or can not persist block; it also may keep the blockchain state unchanged. dBFT will NOT
-be initialized at the next height by itself to collect the next block until the `InitializeConsensus`
+be initialized at the next height by itself to collect the next block until `Reset`
 is called. In other words, it's the caller's responsibility to initialize dBFT at the next height even
 after block collection at the current height. It's also the caller's responsibility to update the
 blockchain state before the next height initialization so that other callbacks including

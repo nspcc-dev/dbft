@@ -12,8 +12,10 @@ import (
 )
 
 type (
-	// DBFT is a wrapper over Context containing service configuration and
-	// some other parameters not directly related to dBFT's state machine.
+	// DBFT is a dBFT implementation, it includes [Context] (main state)
+	// and [Config] (service configuration). Data exposed from these fields
+	// is supposed to be read-only, state is changed via methods of this
+	// structure.
 	DBFT[H crypto.Hash, A crypto.Address] struct {
 		Context[H, A]
 		Config[H, A]
@@ -21,13 +23,6 @@ type (
 		*sync.Mutex
 		cache      cache[H, A]
 		recovering bool
-	}
-	// Service is an interface for dBFT consensus.
-	Service[H crypto.Hash, A crypto.Address] interface {
-		Start(uint64)
-		OnTransaction(block.Transaction[H])
-		OnReceive(payload.ConsensusPayload[H, A])
-		OnTimeout(timer.HV)
 	}
 )
 
@@ -74,16 +69,25 @@ func (d *DBFT[H, A]) addTransaction(tx block.Transaction[H]) {
 	}
 }
 
-// Start initializes dBFT instance and starts protocol if node is primary. It
-// accepts a timestamp of the previous block.
+// Start initializes dBFT instance and starts the protocol if node is primary.
+// It accepts the timestamp of the previous block. It should be called once
+// per DBFT lifetime.
 func (d *DBFT[H, A]) Start(ts uint64) {
 	d.cache = newCache[H, A]()
-	d.InitializeConsensus(0, ts)
+	d.initializeConsensus(0, ts)
 	d.start()
 }
 
-// InitializeConsensus initializes dBFT instance.
-func (d *DBFT[H, A]) InitializeConsensus(view byte, ts uint64) {
+// Reset reinitializes dBFT instance with the given timestamp of the previous
+// block. It's used if the current consensus state is outdated which happens
+// after new block is processed by ledger (the block can come from dBFT or be
+// received by other means). The height is to be derived from the configured
+// CurrentHeight callback and view will be set to 0.
+func (d *DBFT[H, A]) Reset(ts uint64) {
+	d.initializeConsensus(0, ts)
+}
+
+func (d *DBFT[H, A]) initializeConsensus(view byte, ts uint64) {
 	d.reset(view, ts)
 
 	var role string
