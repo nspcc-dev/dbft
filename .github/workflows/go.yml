@@ -16,7 +16,7 @@ jobs:
           version: latest
 
   test:
-    name: test
+    name: Test
     runs-on: ubuntu-latest
     strategy:
       matrix:
