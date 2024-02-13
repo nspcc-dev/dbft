@@ -3,7 +3,6 @@ module github.com/nspcc-dev/dbft
 go 1.19
 
 require (
-	github.com/nspcc-dev/neo-go v0.73.1-pre.0.20200303142215-f5a1b928ce09
 	github.com/nspcc-dev/neofs-crypto v0.4.0
 	github.com/pkg/errors v0.8.1
 	github.com/spaolacci/murmur3 v1.1.0
