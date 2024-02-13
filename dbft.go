@@ -24,13 +24,6 @@ type (
 		cache      cache[H, A]
 		recovering bool
 	}
-	// Service is an interface for dBFT consensus.
-	Service[H crypto.Hash, A crypto.Address] interface {
-		Start(uint64)
-		OnTransaction(block.Transaction[H])
-		OnReceive(payload.ConsensusPayload[H, A])
-		OnTimeout(timer.HV)
-	}
 )
 
 // New returns new DBFT instance with specified H and A generic parameters
