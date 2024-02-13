@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, synchronize]
+    paths-ignore:
+      - 'scripts/**'
+      - '**/*.md'
+  push:
+    # Build for the master branch.
+    branches:
+      - master
+  release:
+    # Publish released commit as Docker `latest` and `git_revision` images.
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref to build dBFT [default: latest master; examples: v0.1.0, 0a4ff9d3e4a9ab432fd5812eb18c98e03b5a7432]'
+        required: false
+        default: ''
+
+jobs:
+  run:
+    name: Run simulation
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          # Allows to fetch all history for all branches and tags. Need this for proper versioning.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Run simulation
+        run: |
+          cd ./simulation
+          go run main.go
