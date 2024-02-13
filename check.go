@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *DBFT) checkPrepare() {
+func (d *DBFT[H, A]) checkPrepare() {
 	if !d.hasAllTransactions() {
 		d.Logger.Debug("check prepare: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
 		return
@@ -37,7 +37,7 @@ func (d *DBFT) checkPrepare() {
 	}
 }
 
-func (d *DBFT) checkCommit() {
+func (d *DBFT[H, A]) checkCommit() {
 	if !d.hasAllTransactions() {
 		d.Logger.Debug("check commit: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
 		return
@@ -78,7 +78,7 @@ func (d *DBFT) checkCommit() {
 	// new height.
 }
 
-func (d *DBFT) checkChangeView(view byte) {
+func (d *DBFT[H, A]) checkChangeView(view byte) {
 	if d.ViewNumber >= view {
 		return
 	}

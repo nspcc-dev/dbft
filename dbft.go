@@ -5,39 +5,38 @@ import (
 	"time"
 
 	"github.com/nspcc-dev/dbft/block"
+	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
 	"github.com/nspcc-dev/dbft/timer"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 	"go.uber.org/zap"
 )
 
 type (
 	// DBFT is a wrapper over Context containing service configuration and
 	// some other parameters not directly related to dBFT's state machine.
-	DBFT struct {
-		Context
-		Config
+	DBFT[H crypto.Hash, A crypto.Address] struct {
+		Context[H, A]
+		Config[H, A]
 
 		*sync.Mutex
-		cache      cache
+		cache      cache[H, A]
 		recovering bool
 	}
-
 	// Service is an interface for dBFT consensus.
-	Service interface {
+	Service[H crypto.Hash, A crypto.Address] interface {
 		Start(uint64)
-		OnTransaction(block.Transaction)
-		OnReceive(payload.ConsensusPayload)
+		OnTransaction(block.Transaction[H])
+		OnReceive(payload.ConsensusPayload[H, A])
 		OnTimeout(timer.HV)
 	}
 )
 
-var _ Service = (*DBFT)(nil)
-
-// New returns new DBFT instance with provided options
-// and nil if some of the options are missing or invalid.
-func New(options ...Option) *DBFT {
-	cfg := defaultConfig()
+// New returns new DBFT instance with specified H and A generic parameters
+// using provided options or nil if some of the options are missing or invalid.
+// H and A generic parameters are used as hash and address representation for
+// dBFT consensus messages, blocks and transactions.
+func New[H crypto.Hash, A crypto.Address](options ...func(config *Config[H, A])) *DBFT[H, A] {
+	cfg := defaultConfig[H, A]()
 
 	for _, option := range options {
 		option(cfg)
@@ -47,10 +46,10 @@ func New(options ...Option) *DBFT {
 		return nil
 	}
 
-	d := &DBFT{
+	d := &DBFT[H, A]{
 		Mutex:  new(sync.Mutex),
 		Config: *cfg,
-		Context: Context{
+		Context: Context[H, A]{
 			Config: cfg,
 		},
 	}
@@ -58,7 +57,7 @@ func New(options ...Option) *DBFT {
 	return d
 }
 
-func (d *DBFT) addTransaction(tx block.Transaction) {
+func (d *DBFT[H, A]) addTransaction(tx block.Transaction[H]) {
 	d.Transactions[tx.Hash()] = tx
 	if d.hasAllTransactions() {
 		if d.IsPrimary() || d.Context.WatchOnly() {
@@ -77,14 +76,14 @@ func (d *DBFT) addTransaction(tx block.Transaction) {
 
 // Start initializes dBFT instance and starts protocol if node is primary. It
 // accepts a timestamp of the previous block.
-func (d *DBFT) Start(ts uint64) {
-	d.cache = newCache()
+func (d *DBFT[H, A]) Start(ts uint64) {
+	d.cache = newCache[H, A]()
 	d.InitializeConsensus(0, ts)
 	d.start()
 }
 
 // InitializeConsensus initializes dBFT instance.
-func (d *DBFT) InitializeConsensus(view byte, ts uint64) {
+func (d *DBFT[H, A]) InitializeConsensus(view byte, ts uint64) {
 	d.reset(view, ts)
 
 	var role string
@@ -137,7 +136,7 @@ func (d *DBFT) InitializeConsensus(view byte, ts uint64) {
 }
 
 // OnTransaction notifies service about receiving new transaction.
-func (d *DBFT) OnTransaction(tx block.Transaction) {
+func (d *DBFT[H, A]) OnTransaction(tx block.Transaction[H]) {
 	// d.Logger.Debug("OnTransaction",
 	// 	zap.Bool("backup", d.IsBackup()),
 	// 	zap.Bool("not_accepting", d.NotAcceptingPayloadsDueToViewChanging()),
@@ -169,7 +168,7 @@ func (d *DBFT) OnTransaction(tx block.Transaction) {
 }
 
 // OnTimeout advances state machine as if timeout was fired.
-func (d *DBFT) OnTimeout(hv timer.HV) {
+func (d *DBFT[H, A]) OnTimeout(hv timer.HV) {
 	if d.Context.WatchOnly() || d.BlockSent() {
 		return
 	}
@@ -200,7 +199,7 @@ func (d *DBFT) OnTimeout(hv timer.HV) {
 }
 
 // OnReceive advances state machine in accordance with msg.
-func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) OnReceive(msg payload.ConsensusPayload[H, A]) {
 	if int(msg.ValidatorIndex()) >= len(d.Validators) {
 		d.Logger.Error("too big validator index", zap.Uint16("from", msg.ValidatorIndex()))
 		return
@@ -269,7 +268,7 @@ func (d *DBFT) OnReceive(msg payload.ConsensusPayload) {
 
 // start performs initial operations and returns messages to be sent.
 // It must be called after every height or view increment.
-func (d *DBFT) start() {
+func (d *DBFT[H, A]) start() {
 	if !d.IsPrimary() {
 		if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
 			for _, m := range msgs.prepare {
@@ -291,7 +290,7 @@ func (d *DBFT) start() {
 	d.sendPrepareRequest()
 }
 
-func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) onPrepareRequest(msg payload.ConsensusPayload[H, A]) {
 	// ignore prepareRequest if we had already received it or
 	// are in process of changing view
 	if d.RequestSentOrReceived() { //|| (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
@@ -343,8 +342,8 @@ func (d *DBFT) onPrepareRequest(msg payload.ConsensusPayload) {
 	d.checkPrepare()
 }
 
-func (d *DBFT) processMissingTx() {
-	missing := make([]util.Uint256, 0, len(d.TransactionHashes)/2)
+func (d *DBFT[H, A]) processMissingTx() {
+	missing := make([]H, 0, len(d.TransactionHashes)/2)
 
 	for _, h := range d.TransactionHashes {
 		if _, ok := d.Transactions[h]; ok {
@@ -369,8 +368,8 @@ func (d *DBFT) processMissingTx() {
 // the new proposed block, if it's fine it returns true, if something is wrong
 // with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
-func (d *DBFT) createAndCheckBlock() bool {
-	txx := make([]block.Transaction, 0, len(d.TransactionHashes))
+func (d *DBFT[H, A]) createAndCheckBlock() bool {
+	txx := make([]block.Transaction[H], 0, len(d.TransactionHashes))
 	for _, h := range d.TransactionHashes {
 		txx = append(txx, d.Transactions[h])
 	}
@@ -387,7 +386,7 @@ func (d *DBFT) createAndCheckBlock() bool {
 	return true
 }
 
-func (d *DBFT) updateExistingPayloads(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) updateExistingPayloads(msg payload.ConsensusPayload[H, A]) {
 	for i, m := range d.PreparationPayloads {
 		if m != nil && m.Type() == payload.PrepareResponseType {
 			resp := m.GetPrepareResponse()
@@ -410,7 +409,7 @@ func (d *DBFT) updateExistingPayloads(msg payload.ConsensusPayload) {
 	}
 }
 
-func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) onPrepareResponse(msg payload.ConsensusPayload[H, A]) {
 	if d.ViewNumber != msg.ViewNumber() {
 		d.Logger.Debug("ignoring wrong view number", zap.Uint("view", uint(msg.ViewNumber())))
 		return
@@ -462,7 +461,7 @@ func (d *DBFT) onPrepareResponse(msg payload.ConsensusPayload) {
 	}
 }
 
-func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) onChangeView(msg payload.ConsensusPayload[H, A]) {
 	p := msg.GetChangeView()
 
 	if p.NewViewNumber() <= d.ViewNumber {
@@ -493,16 +492,16 @@ func (d *DBFT) onChangeView(msg payload.ConsensusPayload) {
 	d.checkChangeView(p.NewViewNumber())
 }
 
-func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) onCommit(msg payload.ConsensusPayload[H, A]) {
 	existing := d.CommitPayloads[msg.ValidatorIndex()]
 	if existing != nil {
-		if !existing.Hash().Equals(msg.Hash()) {
+		if existing.Hash() != msg.Hash() {
 			d.Logger.Warn("rejecting commit due to existing",
 				zap.Uint("validator", uint(msg.ValidatorIndex())),
 				zap.Uint("existing view", uint(existing.ViewNumber())),
 				zap.Uint("view", uint(msg.ViewNumber())),
-				zap.String("existing hash", existing.Hash().StringLE()),
-				zap.String("hash", msg.Hash().StringLE()),
+				zap.Stringer("existing hash", existing.Hash()),
+				zap.Stringer("hash", msg.Hash()),
 			)
 		}
 		return
@@ -535,7 +534,7 @@ func (d *DBFT) onCommit(msg payload.ConsensusPayload) {
 	d.CommitPayloads[msg.ValidatorIndex()] = msg
 }
 
-func (d *DBFT) onRecoveryRequest(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) onRecoveryRequest(msg payload.ConsensusPayload[H, A]) {
 	if !d.CommitSent() {
 		// Limit recoveries to be sent from no more than F nodes
 		// TODO replace loop with a single if
@@ -557,7 +556,7 @@ func (d *DBFT) onRecoveryRequest(msg payload.ConsensusPayload) {
 	d.sendRecoveryMessage()
 }
 
-func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
+func (d *DBFT[H, A]) onRecoveryMessage(msg payload.ConsensusPayload[H, A]) {
 	d.Logger.Debug("recovery message received", zap.Any("dump", msg))
 
 	var (
@@ -617,7 +616,7 @@ func (d *DBFT) onRecoveryMessage(msg payload.ConsensusPayload) {
 	}
 }
 
-func (d *DBFT) changeTimer(delay time.Duration) {
+func (d *DBFT[H, A]) changeTimer(delay time.Duration) {
 	d.Logger.Debug("reset timer",
 		zap.Uint32("h", d.BlockIndex),
 		zap.Int("v", int(d.ViewNumber)),
@@ -625,7 +624,7 @@ func (d *DBFT) changeTimer(delay time.Duration) {
 	d.Timer.Reset(timer.HV{Height: d.BlockIndex, View: d.ViewNumber}, delay)
 }
 
-func (d *DBFT) extendTimer(count time.Duration) {
+func (d *DBFT[H, A]) extendTimer(count time.Duration) {
 	if !d.CommitSent() && !d.ViewChanging() {
 		d.Timer.Extend(count * d.SecondsPerBlock / time.Duration(d.M()))
 	}

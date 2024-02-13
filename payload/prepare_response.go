@@ -3,16 +3,17 @@ package payload
 import (
 	"encoding/gob"
 
+	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 // PrepareResponse represents dBFT PrepareResponse message.
-type PrepareResponse interface {
+type PrepareResponse[H crypto.Hash] interface {
 	// PreparationHash returns the hash of PrepareRequest payload
 	// for this epoch.
-	PreparationHash() util.Uint256
+	PreparationHash() H
 	// SetPreparationHash sets preparations hash.
-	SetPreparationHash(h util.Uint256)
+	SetPreparationHash(h H)
 }
 
 type (
@@ -25,7 +26,7 @@ type (
 	}
 )
 
-var _ PrepareResponse = (*prepareResponse)(nil)
+var _ PrepareResponse[util.Uint256] = (*prepareResponse)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p prepareResponse) EncodeBinary(w *gob.Encoder) error {

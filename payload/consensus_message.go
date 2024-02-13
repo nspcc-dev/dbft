@@ -5,6 +5,8 @@ import (
 	"encoding/gob"
 	"fmt"
 
+	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +20,7 @@ type (
 		DecodeBinary(decoder *gob.Decoder) error
 	}
 
-	consensusMessage interface {
+	consensusMessage[H crypto.Hash, A crypto.Address] interface {
 		// ViewNumber returns view number when this message was originated.
 		ViewNumber() byte
 		// SetViewNumber sets view number.
@@ -37,15 +39,15 @@ type (
 		// GetChangeView returns payload as if it was ChangeView.
 		GetChangeView() ChangeView
 		// GetPrepareRequest returns payload as if it was PrepareRequest.
-		GetPrepareRequest() PrepareRequest
+		GetPrepareRequest() PrepareRequest[H, A]
 		// GetPrepareResponse returns payload as if it was PrepareResponse.
-		GetPrepareResponse() PrepareResponse
+		GetPrepareResponse() PrepareResponse[H]
 		// GetCommit returns payload as if it was Commit.
 		GetCommit() Commit
 		// GetRecoveryRequest returns payload as if it was RecoveryRequest.
 		GetRecoveryRequest() RecoveryRequest
 		// GetRecoveryMessage returns payload as if it was RecoveryMessage.
-		GetRecoveryMessage() RecoveryMessage
+		GetRecoveryMessage() RecoveryMessage[H, A]
 	}
 
 	message struct {
@@ -73,7 +75,7 @@ const (
 	RecoveryMessageType MessageType = 0x41
 )
 
-var _ consensusMessage = (*message)(nil)
+var _ consensusMessage[util.Uint256, util.Uint160] = (*message)(nil)
 
 // String implements fmt.Stringer interface.
 func (m MessageType) String() string {
@@ -142,12 +144,18 @@ func (m *message) DecodeBinary(r *gob.Decoder) error {
 	return m.payload.(Serializable).DecodeBinary(dec)
 }
 
-func (m message) GetChangeView() ChangeView           { return m.payload.(ChangeView) }
-func (m message) GetPrepareRequest() PrepareRequest   { return m.payload.(PrepareRequest) }
-func (m message) GetPrepareResponse() PrepareResponse { return m.payload.(PrepareResponse) }
+func (m message) GetChangeView() ChangeView { return m.payload.(ChangeView) }
+func (m message) GetPrepareRequest() PrepareRequest[util.Uint256, util.Uint160] {
+	return m.payload.(PrepareRequest[util.Uint256, util.Uint160])
+}
+func (m message) GetPrepareResponse() PrepareResponse[util.Uint256] {
+	return m.payload.(PrepareResponse[util.Uint256])
+}
 func (m message) GetCommit() Commit                   { return m.payload.(Commit) }
 func (m message) GetRecoveryRequest() RecoveryRequest { return m.payload.(RecoveryRequest) }
-func (m message) GetRecoveryMessage() RecoveryMessage { return m.payload.(RecoveryMessage) }
+func (m message) GetRecoveryMessage() RecoveryMessage[util.Uint256, util.Uint160] {
+	return m.payload.(RecoveryMessage[util.Uint256, util.Uint160])
+}
 
 // ViewNumber implements ConsensusMessage interface.
 func (m message) ViewNumber() byte {

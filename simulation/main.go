@@ -28,8 +28,8 @@ import (
 type (
 	simNode struct {
 		id       int
-		d        *dbft.DBFT
-		messages chan payload.ConsensusPayload
+		d        *dbft.DBFT[util.Uint256, util.Uint160]
+		messages chan payload.ConsensusPayload[util.Uint256, util.Uint160]
 		key      crypto.PrivateKey
 		pub      crypto.PublicKey
 		pool     *memPool
@@ -111,11 +111,24 @@ func initNodes(nodes []*simNode, log *zap.Logger) {
 	}
 }
 
+// defaultNewConsensusPayload is default function for creating
+// consensus payload of specific type.
+func defaultNewConsensusPayload(c *dbft.Context[util.Uint256, util.Uint160], t payload.MessageType, msg any) payload.ConsensusPayload[util.Uint256, util.Uint160] {
+	cp := payload.NewConsensusPayload()
+	cp.SetHeight(c.BlockIndex)
+	cp.SetValidatorIndex(uint16(c.MyIndex))
+	cp.SetViewNumber(c.ViewNumber)
+	cp.SetType(t)
+	cp.SetPayload(msg)
+
+	return cp
+}
+
 func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 	key, pub := crypto.Generate(rand.Reader)
 	nodes[i] = &simNode{
 		id:       i,
-		messages: make(chan payload.ConsensusPayload, defaultChanSize),
+		messages: make(chan payload.ConsensusPayload[util.Uint256, util.Uint160], defaultChanSize),
 		key:      key,
 		pub:      pub,
 		pool:     newMemoryPool(),
@@ -123,19 +136,29 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 		cluster:  nodes,
 	}
 
-	nodes[i].d = dbft.New(
-		dbft.WithLogger(nodes[i].log),
-		dbft.WithSecondsPerBlock(time.Second*5),
-		dbft.WithKeyPair(key, pub),
-		dbft.WithGetTx(nodes[i].pool.Get),
-		dbft.WithGetVerified(nodes[i].pool.GetVerified),
-		dbft.WithBroadcast(nodes[i].Broadcast),
-		dbft.WithProcessBlock(nodes[i].ProcessBlock),
-		dbft.WithCurrentHeight(nodes[i].CurrentHeight),
-		dbft.WithCurrentBlockHash(nodes[i].CurrentBlockHash),
-		dbft.WithGetValidators(nodes[i].GetValidators),
-		dbft.WithVerifyPrepareRequest(nodes[i].VerifyPayload),
-		dbft.WithVerifyPrepareResponse(nodes[i].VerifyPayload),
+	nodes[i].d = dbft.New[util.Uint256, util.Uint160](
+		dbft.WithLogger[util.Uint256, util.Uint160](nodes[i].log),
+		dbft.WithSecondsPerBlock[util.Uint256, util.Uint160](time.Second*5),
+		dbft.WithKeyPair[util.Uint256, util.Uint160](key, pub),
+		dbft.WithGetTx[util.Uint256, util.Uint160](nodes[i].pool.Get),
+		dbft.WithGetVerified[util.Uint256, util.Uint160](nodes[i].pool.GetVerified),
+		dbft.WithBroadcast[util.Uint256, util.Uint160](nodes[i].Broadcast),
+		dbft.WithProcessBlock[util.Uint256, util.Uint160](nodes[i].ProcessBlock),
+		dbft.WithCurrentHeight[util.Uint256, util.Uint160](nodes[i].CurrentHeight),
+		dbft.WithCurrentBlockHash[util.Uint256, util.Uint160](nodes[i].CurrentBlockHash),
+		dbft.WithGetValidators[util.Uint256, util.Uint160](nodes[i].GetValidators),
+		dbft.WithVerifyPrepareRequest[util.Uint256, util.Uint160](nodes[i].VerifyPayload),
+		dbft.WithVerifyPrepareResponse[util.Uint256, util.Uint160](nodes[i].VerifyPayload),
+
+		dbft.WithNewBlockFromContext[util.Uint256, util.Uint160](dbft.NewBlockFromContext),
+		dbft.WithGetConsensusAddress[util.Uint256, util.Uint160](func(...crypto.PublicKey) util.Uint160 { return util.Uint160{} }),
+		dbft.WithNewConsensusPayload[util.Uint256, util.Uint160](defaultNewConsensusPayload),
+		dbft.WithNewPrepareRequest[util.Uint256, util.Uint160](payload.NewPrepareRequest),
+		dbft.WithNewPrepareResponse[util.Uint256, util.Uint160](payload.NewPrepareResponse),
+		dbft.WithNewChangeView[util.Uint256, util.Uint160](payload.NewChangeView),
+		dbft.WithNewCommit[util.Uint256, util.Uint160](payload.NewCommit),
+		dbft.WithNewRecoveryMessage[util.Uint256, util.Uint160](payload.NewRecoveryMessage),
+		dbft.WithNewRecoveryRequest[util.Uint256, util.Uint160](payload.NewRecoveryRequest),
 	)
 
 	if nodes[i].d == nil {
@@ -168,7 +191,7 @@ func sortValidators(pubs []crypto.PublicKey) {
 	})
 }
 
-func (n *simNode) Broadcast(m payload.ConsensusPayload) {
+func (n *simNode) Broadcast(m payload.ConsensusPayload[util.Uint256, util.Uint160]) {
 	for i, node := range n.cluster {
 		if i != n.id {
 			select {
@@ -184,11 +207,11 @@ func (n *simNode) CurrentHeight() uint32          { return n.height }
 func (n *simNode) CurrentBlockHash() util.Uint256 { return n.lastHash }
 
 // GetValidators always returns the same list of validators.
-func (n *simNode) GetValidators(...block.Transaction) []crypto.PublicKey {
+func (n *simNode) GetValidators(...block.Transaction[util.Uint256]) []crypto.PublicKey {
 	return n.validators
 }
 
-func (n *simNode) ProcessBlock(b block.Block) {
+func (n *simNode) ProcessBlock(b block.Block[util.Uint256, util.Uint160]) {
 	n.d.Logger.Debug("received block", zap.Uint32("height", b.Index()))
 
 	for _, tx := range b.Transactions() {
@@ -200,7 +223,7 @@ func (n *simNode) ProcessBlock(b block.Block) {
 }
 
 // VerifyPrepareRequest verifies that payload was received from a good validator.
-func (n *simNode) VerifyPayload(p payload.ConsensusPayload) error {
+func (n *simNode) VerifyPayload(p payload.ConsensusPayload[util.Uint256, util.Uint160]) error {
 	if *blocked != -1 && p.ValidatorIndex() == uint16(*blocked) {
 		return fmt.Errorf("message from blocked validator: %d", *blocked)
 	}
@@ -220,7 +243,7 @@ func (n *simNode) addTx(count int) {
 
 type tx64 uint64
 
-var _ block.Transaction = (*tx64)(nil)
+var _ block.Transaction[util.Uint256] = (*tx64)(nil)
 
 func (t *tx64) Hash() (h util.Uint256) {
 	binary.LittleEndian.PutUint64(h[:], uint64(*t))
@@ -252,17 +275,17 @@ func (t *tx64) UnmarshalBinary(data []byte) error {
 
 type memPool struct {
 	mtx   *sync.RWMutex
-	store map[util.Uint256]block.Transaction
+	store map[util.Uint256]block.Transaction[util.Uint256]
 }
 
 func newMemoryPool() *memPool {
 	return &memPool{
 		mtx:   new(sync.RWMutex),
-		store: make(map[util.Uint256]block.Transaction),
+		store: make(map[util.Uint256]block.Transaction[util.Uint256]),
 	}
 }
 
-func (p *memPool) Add(tx block.Transaction) {
+func (p *memPool) Add(tx block.Transaction[util.Uint256]) {
 	p.mtx.Lock()
 
 	h := tx.Hash()
@@ -273,7 +296,7 @@ func (p *memPool) Add(tx block.Transaction) {
 	p.mtx.Unlock()
 }
 
-func (p *memPool) Get(h util.Uint256) (tx block.Transaction) {
+func (p *memPool) Get(h util.Uint256) (tx block.Transaction[util.Uint256]) {
 	p.mtx.RLock()
 	tx = p.store[h]
 	p.mtx.RUnlock()
@@ -287,13 +310,13 @@ func (p *memPool) Delete(h util.Uint256) {
 	p.mtx.Unlock()
 }
 
-func (p *memPool) GetVerified() (txx []block.Transaction) {
+func (p *memPool) GetVerified() (txx []block.Transaction[util.Uint256]) {
 	n := *txPerBlock
 	if n == 0 {
 		return
 	}
 
-	txx = make([]block.Transaction, 0, n)
+	txx = make([]block.Transaction[util.Uint256], 0, n)
 	for _, tx := range p.store {
 		txx = append(txx, tx)
 

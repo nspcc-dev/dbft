@@ -19,7 +19,7 @@ func TestNeoBlock_Setters(t *testing.T) {
 
 	require.Equal(t, util.Uint256{}, b.Hash())
 
-	txs := []Transaction{testTx(1), testTx(2)}
+	txs := []Transaction[util.Uint256]{testTx(1), testTx(2)}
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 

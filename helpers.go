@@ -1,39 +1,40 @@
 package dbft
 
 import (
+	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
 )
 
 type (
 	// inbox is a structure storing messages from a single epoch.
-	inbox struct {
-		prepare map[uint16]payload.ConsensusPayload
-		chViews map[uint16]payload.ConsensusPayload
-		commit  map[uint16]payload.ConsensusPayload
+	inbox[H crypto.Hash, A crypto.Address] struct {
+		prepare map[uint16]payload.ConsensusPayload[H, A]
+		chViews map[uint16]payload.ConsensusPayload[H, A]
+		commit  map[uint16]payload.ConsensusPayload[H, A]
 	}
 
 	// cache is an auxiliary structure storing messages
 	// from future epochs.
-	cache struct {
-		mail map[uint32]*inbox
+	cache[H crypto.Hash, A crypto.Address] struct {
+		mail map[uint32]*inbox[H, A]
 	}
 )
 
-func newInbox() *inbox {
-	return &inbox{
-		prepare: make(map[uint16]payload.ConsensusPayload),
-		chViews: make(map[uint16]payload.ConsensusPayload),
-		commit:  make(map[uint16]payload.ConsensusPayload),
+func newInbox[H crypto.Hash, A crypto.Address]() *inbox[H, A] {
+	return &inbox[H, A]{
+		prepare: make(map[uint16]payload.ConsensusPayload[H, A]),
+		chViews: make(map[uint16]payload.ConsensusPayload[H, A]),
+		commit:  make(map[uint16]payload.ConsensusPayload[H, A]),
 	}
 }
 
-func newCache() cache {
-	return cache{
-		mail: make(map[uint32]*inbox),
+func newCache[H crypto.Hash, A crypto.Address]() cache[H, A] {
+	return cache[H, A]{
+		mail: make(map[uint32]*inbox[H, A]),
 	}
 }
 
-func (c *cache) getHeight(h uint32) *inbox {
+func (c *cache[H, A]) getHeight(h uint32) *inbox[H, A] {
 	if m, ok := c.mail[h]; ok {
 		delete(c.mail, h)
 		return m
@@ -42,10 +43,10 @@ func (c *cache) getHeight(h uint32) *inbox {
 	return nil
 }
 
-func (c *cache) addMessage(m payload.ConsensusPayload) {
+func (c *cache[H, A]) addMessage(m payload.ConsensusPayload[H, A]) {
 	msgs, ok := c.mail[m.Height()]
 	if !ok {
-		msgs = newInbox()
+		msgs = newInbox[H, A]()
 		c.mail[m.Height()] = msgs
 	}
 

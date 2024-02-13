@@ -11,8 +11,8 @@ import (
 type (
 	// ConsensusPayload is a generic payload type which is exchanged
 	// between the nodes.
-	ConsensusPayload interface {
-		consensusMessage
+	ConsensusPayload[H crypto.Hash, A crypto.Address] interface {
+		consensusMessage[H, A]
 
 		// ValidatorIndex returns index of validator from which
 		// payload was originated from.
@@ -25,7 +25,7 @@ type (
 		SetHeight(h uint32)
 
 		// Hash returns 32-byte checksum of the payload.
-		Hash() util.Uint256
+		Hash() H
 	}
 
 	// Payload represents minimal payload containing all necessary fields.
@@ -51,7 +51,7 @@ type (
 	}
 )
 
-var _ ConsensusPayload = (*Payload)(nil)
+var _ ConsensusPayload[util.Uint256, util.Uint160] = (*Payload)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p Payload) EncodeBinary(w *gob.Encoder) error {

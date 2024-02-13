@@ -8,12 +8,17 @@ written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html) language.
 
 ## Design and structure
 1. All control flow is done in main package. Most of the code which communicates with external
-world (event time events) is hidden behind interfaces and callbacks. As a consequence it is
-highly flexible and extendable. Description of config options can be found in `config.go`.
+world (event time events) is hidden behind interfaces, callbacks and generic parameters. As a
+consequence it is highly flexible and extendable. Description of config options can be found
+in `config.go`.
 2. `crypto` package contains `PrivateKey`/`PublicKey` interfaces which permits usage of one's own
 cryptography for signing blocks on `Commit` stage.
 Default implementation with ECDSA signatures is provided, BLS multisignatures could be added
 in the nearest future.
+3. `crypto` package contains `Hash`/`Address` interfaces which permits usage of one's own
+hash/address implementation without additional overhead on conversions. Instantiate dBFT with
+custom hash/address implementation that matches requirements specified in the corresponding
+documentation.
 3. `block` package contains `Block` and `Transaction` abstractions.
 Every block must be able to be signed and verified as well as
 implement setters and getters for main fields. Minimal default implementation is provided.
