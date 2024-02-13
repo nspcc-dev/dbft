@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/nspcc-dev/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +15,7 @@ func TestNewMerkleTree(t *testing.T) {
 	})
 
 	t.Run("merkle tree on 1 leave", func(t *testing.T) {
-		h := util.Uint256{1, 2, 3, 4}
+		h := crypto.Uint256{1, 2, 3, 4}
 		mt := NewMerkleTree(h)
 		require.NotNil(t, mt)
 		require.Equal(t, 1, mt.Depth)
@@ -24,7 +24,7 @@ func TestNewMerkleTree(t *testing.T) {
 	})
 
 	t.Run("predefined tree on 4 leaves", func(t *testing.T) {
-		hashes := make([]util.Uint256, 5)
+		hashes := make([]crypto.Uint256, 5)
 		for i := 0; i < 5; i++ {
 			hashes[i] = sha256.Sum256([]byte{byte(i)})
 		}
@@ -40,7 +40,7 @@ func TestNewMerkleTree(t *testing.T) {
 }
 
 func TestTreeNode_IsLeaf(t *testing.T) {
-	hashes := []util.Uint256{{1}, {2}, {3}}
+	hashes := []crypto.Uint256{{1}, {2}, {3}}
 
 	mt := NewMerkleTree(hashes...)
 	require.NotNil(t, mt)

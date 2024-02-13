@@ -9,22 +9,21 @@ import (
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
 	"github.com/nspcc-dev/dbft/timer"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 // Context is a main dBFT structure which
 // contains all information needed for performing transitions.
-type Context struct {
+type Context[H crypto.Hash, A crypto.Address] struct {
 	// Config is dBFT's Config instance.
-	Config *Config
+	Config *Config[H, A]
 
 	// Priv is node's private key.
 	Priv crypto.PrivateKey
 	// Pub is node's public key.
 	Pub crypto.PublicKey
 
-	block  block.Block
-	header block.Block
+	block  block.Block[H, A]
+	header block.Block[H, A]
 	// blockProcessed denotes whether Config.ProcessBlock callback was called for the current
 	// height. If so, then no second call must happen. After new block is received by the user,
 	// dBFT stops any new transaction or messages processing as far as timeouts handling till
@@ -45,33 +44,33 @@ type Context struct {
 	Version      uint32
 
 	// NextConsensus is a hash of the validators which will be accepting the next block.
-	NextConsensus util.Uint160
+	NextConsensus A
 	// PrevHash is a hash of the previous block.
-	PrevHash util.Uint256
+	PrevHash H
 
 	// Timestamp is a nanosecond-precision timestamp
 	Timestamp uint64
 	Nonce     uint64
 	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
-	TransactionHashes []util.Uint256
+	TransactionHashes []H
 	// MissingTransactions is a slice of hashes containing missing transactions for the current block.
-	MissingTransactions []util.Uint256
+	MissingTransactions []H
 	// Transactions is a map containing actual transactions for the current block.
-	Transactions map[util.Uint256]block.Transaction
+	Transactions map[H]block.Transaction[H]
 
 	// PreparationPayloads stores consensus Prepare* payloads for the current epoch.
-	PreparationPayloads []payload.ConsensusPayload
+	PreparationPayloads []payload.ConsensusPayload[H, A]
 	// CommitPayloads stores consensus Commit payloads sent throughout all epochs. It
 	// is assumed that valid Commit payload can only be sent once by a single node per
 	// the whole set of consensus epochs for particular block. Invalid commit payloads
 	// are kicked off this list immediately (if PrepareRequest was received for the
 	// current round, so it's possible to verify Commit against it) or stored till
 	// the corresponding PrepareRequest receiving.
-	CommitPayloads []payload.ConsensusPayload
+	CommitPayloads []payload.ConsensusPayload[H, A]
 	// ChangeViewPayloads stores consensus ChangeView payloads for the current epoch.
-	ChangeViewPayloads []payload.ConsensusPayload
+	ChangeViewPayloads []payload.ConsensusPayload[H, A]
 	// LastChangeViewPayloads stores consensus ChangeView payloads for the last epoch.
-	LastChangeViewPayloads []payload.ConsensusPayload
+	LastChangeViewPayloads []payload.ConsensusPayload[H, A]
 	// LastSeenMessage array stores the height of the last seen message, for each validator.
 	// if this node never heard from validator i, LastSeenMessage[i] will be -1.
 	LastSeenMessage []*timer.HV
@@ -82,16 +81,16 @@ type Context struct {
 }
 
 // N returns total number of validators.
-func (c *Context) N() int { return len(c.Validators) }
+func (c *Context[H, A]) N() int { return len(c.Validators) }
 
 // F returns number of validators which can be faulty.
-func (c *Context) F() int { return (len(c.Validators) - 1) / 3 }
+func (c *Context[H, A]) F() int { return (len(c.Validators) - 1) / 3 }
 
 // M returns number of validators which must function correctly.
-func (c *Context) M() int { return len(c.Validators) - c.F() }
+func (c *Context[H, A]) M() int { return len(c.Validators) - c.F() }
 
 // GetPrimaryIndex returns index of a primary node for the specified view.
-func (c *Context) GetPrimaryIndex(viewNumber byte) uint {
+func (c *Context[H, A]) GetPrimaryIndex(viewNumber byte) uint {
 	p := (int(c.BlockIndex) - int(viewNumber)) % len(c.Validators)
 	if p >= 0 {
 		return uint(p)
@@ -101,19 +100,19 @@ func (c *Context) GetPrimaryIndex(viewNumber byte) uint {
 }
 
 // IsPrimary returns true iff node is primary for current height and view.
-func (c *Context) IsPrimary() bool { return c.MyIndex == int(c.PrimaryIndex) }
+func (c *Context[H, A]) IsPrimary() bool { return c.MyIndex == int(c.PrimaryIndex) }
 
 // IsBackup returns true iff node is backup for current height and view.
-func (c *Context) IsBackup() bool {
+func (c *Context[H, A]) IsBackup() bool {
 	return c.MyIndex >= 0 && !c.IsPrimary()
 }
 
 // WatchOnly returns true iff node takes no active part in consensus.
-func (c *Context) WatchOnly() bool { return c.MyIndex < 0 || c.Config.WatchOnly() }
+func (c *Context[H, A]) WatchOnly() bool { return c.MyIndex < 0 || c.Config.WatchOnly() }
 
 // CountCommitted returns number of received Commit messages not only for the current
 // epoch but also for any other epoch.
-func (c *Context) CountCommitted() (count int) {
+func (c *Context[H, A]) CountCommitted() (count int) {
 	for i := range c.CommitPayloads {
 		if c.CommitPayloads[i] != nil {
 			count++
@@ -125,7 +124,7 @@ func (c *Context) CountCommitted() (count int) {
 
 // CountFailed returns number of nodes with which no communication was performed
 // for this view and that hasn't sent the Commit message at the previous views.
-func (c *Context) CountFailed() (count int) {
+func (c *Context[H, A]) CountFailed() (count int) {
 	for i, hv := range c.LastSeenMessage {
 		if c.CommitPayloads[i] == nil && (hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber) {
 			count++
@@ -137,18 +136,18 @@ func (c *Context) CountFailed() (count int) {
 
 // RequestSentOrReceived returns true iff PrepareRequest
 // was sent or received for the current epoch.
-func (c *Context) RequestSentOrReceived() bool {
+func (c *Context[H, A]) RequestSentOrReceived() bool {
 	return c.PreparationPayloads[c.PrimaryIndex] != nil
 }
 
 // ResponseSent returns true iff Prepare* message was sent for the current epoch.
-func (c *Context) ResponseSent() bool {
+func (c *Context[H, A]) ResponseSent() bool {
 	return !c.WatchOnly() && c.PreparationPayloads[c.MyIndex] != nil
 }
 
 // CommitSent returns true iff Commit message was sent for the current epoch
 // assuming that the node can't go further than current epoch after commit was sent.
-func (c *Context) CommitSent() bool {
+func (c *Context[H, A]) CommitSent() bool {
 	return !c.WatchOnly() && c.CommitPayloads[c.MyIndex] != nil
 }
 
@@ -165,10 +164,10 @@ func (c *Context) CommitSent() bool {
 // several places where the call to CreateBlock happens (one of them is right after
 // PrepareRequest receiving). Thus, we have a separate Context.blockProcessed field
 // for the described purpose.
-func (c *Context) BlockSent() bool { return c.blockProcessed }
+func (c *Context[H, A]) BlockSent() bool { return c.blockProcessed }
 
 // ViewChanging returns true iff node is in a process of changing view.
-func (c *Context) ViewChanging() bool {
+func (c *Context[H, A]) ViewChanging() bool {
 	if c.WatchOnly() {
 		return false
 	}
@@ -179,7 +178,7 @@ func (c *Context) ViewChanging() bool {
 }
 
 // NotAcceptingPayloadsDueToViewChanging returns true if node should not accept new payloads.
-func (c *Context) NotAcceptingPayloadsDueToViewChanging() bool {
+func (c *Context[H, A]) NotAcceptingPayloadsDueToViewChanging() bool {
 	return c.ViewChanging() && !c.MoreThanFNodesCommittedOrLost()
 }
 
@@ -190,11 +189,11 @@ func (c *Context) NotAcceptingPayloadsDueToViewChanging() bool {
 // asking change views loses network or crashes and comes back when nodes are committed in more than one higher
 // numbered view, it is possible for the node accepting recovery to commit in any of the higher views, thus
 // potentially splitting nodes among views and stalling the network.
-func (c *Context) MoreThanFNodesCommittedOrLost() bool {
+func (c *Context[H, A]) MoreThanFNodesCommittedOrLost() bool {
 	return c.CountCommitted()+c.CountFailed() > c.F()
 }
 
-func (c *Context) reset(view byte, ts uint64) {
+func (c *Context[H, A]) reset(view byte, ts uint64) {
 	c.MyIndex = -1
 	c.lastBlockTimestamp = ts
 
@@ -204,7 +203,7 @@ func (c *Context) reset(view byte, ts uint64) {
 		c.Validators = c.Config.GetValidators()
 
 		n := len(c.Validators)
-		c.LastChangeViewPayloads = make([]payload.ConsensusPayload, n)
+		c.LastChangeViewPayloads = make([]payload.ConsensusPayload[H, A], n)
 
 		if c.LastSeenMessage == nil {
 			c.LastSeenMessage = make([]*timer.HV, n)
@@ -227,13 +226,13 @@ func (c *Context) reset(view byte, ts uint64) {
 	c.header = nil
 
 	n := len(c.Validators)
-	c.ChangeViewPayloads = make([]payload.ConsensusPayload, n)
+	c.ChangeViewPayloads = make([]payload.ConsensusPayload[H, A], n)
 	if view == 0 {
-		c.CommitPayloads = make([]payload.ConsensusPayload, n)
+		c.CommitPayloads = make([]payload.ConsensusPayload[H, A], n)
 	}
-	c.PreparationPayloads = make([]payload.ConsensusPayload, n)
+	c.PreparationPayloads = make([]payload.ConsensusPayload[H, A], n)
 
-	c.Transactions = make(map[util.Uint256]block.Transaction)
+	c.Transactions = make(map[H]block.Transaction[H])
 	c.TransactionHashes = nil
 	c.MissingTransactions = nil
 	c.PrimaryIndex = c.GetPrimaryIndex(view)
@@ -248,7 +247,7 @@ func (c *Context) reset(view byte, ts uint64) {
 }
 
 // Fill initializes consensus when node is a speaker.
-func (c *Context) Fill() {
+func (c *Context[H, A]) Fill() {
 	b := make([]byte, 8)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -257,7 +256,7 @@ func (c *Context) Fill() {
 
 	txx := c.Config.GetVerified()
 	c.Nonce = binary.LittleEndian.Uint64(b)
-	c.TransactionHashes = make([]util.Uint256, len(txx))
+	c.TransactionHashes = make([]H, len(txx))
 
 	for i := range txx {
 		h := txx[i].Hash()
@@ -276,18 +275,18 @@ func (c *Context) Fill() {
 
 // getTimestamp returns nanoseconds-precision timestamp using
 // current context config.
-func (c *Context) getTimestamp() uint64 {
+func (c *Context[H, A]) getTimestamp() uint64 {
 	return uint64(c.Config.Timer.Now().UnixNano()) / c.Config.TimestampIncrement * c.Config.TimestampIncrement
 }
 
 // CreateBlock returns resulting block for the current epoch.
-func (c *Context) CreateBlock() block.Block {
+func (c *Context[H, A]) CreateBlock() block.Block[H, A] {
 	if c.block == nil {
 		if c.block = c.MakeHeader(); c.block == nil {
 			return nil
 		}
 
-		txx := make([]block.Transaction, len(c.TransactionHashes))
+		txx := make([]block.Transaction[H], len(c.TransactionHashes))
 
 		for i, h := range c.TransactionHashes {
 			txx[i] = c.Transactions[h]
@@ -301,7 +300,7 @@ func (c *Context) CreateBlock() block.Block {
 
 // MakeHeader returns half-filled block for the current epoch.
 // All hashable fields will be filled.
-func (c *Context) MakeHeader() block.Block {
+func (c *Context[H, A]) MakeHeader() block.Block[H, A] {
 	if c.header == nil {
 		if !c.RequestSentOrReceived() {
 			return nil
@@ -313,7 +312,7 @@ func (c *Context) MakeHeader() block.Block {
 }
 
 // NewBlockFromContext returns new block filled with given contexet.
-func NewBlockFromContext(ctx *Context) block.Block {
+func NewBlockFromContext(ctx *Context[crypto.Uint256, crypto.Uint160]) block.Block[crypto.Uint256, crypto.Uint160] {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
@@ -323,6 +322,6 @@ func NewBlockFromContext(ctx *Context) block.Block {
 
 // hasAllTransactions returns true iff all transactions were received
 // for the proposed block.
-func (c *Context) hasAllTransactions() bool {
+func (c *Context[H, A]) hasAllTransactions() bool {
 	return len(c.TransactionHashes) == len(c.Transactions)
 }

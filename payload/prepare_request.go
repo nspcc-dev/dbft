@@ -3,11 +3,11 @@ package payload
 import (
 	"encoding/gob"
 
-	"github.com/nspcc-dev/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft/crypto"
 )
 
 // PrepareRequest represents dBFT PrepareRequest message.
-type PrepareRequest interface {
+type PrepareRequest[H crypto.Hash, A crypto.Address] interface {
 	// Timestamp returns this message's timestamp.
 	Timestamp() uint64
 	// SetTimestamp sets timestamp of this message.
@@ -19,34 +19,34 @@ type PrepareRequest interface {
 	SetNonce(nonce uint64)
 
 	// TransactionHashes returns hashes of all transaction in a proposed block.
-	TransactionHashes() []util.Uint256
+	TransactionHashes() []H
 	// SetTransactionHashes sets transaction's hashes.
-	SetTransactionHashes(hs []util.Uint256)
+	SetTransactionHashes(hs []H)
 
 	// NextConsensus returns hash which is based on which validators will
 	// try to agree on a block in the current epoch.
-	NextConsensus() util.Uint160
+	NextConsensus() A
 	// SetNextConsensus sets next consensus field.
-	SetNextConsensus(nc util.Uint160)
+	SetNextConsensus(nc A)
 }
 
 type (
 	prepareRequest struct {
-		transactionHashes []util.Uint256
+		transactionHashes []crypto.Uint256
 		nonce             uint64
 		timestamp         uint32
-		nextConsensus     util.Uint160
+		nextConsensus     crypto.Uint160
 	}
 	// prepareRequestAux is an auxiliary structure for prepareRequest encoding.
 	prepareRequestAux struct {
-		TransactionHashes []util.Uint256
+		TransactionHashes []crypto.Uint256
 		Nonce             uint64
 		Timestamp         uint32
-		NextConsensus     util.Uint160
+		NextConsensus     crypto.Uint160
 	}
 )
 
-var _ PrepareRequest = (*prepareRequest)(nil)
+var _ PrepareRequest[crypto.Uint256, crypto.Uint160] = (*prepareRequest)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {
@@ -93,21 +93,21 @@ func (p *prepareRequest) SetNonce(nonce uint64) {
 }
 
 // TransactionHashes implements PrepareRequest interface.
-func (p prepareRequest) TransactionHashes() []util.Uint256 {
+func (p prepareRequest) TransactionHashes() []crypto.Uint256 {
 	return p.transactionHashes
 }
 
 // SetTransactionHashes implements PrepareRequest interface.
-func (p *prepareRequest) SetTransactionHashes(hs []util.Uint256) {
+func (p *prepareRequest) SetTransactionHashes(hs []crypto.Uint256) {
 	p.transactionHashes = hs
 }
 
 // NextConsensus implements PrepareRequest interface.
-func (p prepareRequest) NextConsensus() util.Uint160 {
+func (p prepareRequest) NextConsensus() crypto.Uint160 {
 	return p.nextConsensus
 }
 
 // SetNextConsensus implements PrepareRequest interface.
-func (p *prepareRequest) SetNextConsensus(nc util.Uint160) {
+func (p *prepareRequest) SetNextConsensus(nc crypto.Uint160) {
 	p.nextConsensus = nc
 }

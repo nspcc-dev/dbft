@@ -5,36 +5,35 @@ import (
 	"errors"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 type (
 	// RecoveryMessage represents dBFT Recovery message.
-	RecoveryMessage interface {
+	RecoveryMessage[H crypto.Hash, A crypto.Address] interface {
 		// AddPayload adds payload from this epoch to be recovered.
-		AddPayload(p ConsensusPayload)
+		AddPayload(p ConsensusPayload[H, A])
 		// GetPrepareRequest returns PrepareRequest to be processed.
-		GetPrepareRequest(p ConsensusPayload, validators []crypto.PublicKey, primary uint16) ConsensusPayload
+		GetPrepareRequest(p ConsensusPayload[H, A], validators []crypto.PublicKey, primary uint16) ConsensusPayload[H, A]
 		// GetPrepareResponses returns a slice of PrepareResponse in any order.
-		GetPrepareResponses(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
+		GetPrepareResponses(p ConsensusPayload[H, A], validators []crypto.PublicKey) []ConsensusPayload[H, A]
 		// GetChangeViews returns a slice of ChangeView in any order.
-		GetChangeViews(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
+		GetChangeViews(p ConsensusPayload[H, A], validators []crypto.PublicKey) []ConsensusPayload[H, A]
 		// GetCommits returns a slice of Commit in any order.
-		GetCommits(p ConsensusPayload, validators []crypto.PublicKey) []ConsensusPayload
+		GetCommits(p ConsensusPayload[H, A], validators []crypto.PublicKey) []ConsensusPayload[H, A]
 
 		// PreparationHash returns has of PrepareRequest payload for this epoch.
 		// It can be useful in case only PrepareResponse payloads were received.
-		PreparationHash() *util.Uint256
+		PreparationHash() *H
 		// SetPreparationHash sets preparation hash.
-		SetPreparationHash(h *util.Uint256)
+		SetPreparationHash(h *H)
 	}
 
 	recoveryMessage struct {
-		preparationHash     *util.Uint256
+		preparationHash     *crypto.Uint256
 		preparationPayloads []preparationCompact
 		commitPayloads      []commitCompact
 		changeViewPayloads  []changeViewCompact
-		prepareRequest      PrepareRequest
+		prepareRequest      PrepareRequest[crypto.Uint256, crypto.Uint160]
 	}
 	// recoveryMessageAux is an auxiliary structure for recoveryMessage encoding.
 	recoveryMessageAux struct {
@@ -44,20 +43,20 @@ type (
 	}
 )
 
-var _ RecoveryMessage = (*recoveryMessage)(nil)
+var _ RecoveryMessage[crypto.Uint256, crypto.Uint160] = (*recoveryMessage)(nil)
 
 // PreparationHash implements RecoveryMessage interface.
-func (m *recoveryMessage) PreparationHash() *util.Uint256 {
+func (m *recoveryMessage) PreparationHash() *crypto.Uint256 {
 	return m.preparationHash
 }
 
 // SetPreparationHash implements RecoveryMessage interface.
-func (m *recoveryMessage) SetPreparationHash(h *util.Uint256) {
+func (m *recoveryMessage) SetPreparationHash(h *crypto.Uint256) {
 	m.preparationHash = h
 }
 
 // AddPayload implements RecoveryMessage interface.
-func (m *recoveryMessage) AddPayload(p ConsensusPayload) {
+func (m *recoveryMessage) AddPayload(p ConsensusPayload[crypto.Uint256, crypto.Uint160]) {
 	switch p.Type() {
 	case PrepareRequestType:
 		m.prepareRequest = p.GetPrepareRequest()
@@ -83,7 +82,7 @@ func (m *recoveryMessage) AddPayload(p ConsensusPayload) {
 	}
 }
 
-func fromPayload(t MessageType, recovery ConsensusPayload, p Serializable) *Payload {
+func fromPayload(t MessageType, recovery ConsensusPayload[crypto.Uint256, crypto.Uint160], p Serializable) *Payload {
 	return &Payload{
 		message: message{
 			cmType:     t,
@@ -95,7 +94,7 @@ func fromPayload(t MessageType, recovery ConsensusPayload, p Serializable) *Payl
 }
 
 // GetPrepareRequest implements RecoveryMessage interface.
-func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload, _ []crypto.PublicKey, ind uint16) ConsensusPayload {
+func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey, ind uint16) ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	if m.prepareRequest == nil {
 		return nil
 	}
@@ -113,12 +112,12 @@ func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload, _ []crypto.Publi
 }
 
 // GetPrepareResponses implements RecoveryMessage interface.
-func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload, _ []crypto.PublicKey) []ConsensusPayload {
+func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey) []ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	if m.preparationHash == nil {
 		return nil
 	}
 
-	payloads := make([]ConsensusPayload, len(m.preparationPayloads))
+	payloads := make([]ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.preparationPayloads))
 
 	for i, resp := range m.preparationPayloads {
 		payloads[i] = fromPayload(PrepareResponseType, p, &prepareResponse{
@@ -131,8 +130,8 @@ func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload, _ []crypto.Pub
 }
 
 // GetChangeViews implements RecoveryMessage interface.
-func (m *recoveryMessage) GetChangeViews(p ConsensusPayload, _ []crypto.PublicKey) []ConsensusPayload {
-	payloads := make([]ConsensusPayload, len(m.changeViewPayloads))
+func (m *recoveryMessage) GetChangeViews(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey) []ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	payloads := make([]ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.changeViewPayloads))
 
 	for i, cv := range m.changeViewPayloads {
 		payloads[i] = fromPayload(ChangeViewType, p, &changeView{
@@ -146,8 +145,8 @@ func (m *recoveryMessage) GetChangeViews(p ConsensusPayload, _ []crypto.PublicKe
 }
 
 // GetCommits implements RecoveryMessage interface.
-func (m *recoveryMessage) GetCommits(p ConsensusPayload, _ []crypto.PublicKey) []ConsensusPayload {
-	payloads := make([]ConsensusPayload, len(m.commitPayloads))
+func (m *recoveryMessage) GetCommits(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey) []ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	payloads := make([]ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.commitPayloads))
 
 	for i, c := range m.commitPayloads {
 		payloads[i] = fromPayload(CommitType, p, &commit{signature: c.Signature})
@@ -173,7 +172,7 @@ func (m recoveryMessage) EncodeBinary(w *gob.Encoder) error {
 				return err
 			}
 		} else {
-			if err := w.Encode(util.Uint256Size); err != nil {
+			if err := w.Encode(crypto.Uint256Size); err != nil {
 				return err
 			}
 			if err := w.Encode(m.preparationHash); err != nil {
@@ -205,13 +204,13 @@ func (m *recoveryMessage) DecodeBinary(r *gob.Decoder) error {
 			return err
 		}
 		if l != 0 {
-			if l == util.Uint256Size {
-				m.preparationHash = new(util.Uint256)
+			if l == crypto.Uint256Size {
+				m.preparationHash = new(crypto.Uint256)
 				if err := r.Decode(m.preparationHash); err != nil {
 					return err
 				}
 			} else {
-				return errors.New("wrong util.Uint256 length")
+				return errors.New("wrong crypto.Uint256 length")
 			}
 		} else {
 			m.preparationHash = nil

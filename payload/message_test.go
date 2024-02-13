@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +15,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	m := NewConsensusPayload().(*Payload)
 	m.SetValidatorIndex(10)
 	m.SetHeight(77)
-	m.SetPrevHash(util.Uint256{1})
+	m.SetPrevHash(crypto.Uint256{1})
 	m.SetVersion(8)
 	m.SetViewNumber(3)
 
@@ -25,7 +24,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		m.SetPayload(&prepareRequest{
 			nonce:     123,
 			timestamp: 345,
-			transactionHashes: []util.Uint256{
+			transactionHashes: []crypto.Uint256{
 				{1, 2, 3},
 				{5, 6, 7},
 			},
@@ -38,7 +37,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	t.Run("PrepareResponse", func(t *testing.T) {
 		m.SetType(PrepareResponseType)
 		m.SetPayload(&prepareResponse{
-			preparationHash: util.Uint256{3},
+			preparationHash: crypto.Uint256{3},
 		})
 
 		testEncodeDecode(t, m, new(Payload))
@@ -85,7 +84,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			prepareRequest: &prepareRequest{
 				nonce:     123,
 				timestamp: 345,
-				transactionHashes: []util.Uint256{
+				transactionHashes: []crypto.Uint256{
 					{1, 2, 3},
 					{5, 6, 7},
 				},
@@ -111,7 +110,7 @@ func TestRecoveryMessage_NoPayloads(t *testing.T) {
 	m := NewConsensusPayload().(*Payload)
 	m.SetValidatorIndex(0)
 	m.SetHeight(77)
-	m.SetPrevHash(util.Uint256{1})
+	m.SetPrevHash(crypto.Uint256{1})
 	m.SetVersion(8)
 	m.SetViewNumber(3)
 	m.SetPayload(&recoveryMessage{})
@@ -122,11 +121,11 @@ func TestRecoveryMessage_NoPayloads(t *testing.T) {
 	rec := m.GetRecoveryMessage()
 	require.NotNil(t, rec)
 
-	var p ConsensusPayload
+	var p ConsensusPayload[crypto.Uint256, crypto.Uint160]
 	require.NotPanics(t, func() { p = rec.GetPrepareRequest(p, validators, 0) })
 	require.Nil(t, p)
 
-	var ps []ConsensusPayload
+	var ps []ConsensusPayload[crypto.Uint256, crypto.Uint160]
 	require.NotPanics(t, func() { ps = rec.GetPrepareResponses(p, validators) })
 	require.Len(t, ps, 0)
 
@@ -188,8 +187,8 @@ func TestPayload_Setters(t *testing.T) {
 	t.Run("RecoveryMessage", func(t *testing.T) {
 		r := NewRecoveryMessage()
 
-		r.SetPreparationHash(&util.Uint256{1, 2, 3})
-		require.Equal(t, &util.Uint256{1, 2, 3}, r.PreparationHash())
+		r.SetPreparationHash(&crypto.Uint256{1, 2, 3})
+		require.Equal(t, &crypto.Uint256{1, 2, 3}, r.PreparationHash())
 	})
 }
 

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,9 +16,9 @@ import (
 func TestNeoBlock_Setters(t *testing.T) {
 	b := new(neoBlock)
 
-	require.Equal(t, util.Uint256{}, b.Hash())
+	require.Equal(t, crypto.Uint256{}, b.Hash())
 
-	txs := []Transaction{testTx(1), testTx(2)}
+	txs := []Transaction[crypto.Uint256]{testTx(1), testTx(2)}
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 
@@ -29,14 +28,14 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.base.Version = 42
 	assert.EqualValues(t, 42, b.Version())
 
-	b.base.NextConsensus = util.Uint160{1}
-	assert.Equal(t, util.Uint160{1}, b.NextConsensus())
+	b.base.NextConsensus = crypto.Uint160{1}
+	assert.Equal(t, crypto.Uint160{1}, b.NextConsensus())
 
-	b.base.PrevHash = util.Uint256{3, 7}
-	assert.Equal(t, util.Uint256{3, 7}, b.PrevHash())
+	b.base.PrevHash = crypto.Uint256{3, 7}
+	assert.Equal(t, crypto.Uint256{3, 7}, b.PrevHash())
 
-	b.base.MerkleRoot = util.Uint256{13}
-	assert.Equal(t, util.Uint256{13}, b.MerkleRoot())
+	b.base.MerkleRoot = crypto.Uint256{13}
+	assert.Equal(t, crypto.Uint256{13}, b.MerkleRoot())
 
 	b.base.Timestamp = 1234
 	// 1234s -> 1234000000000ns
@@ -85,7 +84,7 @@ func (t testKey) Sign([]byte) ([]byte, error) {
 
 type testTx uint64
 
-func (tx testTx) Hash() (h util.Uint256) {
+func (tx testTx) Hash() (h crypto.Uint256) {
 	binary.LittleEndian.PutUint64(h[:], uint64(tx))
 	return
 }
