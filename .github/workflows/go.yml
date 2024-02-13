@@ -1,5 +1,15 @@
 name: Go
-on: [push]
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches:
+      - master
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
 jobs:
   lint:
     name: Lint
@@ -16,7 +26,7 @@ jobs:
           version: latest
 
   test:
-    name: test
+    name: Test
     runs-on: ubuntu-latest
     strategy:
       matrix:
