@@ -6,7 +6,6 @@ import (
 
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/merkle"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 type (
@@ -17,9 +16,9 @@ type (
 		Index         uint32
 		Timestamp     uint32
 		Version       uint32
-		MerkleRoot    util.Uint256
-		PrevHash      util.Uint256
-		NextConsensus util.Uint160
+		MerkleRoot    crypto.Uint256
+		PrevHash      crypto.Uint256
+		NextConsensus crypto.Uint160
 	}
 
 	// Block is a generic interface for a block used by dbft.
@@ -58,9 +57,9 @@ type (
 		base
 
 		consensusData uint64
-		transactions  []Transaction[util.Uint256]
+		transactions  []Transaction[crypto.Uint256]
 		signature     []byte
-		hash          *util.Uint256
+		hash          *crypto.Uint256
 	}
 )
 
@@ -70,7 +69,7 @@ func (b neoBlock) Version() uint32 {
 }
 
 // PrevHash implements Block interface.
-func (b *neoBlock) PrevHash() util.Uint256 {
+func (b *neoBlock) PrevHash() crypto.Uint256 {
 	return b.base.PrevHash
 }
 
@@ -85,12 +84,12 @@ func (b *neoBlock) Index() uint32 {
 }
 
 // NextConsensus implements Block interface.
-func (b *neoBlock) NextConsensus() util.Uint160 {
+func (b *neoBlock) NextConsensus() crypto.Uint160 {
 	return b.base.NextConsensus
 }
 
 // MerkleRoot implements Block interface.
-func (b *neoBlock) MerkleRoot() util.Uint256 {
+func (b *neoBlock) MerkleRoot() crypto.Uint256 {
 	return b.base.MerkleRoot
 }
 
@@ -100,17 +99,17 @@ func (b *neoBlock) ConsensusData() uint64 {
 }
 
 // Transactions implements Block interface.
-func (b *neoBlock) Transactions() []Transaction[util.Uint256] {
+func (b *neoBlock) Transactions() []Transaction[crypto.Uint256] {
 	return b.transactions
 }
 
 // SetTransactions implements Block interface.
-func (b *neoBlock) SetTransactions(txx []Transaction[util.Uint256]) {
+func (b *neoBlock) SetTransactions(txx []Transaction[crypto.Uint256]) {
 	b.transactions = txx
 }
 
 // NewBlock returns new block.
-func NewBlock(timestamp uint64, index uint32, nextConsensus util.Uint160, prevHash util.Uint256, version uint32, nonce uint64, txHashes []util.Uint256) Block[util.Uint256, util.Uint160] {
+func NewBlock(timestamp uint64, index uint32, nextConsensus crypto.Uint160, prevHash crypto.Uint256, version uint32, nonce uint64, txHashes []crypto.Uint256) Block[crypto.Uint256, crypto.Uint160] {
 	block := new(neoBlock)
 	block.base.Timestamp = uint32(timestamp / 1000000000)
 	block.base.Index = index
@@ -165,7 +164,7 @@ func (b *neoBlock) Verify(pub crypto.PublicKey, sign []byte) error {
 }
 
 // Hash implements Block interface.
-func (b *neoBlock) Hash() (h util.Uint256) {
+func (b *neoBlock) Hash() (h crypto.Uint256) {
 	if b.hash != nil {
 		return *b.hash
 	} else if b.transactions == nil {

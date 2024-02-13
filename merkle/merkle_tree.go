@@ -2,7 +2,6 @@ package merkle
 
 import (
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 type (
@@ -15,7 +14,7 @@ type (
 
 	// TreeNode represents inner node of a merkle tree.
 	TreeNode struct {
-		Hash   util.Uint256
+		Hash   crypto.Uint256
 		Parent *TreeNode
 		Left   *TreeNode
 		Right  *TreeNode
@@ -23,7 +22,7 @@ type (
 )
 
 // NewMerkleTree returns new merkle tree built on hashes.
-func NewMerkleTree(hashes ...util.Uint256) *Tree {
+func NewMerkleTree(hashes ...crypto.Uint256) *Tree {
 	if len(hashes) == 0 {
 		return nil
 	}

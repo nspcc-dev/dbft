@@ -1,21 +1,19 @@
 package payload
 
-import (
-	"github.com/nspcc-dev/neo-go/pkg/util"
-)
+import "github.com/nspcc-dev/dbft/crypto"
 
 // NewConsensusPayload returns minimal ConsensusPayload implementation.
-func NewConsensusPayload() ConsensusPayload[util.Uint256, util.Uint160] {
+func NewConsensusPayload() ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	return &Payload{}
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
-func NewPrepareRequest() PrepareRequest[util.Uint256, util.Uint160] {
+func NewPrepareRequest() PrepareRequest[crypto.Uint256, crypto.Uint160] {
 	return new(prepareRequest)
 }
 
 // NewPrepareResponse returns minimal PrepareResponse implementation.
-func NewPrepareResponse() PrepareResponse[util.Uint256] {
+func NewPrepareResponse() PrepareResponse[crypto.Uint256] {
 	return new(prepareResponse)
 }
 
@@ -35,7 +33,7 @@ func NewRecoveryRequest() RecoveryRequest {
 }
 
 // NewRecoveryMessage returns minimal RecoveryMessage implementation.
-func NewRecoveryMessage() RecoveryMessage[util.Uint256, util.Uint160] {
+func NewRecoveryMessage() RecoveryMessage[crypto.Uint256, crypto.Uint160] {
 	return &recoveryMessage{
 		preparationPayloads: make([]preparationCompact, 0),
 		commitPayloads:      make([]commitCompact, 0),

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/pkg/errors"
 )
 
@@ -75,7 +74,7 @@ const (
 	RecoveryMessageType MessageType = 0x41
 )
 
-var _ consensusMessage[util.Uint256, util.Uint160] = (*message)(nil)
+var _ consensusMessage[crypto.Uint256, crypto.Uint160] = (*message)(nil)
 
 // String implements fmt.Stringer interface.
 func (m MessageType) String() string {
@@ -145,16 +144,16 @@ func (m *message) DecodeBinary(r *gob.Decoder) error {
 }
 
 func (m message) GetChangeView() ChangeView { return m.payload.(ChangeView) }
-func (m message) GetPrepareRequest() PrepareRequest[util.Uint256, util.Uint160] {
-	return m.payload.(PrepareRequest[util.Uint256, util.Uint160])
+func (m message) GetPrepareRequest() PrepareRequest[crypto.Uint256, crypto.Uint160] {
+	return m.payload.(PrepareRequest[crypto.Uint256, crypto.Uint160])
 }
-func (m message) GetPrepareResponse() PrepareResponse[util.Uint256] {
-	return m.payload.(PrepareResponse[util.Uint256])
+func (m message) GetPrepareResponse() PrepareResponse[crypto.Uint256] {
+	return m.payload.(PrepareResponse[crypto.Uint256])
 }
 func (m message) GetCommit() Commit                   { return m.payload.(Commit) }
 func (m message) GetRecoveryRequest() RecoveryRequest { return m.payload.(RecoveryRequest) }
-func (m message) GetRecoveryMessage() RecoveryMessage[util.Uint256, util.Uint160] {
-	return m.payload.(RecoveryMessage[util.Uint256, util.Uint160])
+func (m message) GetRecoveryMessage() RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+	return m.payload.(RecoveryMessage[crypto.Uint256, crypto.Uint160])
 }
 
 // ViewNumber implements ConsensusMessage interface.

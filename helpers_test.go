@@ -3,14 +3,14 @@ package dbft
 import (
 	"testing"
 
-	"github.com/nspcc-dev/neo-go/pkg/util"
+	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/nspcc-dev/dbft/payload"
 )
 
 func TestMessageCache(t *testing.T) {
-	c := newCache[util.Uint256, util.Uint160]()
+	c := newCache[crypto.Uint256, crypto.Uint160]()
 
 	p1 := payload.NewConsensusPayload()
 	p1.SetHeight(3)

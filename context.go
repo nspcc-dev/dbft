@@ -9,7 +9,6 @@ import (
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
 	"github.com/nspcc-dev/dbft/timer"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 // Context is a main dBFT structure which
@@ -313,7 +312,7 @@ func (c *Context[H, A]) MakeHeader() block.Block[H, A] {
 }
 
 // NewBlockFromContext returns new block filled with given contexet.
-func NewBlockFromContext(ctx *Context[util.Uint256, util.Uint160]) block.Block[util.Uint256, util.Uint160] {
+func NewBlockFromContext(ctx *Context[crypto.Uint256, crypto.Uint160]) block.Block[crypto.Uint256, crypto.Uint160] {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}

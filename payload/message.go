@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/neo-go/pkg/util"
 )
 
 type (
@@ -34,24 +33,24 @@ type (
 
 		version        uint32
 		validatorIndex uint16
-		prevHash       util.Uint256
+		prevHash       crypto.Uint256
 		height         uint32
 
-		hash *util.Uint256
+		hash *crypto.Uint256
 	}
 
 	// payloadAux is an auxiliary structure for Payload encoding.
 	payloadAux struct {
 		Version        uint32
 		ValidatorIndex uint16
-		PrevHash       util.Uint256
+		PrevHash       crypto.Uint256
 		Height         uint32
 
 		Data []byte
 	}
 )
 
-var _ ConsensusPayload[util.Uint256, util.Uint160] = (*Payload)(nil)
+var _ ConsensusPayload[crypto.Uint256, crypto.Uint160] = (*Payload)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p Payload) EncodeBinary(w *gob.Encoder) error {
@@ -104,7 +103,7 @@ func (p *Payload) UnmarshalUnsigned(data []byte) error {
 }
 
 // Hash implements ConsensusPayload interface.
-func (p *Payload) Hash() util.Uint256 {
+func (p *Payload) Hash() crypto.Uint256 {
 	if p.hash != nil {
 		return *p.hash
 	}
@@ -135,12 +134,12 @@ func (p *Payload) SetValidatorIndex(i uint16) {
 }
 
 // PrevHash implements ConsensusPayload interface.
-func (p Payload) PrevHash() util.Uint256 {
+func (p Payload) PrevHash() crypto.Uint256 {
 	return p.prevHash
 }
 
 // SetPrevHash implements ConsensusPayload interface.
-func (p *Payload) SetPrevHash(h util.Uint256) {
+func (p *Payload) SetPrevHash(h crypto.Uint256) {
 	p.prevHash = h
 }
 
