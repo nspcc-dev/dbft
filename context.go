@@ -27,7 +27,7 @@ type Context[H crypto.Hash, A crypto.Address] struct {
 	// blockProcessed denotes whether Config.ProcessBlock callback was called for the current
 	// height. If so, then no second call must happen. After new block is received by the user,
 	// dBFT stops any new transaction or messages processing as far as timeouts handling till
-	// the next call to InitializeConsensus.
+	// the next call to Reset.
 	blockProcessed bool
 
 	// BlockIndex is current block index.

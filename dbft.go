@@ -74,15 +74,20 @@ func (d *DBFT[H, A]) addTransaction(tx block.Transaction[H]) {
 // per DBFT lifetime.
 func (d *DBFT[H, A]) Start(ts uint64) {
 	d.cache = newCache[H, A]()
-	d.InitializeConsensus(0, ts)
+	d.initializeConsensus(0, ts)
 	d.start()
 }
 
-// InitializeConsensus reinitializes dBFT instance and the given view with the
-// given timestamp of the previous block. It's used if the current consensus
-// state is outdated (which can happen when a new block is received by node
-// before completing its assembly via dBFT). View 0 is expected to be used.
-func (d *DBFT[H, A]) InitializeConsensus(view byte, ts uint64) {
+// Reset reinitializes dBFT instance with the given timestamp of the previous
+// block. It's used if the current consensus state is outdated which happens
+// after new block is processed by ledger (the block can come from dBFT or be
+// received by other means). The height is to be derived from the configured
+// CurrentHeight callback and view will be set to 0.
+func (d *DBFT[H, A]) Reset(ts uint64) {
+	d.initializeConsensus(0, ts)
+}
+
+func (d *DBFT[H, A]) initializeConsensus(view byte, ts uint64) {
 	d.reset(view, ts)
 
 	var role string
