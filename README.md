@@ -36,8 +36,10 @@ concerning dBFT's time depending behaviour.
 
 ## Usage
 A client of the library must implement its own event loop.
-The library provides 4 callbacks:
+The library provides 5 callbacks that change the state of the consensus
+process:
 - `Start()` which initializes internal dBFT structures
+- `InitializeConsensus()` which resets the consensus process
 - `OnTransaction()` which must be called everytime new transaction appears
 - `OnReceive()` which must be called everytime new payload is received
 - `OnTimer()` which must be called everytime timer fires

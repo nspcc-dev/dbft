@@ -12,8 +12,10 @@ import (
 )
 
 type (
-	// DBFT is a wrapper over Context containing service configuration and
-	// some other parameters not directly related to dBFT's state machine.
+	// DBFT is a dBFT implementation, it includes [Context] (main state)
+	// and [Config] (service configuration). Data exposed from these fields
+	// is supposed to be read-only, state is changed via methods of this
+	// structure.
 	DBFT[H crypto.Hash, A crypto.Address] struct {
 		Context[H, A]
 		Config[H, A]
@@ -74,15 +76,19 @@ func (d *DBFT[H, A]) addTransaction(tx block.Transaction[H]) {
 	}
 }
 
-// Start initializes dBFT instance and starts protocol if node is primary. It
-// accepts a timestamp of the previous block.
+// Start initializes dBFT instance and starts the protocol if node is primary.
+// It accepts the timestamp of the previous block. It should be called once
+// per DBFT lifetime.
 func (d *DBFT[H, A]) Start(ts uint64) {
 	d.cache = newCache[H, A]()
 	d.InitializeConsensus(0, ts)
 	d.start()
 }
 
-// InitializeConsensus initializes dBFT instance.
+// InitializeConsensus reinitializes dBFT instance and the given view with the
+// given timestamp of the previous block. It's used if the current consensus
+// state is outdated (which can happen when a new block is received by node
+// before completing its assembly via dBFT). View 0 is expected to be used.
 func (d *DBFT[H, A]) InitializeConsensus(view byte, ts uint64) {
 	d.reset(view, ts)
 
