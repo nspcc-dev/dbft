@@ -5,15 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/nspcc-dev/dbft/block"
-	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/dbft/payload"
 	"github.com/nspcc-dev/dbft/timer"
 	"go.uber.org/zap"
 )
 
 // Config contains initialization and working parameters for dBFT.
-type Config[H crypto.Hash, A crypto.Address] struct {
+type Config[H Hash, A Address] struct {
 	// Logger
 	Logger *zap.Logger
 	// Timer
@@ -27,9 +24,9 @@ type Config[H crypto.Hash, A crypto.Address] struct {
 	TimestampIncrement uint64
 	// GetKeyPair returns an index of the node in the list of validators
 	// together with it's key pair.
-	GetKeyPair func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey)
+	GetKeyPair func([]PublicKey) (int, PrivateKey, PublicKey)
 	// NewBlockFromContext should allocate, fill from Context and return new block.Block.
-	NewBlockFromContext func(ctx *Context[H, A]) block.Block[H, A]
+	NewBlockFromContext func(ctx *Context[H, A]) Block[H, A]
 	// RequestTx is a callback which is called when transaction contained
 	// in current block can't be found in memory pool.
 	RequestTx func(h ...H)
@@ -37,18 +34,18 @@ type Config[H crypto.Hash, A crypto.Address] struct {
 	// any transactions.
 	StopTxFlow func()
 	// GetTx returns a transaction from memory pool.
-	GetTx func(h H) block.Transaction[H]
+	GetTx func(h H) Transaction[H]
 	// GetVerified returns a slice of verified transactions
 	// to be proposed in a new block.
-	GetVerified func() []block.Transaction[H]
+	GetVerified func() []Transaction[H]
 	// VerifyBlock verifies if block is valid.
-	VerifyBlock func(b block.Block[H, A]) bool
+	VerifyBlock func(b Block[H, A]) bool
 	// Broadcast should broadcast payload m to the consensus nodes.
-	Broadcast func(m payload.ConsensusPayload[H, A])
+	Broadcast func(m ConsensusPayload[H, A])
 	// ProcessBlock is called every time new block is accepted.
-	ProcessBlock func(b block.Block[H, A])
+	ProcessBlock func(b Block[H, A])
 	// GetBlock should return block with hash.
-	GetBlock func(h H) block.Block[H, A]
+	GetBlock func(h H) Block[H, A]
 	// WatchOnly tells if a node should only watch.
 	WatchOnly func() bool
 	// CurrentHeight returns index of the last accepted block.
@@ -59,34 +56,34 @@ type Config[H crypto.Hash, A crypto.Address] struct {
 	// When called with a transaction list it must return
 	// list of the validators of the next block.
 	// If this function ever returns 0-length slice, dbft will panic.
-	GetValidators func(...block.Transaction[H]) []crypto.PublicKey
+	GetValidators func(...Transaction[H]) []PublicKey
 	// GetConsensusAddress returns hash of the validator list.
-	GetConsensusAddress func(...crypto.PublicKey) A
+	GetConsensusAddress func(...PublicKey) A
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
-	NewConsensusPayload func(*Context[H, A], payload.MessageType, any) payload.ConsensusPayload[H, A]
+	NewConsensusPayload func(*Context[H, A], MessageType, any) ConsensusPayload[H, A]
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
-	NewPrepareRequest func() payload.PrepareRequest[H, A]
+	NewPrepareRequest func() PrepareRequest[H, A]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
-	NewPrepareResponse func() payload.PrepareResponse[H]
+	NewPrepareResponse func() PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
-	NewChangeView func() payload.ChangeView
+	NewChangeView func() ChangeView
 	// NewCommit is a constructor for payload.Commit.
-	NewCommit func() payload.Commit
+	NewCommit func() Commit
 	// NewRecoveryRequest is a constructor for payload.RecoveryRequest.
-	NewRecoveryRequest func() payload.RecoveryRequest
+	NewRecoveryRequest func() RecoveryRequest
 	// NewRecoveryMessage is a constructor for payload.RecoveryMessage.
-	NewRecoveryMessage func() payload.RecoveryMessage[H, A]
+	NewRecoveryMessage func() RecoveryMessage[H, A]
 	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
-	VerifyPrepareRequest func(p payload.ConsensusPayload[H, A]) error
+	VerifyPrepareRequest func(p ConsensusPayload[H, A]) error
 	// VerifyPrepareResponse performs external PrepareResponse verification and returns nil if it's successful.
-	VerifyPrepareResponse func(p payload.ConsensusPayload[H, A]) error
+	VerifyPrepareResponse func(p ConsensusPayload[H, A]) error
 }
 
 const defaultSecondsPerBlock = time.Second * 15
 
 const defaultTimestampIncrement = uint64(time.Millisecond / time.Nanosecond)
 
-func defaultConfig[H crypto.Hash, A crypto.Address]() *Config[H, A] {
+func defaultConfig[H Hash, A Address]() *Config[H, A] {
 	// fields which are set to nil must be provided from client
 	return &Config[H, A]{
 		Logger:             zap.NewNop(),
@@ -96,23 +93,23 @@ func defaultConfig[H crypto.Hash, A crypto.Address]() *Config[H, A] {
 		GetKeyPair:         nil,
 		RequestTx:          func(...H) {},
 		StopTxFlow:         func() {},
-		GetTx:              func(H) block.Transaction[H] { return nil },
-		GetVerified:        func() []block.Transaction[H] { return make([]block.Transaction[H], 0) },
-		VerifyBlock:        func(block.Block[H, A]) bool { return true },
-		Broadcast:          func(payload.ConsensusPayload[H, A]) {},
-		ProcessBlock:       func(block.Block[H, A]) {},
-		GetBlock:           func(H) block.Block[H, A] { return nil },
+		GetTx:              func(H) Transaction[H] { return nil },
+		GetVerified:        func() []Transaction[H] { return make([]Transaction[H], 0) },
+		VerifyBlock:        func(Block[H, A]) bool { return true },
+		Broadcast:          func(ConsensusPayload[H, A]) {},
+		ProcessBlock:       func(Block[H, A]) {},
+		GetBlock:           func(H) Block[H, A] { return nil },
 		WatchOnly:          func() bool { return false },
 		CurrentHeight:      nil,
 		CurrentBlockHash:   nil,
 		GetValidators:      nil,
 
-		VerifyPrepareRequest:  func(payload.ConsensusPayload[H, A]) error { return nil },
-		VerifyPrepareResponse: func(payload.ConsensusPayload[H, A]) error { return nil },
+		VerifyPrepareRequest:  func(ConsensusPayload[H, A]) error { return nil },
+		VerifyPrepareResponse: func(ConsensusPayload[H, A]) error { return nil },
 	}
 }
 
-func checkConfig[H crypto.Hash, A crypto.Address](cfg *Config[H, A]) error {
+func checkConfig[H Hash, A Address](cfg *Config[H, A]) error {
 	if cfg.GetKeyPair == nil {
 		return errors.New("private key is nil")
 	} else if cfg.CurrentHeight == nil {
@@ -146,14 +143,14 @@ func checkConfig[H crypto.Hash, A crypto.Address](cfg *Config[H, A]) error {
 
 // WithKeyPair sets GetKeyPair to a function returning default key pair
 // if it is present in a list of validators.
-func WithKeyPair[H crypto.Hash, A crypto.Address](priv crypto.PrivateKey, pub crypto.PublicKey) func(config *Config[H, A]) {
+func WithKeyPair[H Hash, A Address](priv PrivateKey, pub PublicKey) func(config *Config[H, A]) {
 	myPub, err := pub.MarshalBinary()
 	if err != nil {
 		return nil
 	}
 
 	return func(cfg *Config[H, A]) {
-		cfg.GetKeyPair = func(ps []crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey) {
+		cfg.GetKeyPair = func(ps []PublicKey) (int, PrivateKey, PublicKey) {
 			for i := range ps {
 				pi, err := ps[i].MarshalBinary()
 				if err != nil {
@@ -169,196 +166,196 @@ func WithKeyPair[H crypto.Hash, A crypto.Address](priv crypto.PrivateKey, pub cr
 }
 
 // WithGetKeyPair sets GetKeyPair.
-func WithGetKeyPair[H crypto.Hash, A crypto.Address](f func([]crypto.PublicKey) (int, crypto.PrivateKey, crypto.PublicKey)) func(config *Config[H, A]) {
+func WithGetKeyPair[H Hash, A Address](f func([]PublicKey) (int, PrivateKey, PublicKey)) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.GetKeyPair = f
 	}
 }
 
 // WithLogger sets Logger.
-func WithLogger[H crypto.Hash, A crypto.Address](log *zap.Logger) func(config *Config[H, A]) {
+func WithLogger[H Hash, A Address](log *zap.Logger) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.Logger = log
 	}
 }
 
 // WithTimer sets Timer.
-func WithTimer[H crypto.Hash, A crypto.Address](t timer.Timer) func(config *Config[H, A]) {
+func WithTimer[H Hash, A Address](t timer.Timer) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.Timer = t
 	}
 }
 
 // WithSecondsPerBlock sets SecondsPerBlock.
-func WithSecondsPerBlock[H crypto.Hash, A crypto.Address](d time.Duration) func(config *Config[H, A]) {
+func WithSecondsPerBlock[H Hash, A Address](d time.Duration) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.SecondsPerBlock = d
 	}
 }
 
 // WithTimestampIncrement sets TimestampIncrement.
-func WithTimestampIncrement[H crypto.Hash, A crypto.Address](u uint64) func(config *Config[H, A]) {
+func WithTimestampIncrement[H Hash, A Address](u uint64) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.TimestampIncrement = u
 	}
 }
 
 // WithNewBlockFromContext sets NewBlockFromContext.
-func WithNewBlockFromContext[H crypto.Hash, A crypto.Address](f func(ctx *Context[H, A]) block.Block[H, A]) func(config *Config[H, A]) {
+func WithNewBlockFromContext[H Hash, A Address](f func(ctx *Context[H, A]) Block[H, A]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewBlockFromContext = f
 	}
 }
 
 // WithRequestTx sets RequestTx.
-func WithRequestTx[H crypto.Hash, A crypto.Address](f func(h ...H)) func(config *Config[H, A]) {
+func WithRequestTx[H Hash, A Address](f func(h ...H)) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.RequestTx = f
 	}
 }
 
 // WithStopTxFlow sets StopTxFlow.
-func WithStopTxFlow[H crypto.Hash, A crypto.Address](f func()) func(config *Config[H, A]) {
+func WithStopTxFlow[H Hash, A Address](f func()) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.StopTxFlow = f
 	}
 }
 
 // WithGetTx sets GetTx.
-func WithGetTx[H crypto.Hash, A crypto.Address](f func(h H) block.Transaction[H]) func(config *Config[H, A]) {
+func WithGetTx[H Hash, A Address](f func(h H) Transaction[H]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.GetTx = f
 	}
 }
 
 // WithGetVerified sets GetVerified.
-func WithGetVerified[H crypto.Hash, A crypto.Address](f func() []block.Transaction[H]) func(config *Config[H, A]) {
+func WithGetVerified[H Hash, A Address](f func() []Transaction[H]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.GetVerified = f
 	}
 }
 
 // WithVerifyBlock sets VerifyBlock.
-func WithVerifyBlock[H crypto.Hash, A crypto.Address](f func(b block.Block[H, A]) bool) func(config *Config[H, A]) {
+func WithVerifyBlock[H Hash, A Address](f func(b Block[H, A]) bool) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.VerifyBlock = f
 	}
 }
 
 // WithBroadcast sets Broadcast.
-func WithBroadcast[H crypto.Hash, A crypto.Address](f func(m payload.ConsensusPayload[H, A])) func(config *Config[H, A]) {
+func WithBroadcast[H Hash, A Address](f func(m ConsensusPayload[H, A])) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.Broadcast = f
 	}
 }
 
 // WithProcessBlock sets ProcessBlock.
-func WithProcessBlock[H crypto.Hash, A crypto.Address](f func(b block.Block[H, A])) func(config *Config[H, A]) {
+func WithProcessBlock[H Hash, A Address](f func(b Block[H, A])) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.ProcessBlock = f
 	}
 }
 
 // WithGetBlock sets GetBlock.
-func WithGetBlock[H crypto.Hash, A crypto.Address](f func(h H) block.Block[H, A]) func(config *Config[H, A]) {
+func WithGetBlock[H Hash, A Address](f func(h H) Block[H, A]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.GetBlock = f
 	}
 }
 
 // WithWatchOnly sets WatchOnly.
-func WithWatchOnly[H crypto.Hash, A crypto.Address](f func() bool) func(config *Config[H, A]) {
+func WithWatchOnly[H Hash, A Address](f func() bool) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.WatchOnly = f
 	}
 }
 
 // WithCurrentHeight sets CurrentHeight.
-func WithCurrentHeight[H crypto.Hash, A crypto.Address](f func() uint32) func(config *Config[H, A]) {
+func WithCurrentHeight[H Hash, A Address](f func() uint32) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.CurrentHeight = f
 	}
 }
 
 // WithCurrentBlockHash sets CurrentBlockHash.
-func WithCurrentBlockHash[H crypto.Hash, A crypto.Address](f func() H) func(config *Config[H, A]) {
+func WithCurrentBlockHash[H Hash, A Address](f func() H) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.CurrentBlockHash = f
 	}
 }
 
 // WithGetValidators sets GetValidators.
-func WithGetValidators[H crypto.Hash, A crypto.Address](f func(...block.Transaction[H]) []crypto.PublicKey) func(config *Config[H, A]) {
+func WithGetValidators[H Hash, A Address](f func(...Transaction[H]) []PublicKey) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.GetValidators = f
 	}
 }
 
 // WithGetConsensusAddress sets GetConsensusAddress.
-func WithGetConsensusAddress[H crypto.Hash, A crypto.Address](f func(keys ...crypto.PublicKey) A) func(config *Config[H, A]) {
+func WithGetConsensusAddress[H Hash, A Address](f func(keys ...PublicKey) A) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.GetConsensusAddress = f
 	}
 }
 
 // WithNewConsensusPayload sets NewConsensusPayload.
-func WithNewConsensusPayload[H crypto.Hash, A crypto.Address](f func(*Context[H, A], payload.MessageType, any) payload.ConsensusPayload[H, A]) func(config *Config[H, A]) {
+func WithNewConsensusPayload[H Hash, A Address](f func(*Context[H, A], MessageType, any) ConsensusPayload[H, A]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewConsensusPayload = f
 	}
 }
 
 // WithNewPrepareRequest sets NewPrepareRequest.
-func WithNewPrepareRequest[H crypto.Hash, A crypto.Address](f func() payload.PrepareRequest[H, A]) func(config *Config[H, A]) {
+func WithNewPrepareRequest[H Hash, A Address](f func() PrepareRequest[H, A]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewPrepareRequest = f
 	}
 }
 
 // WithNewPrepareResponse sets NewPrepareResponse.
-func WithNewPrepareResponse[H crypto.Hash, A crypto.Address](f func() payload.PrepareResponse[H]) func(config *Config[H, A]) {
+func WithNewPrepareResponse[H Hash, A Address](f func() PrepareResponse[H]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewPrepareResponse = f
 	}
 }
 
 // WithNewChangeView sets NewChangeView.
-func WithNewChangeView[H crypto.Hash, A crypto.Address](f func() payload.ChangeView) func(config *Config[H, A]) {
+func WithNewChangeView[H Hash, A Address](f func() ChangeView) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewChangeView = f
 	}
 }
 
 // WithNewCommit sets NewCommit.
-func WithNewCommit[H crypto.Hash, A crypto.Address](f func() payload.Commit) func(config *Config[H, A]) {
+func WithNewCommit[H Hash, A Address](f func() Commit) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewCommit = f
 	}
 }
 
 // WithNewRecoveryRequest sets NewRecoveryRequest.
-func WithNewRecoveryRequest[H crypto.Hash, A crypto.Address](f func() payload.RecoveryRequest) func(config *Config[H, A]) {
+func WithNewRecoveryRequest[H Hash, A Address](f func() RecoveryRequest) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewRecoveryRequest = f
 	}
 }
 
 // WithNewRecoveryMessage sets NewRecoveryMessage.
-func WithNewRecoveryMessage[H crypto.Hash, A crypto.Address](f func() payload.RecoveryMessage[H, A]) func(config *Config[H, A]) {
+func WithNewRecoveryMessage[H Hash, A Address](f func() RecoveryMessage[H, A]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewRecoveryMessage = f
 	}
 }
 
 // WithVerifyPrepareRequest sets VerifyPrepareRequest.
-func WithVerifyPrepareRequest[H crypto.Hash, A crypto.Address](f func(payload.ConsensusPayload[H, A]) error) func(config *Config[H, A]) {
+func WithVerifyPrepareRequest[H Hash, A Address](f func(ConsensusPayload[H, A]) error) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.VerifyPrepareRequest = f
 	}
 }
 
 // WithVerifyPrepareResponse sets VerifyPrepareResponse.
-func WithVerifyPrepareResponse[H crypto.Hash, A crypto.Address](f func(payload.ConsensusPayload[H, A]) error) func(config *Config[H, A]) {
+func WithVerifyPrepareResponse[H Hash, A Address](f func(ConsensusPayload[H, A]) error) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.VerifyPrepareResponse = f
 	}

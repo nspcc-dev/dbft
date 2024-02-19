@@ -3,32 +3,9 @@ package payload
 import (
 	"encoding/gob"
 
+	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/crypto"
 )
-
-// PrepareRequest represents dBFT PrepareRequest message.
-type PrepareRequest[H crypto.Hash, A crypto.Address] interface {
-	// Timestamp returns this message's timestamp.
-	Timestamp() uint64
-	// SetTimestamp sets timestamp of this message.
-	SetTimestamp(ts uint64)
-
-	// Nonce is a random nonce.
-	Nonce() uint64
-	// SetNonce sets Nonce.
-	SetNonce(nonce uint64)
-
-	// TransactionHashes returns hashes of all transaction in a proposed block.
-	TransactionHashes() []H
-	// SetTransactionHashes sets transaction's hashes.
-	SetTransactionHashes(hs []H)
-
-	// NextConsensus returns hash which is based on which validators will
-	// try to agree on a block in the current epoch.
-	NextConsensus() A
-	// SetNextConsensus sets next consensus field.
-	SetNextConsensus(nc A)
-}
 
 type (
 	prepareRequest struct {
@@ -46,7 +23,7 @@ type (
 	}
 )
 
-var _ PrepareRequest[crypto.Uint256, crypto.Uint160] = (*prepareRequest)(nil)
+var _ dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] = (*prepareRequest)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {

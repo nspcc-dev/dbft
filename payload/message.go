@@ -4,29 +4,11 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/crypto"
 )
 
 type (
-	// ConsensusPayload is a generic payload type which is exchanged
-	// between the nodes.
-	ConsensusPayload[H crypto.Hash, A crypto.Address] interface {
-		consensusMessage[H, A]
-
-		// ValidatorIndex returns index of validator from which
-		// payload was originated from.
-		ValidatorIndex() uint16
-
-		// SetValidatorIndex sets validator index.
-		SetValidatorIndex(i uint16)
-
-		Height() uint32
-		SetHeight(h uint32)
-
-		// Hash returns 32-byte checksum of the payload.
-		Hash() H
-	}
-
 	// Payload represents minimal payload containing all necessary fields.
 	Payload struct {
 		message
@@ -50,7 +32,7 @@ type (
 	}
 )
 
-var _ ConsensusPayload[crypto.Uint256, crypto.Uint160] = (*Payload)(nil)
+var _ dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] = (*Payload)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p Payload) EncodeBinary(w *gob.Encoder) error {

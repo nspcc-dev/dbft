@@ -1,34 +1,29 @@
 package dbft
 
-import (
-	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/dbft/payload"
-)
-
 type (
 	// inbox is a structure storing messages from a single epoch.
-	inbox[H crypto.Hash, A crypto.Address] struct {
-		prepare map[uint16]payload.ConsensusPayload[H, A]
-		chViews map[uint16]payload.ConsensusPayload[H, A]
-		commit  map[uint16]payload.ConsensusPayload[H, A]
+	inbox[H Hash, A Address] struct {
+		prepare map[uint16]ConsensusPayload[H, A]
+		chViews map[uint16]ConsensusPayload[H, A]
+		commit  map[uint16]ConsensusPayload[H, A]
 	}
 
 	// cache is an auxiliary structure storing messages
 	// from future epochs.
-	cache[H crypto.Hash, A crypto.Address] struct {
+	cache[H Hash, A Address] struct {
 		mail map[uint32]*inbox[H, A]
 	}
 )
 
-func newInbox[H crypto.Hash, A crypto.Address]() *inbox[H, A] {
+func newInbox[H Hash, A Address]() *inbox[H, A] {
 	return &inbox[H, A]{
-		prepare: make(map[uint16]payload.ConsensusPayload[H, A]),
-		chViews: make(map[uint16]payload.ConsensusPayload[H, A]),
-		commit:  make(map[uint16]payload.ConsensusPayload[H, A]),
+		prepare: make(map[uint16]ConsensusPayload[H, A]),
+		chViews: make(map[uint16]ConsensusPayload[H, A]),
+		commit:  make(map[uint16]ConsensusPayload[H, A]),
 	}
 }
 
-func newCache[H crypto.Hash, A crypto.Address]() cache[H, A] {
+func newCache[H Hash, A Address]() cache[H, A] {
 	return cache[H, A]{
 		mail: make(map[uint32]*inbox[H, A]),
 	}
@@ -43,7 +38,7 @@ func (c *cache[H, A]) getHeight(h uint32) *inbox[H, A] {
 	return nil
 }
 
-func (c *cache[H, A]) addMessage(m payload.ConsensusPayload[H, A]) {
+func (c *cache[H, A]) addMessage(m ConsensusPayload[H, A]) {
 	msgs, ok := c.mail[m.Height()]
 	if !ok {
 		msgs = newInbox[H, A]()
@@ -51,11 +46,11 @@ func (c *cache[H, A]) addMessage(m payload.ConsensusPayload[H, A]) {
 	}
 
 	switch m.Type() {
-	case payload.PrepareRequestType, payload.PrepareResponseType:
+	case PrepareRequestType, PrepareResponseType:
 		msgs.prepare[m.ValidatorIndex()] = m
-	case payload.ChangeViewType:
+	case ChangeViewType:
 		msgs.chViews[m.ValidatorIndex()] = m
-	case payload.CommitType:
+	case CommitType:
 		msgs.commit[m.ValidatorIndex()] = m
 	}
 }

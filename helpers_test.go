@@ -4,9 +4,8 @@ import (
 	"testing"
 
 	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/stretchr/testify/require"
-
 	"github.com/nspcc-dev/dbft/payload"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessageCache(t *testing.T) {
@@ -14,17 +13,17 @@ func TestMessageCache(t *testing.T) {
 
 	p1 := payload.NewConsensusPayload()
 	p1.SetHeight(3)
-	p1.SetType(payload.PrepareRequestType)
+	p1.SetType(PrepareRequestType)
 	c.addMessage(p1)
 
 	p2 := payload.NewConsensusPayload()
 	p2.SetHeight(4)
-	p2.SetType(payload.ChangeViewType)
+	p2.SetType(ChangeViewType)
 	c.addMessage(p2)
 
 	p3 := payload.NewConsensusPayload()
 	p3.SetHeight(4)
-	p3.SetType(payload.CommitType)
+	p3.SetType(CommitType)
 	c.addMessage(p3)
 
 	box := c.getHeight(3)

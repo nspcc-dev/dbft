@@ -3,54 +3,21 @@ package payload
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 
+	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/pkg/errors"
 )
 
 type (
-	// MessageType is a type for dBFT consensus messages.
-	MessageType byte
-
 	// Serializable is an interface for serializing consensus messages.
 	Serializable interface {
 		EncodeBinary(encoder *gob.Encoder) error
 		DecodeBinary(decoder *gob.Decoder) error
 	}
 
-	consensusMessage[H crypto.Hash, A crypto.Address] interface {
-		// ViewNumber returns view number when this message was originated.
-		ViewNumber() byte
-		// SetViewNumber sets view number.
-		SetViewNumber(view byte)
-
-		// Type returns type of this message.
-		Type() MessageType
-		// SetType sets the type of this message.
-		SetType(t MessageType)
-
-		// Payload returns this message's actual payload.
-		Payload() any
-		// SetPayload sets this message's payload to p.
-		SetPayload(p any)
-
-		// GetChangeView returns payload as if it was ChangeView.
-		GetChangeView() ChangeView
-		// GetPrepareRequest returns payload as if it was PrepareRequest.
-		GetPrepareRequest() PrepareRequest[H, A]
-		// GetPrepareResponse returns payload as if it was PrepareResponse.
-		GetPrepareResponse() PrepareResponse[H]
-		// GetCommit returns payload as if it was Commit.
-		GetCommit() Commit
-		// GetRecoveryRequest returns payload as if it was RecoveryRequest.
-		GetRecoveryRequest() RecoveryRequest
-		// GetRecoveryMessage returns payload as if it was RecoveryMessage.
-		GetRecoveryMessage() RecoveryMessage[H, A]
-	}
-
 	message struct {
-		cmType     MessageType
+		cmType     dbft.MessageType
 		viewNumber byte
 
 		payload any
@@ -64,37 +31,7 @@ type (
 	}
 )
 
-// 6 following constants enumerate all possible type of consensus message.
-const (
-	ChangeViewType      MessageType = 0x00
-	PrepareRequestType  MessageType = 0x20
-	PrepareResponseType MessageType = 0x21
-	CommitType          MessageType = 0x30
-	RecoveryRequestType MessageType = 0x40
-	RecoveryMessageType MessageType = 0x41
-)
-
-var _ consensusMessage[crypto.Uint256, crypto.Uint160] = (*message)(nil)
-
-// String implements fmt.Stringer interface.
-func (m MessageType) String() string {
-	switch m {
-	case ChangeViewType:
-		return "ChangeView"
-	case PrepareRequestType:
-		return "PrepareRequest"
-	case PrepareResponseType:
-		return "PrepareResponse"
-	case CommitType:
-		return "Commit"
-	case RecoveryRequestType:
-		return "RecoveryRequest"
-	case RecoveryMessageType:
-		return "RecoveryMessage"
-	default:
-		return fmt.Sprintf("UNKNOWN(%02x)", byte(m))
-	}
-}
+var _ dbft.ConsensusMessage[crypto.Uint256, crypto.Uint160] = (*message)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (m message) EncodeBinary(w *gob.Encoder) error {
@@ -116,23 +53,23 @@ func (m *message) DecodeBinary(r *gob.Decoder) error {
 	if err := r.Decode(aux); err != nil {
 		return err
 	}
-	m.cmType = MessageType(aux.CMType)
+	m.cmType = dbft.MessageType(aux.CMType)
 	m.viewNumber = aux.ViewNumber
 
 	switch m.cmType {
-	case ChangeViewType:
+	case dbft.ChangeViewType:
 		cv := new(changeView)
 		cv.newViewNumber = m.viewNumber + 1
 		m.payload = cv
-	case PrepareRequestType:
+	case dbft.PrepareRequestType:
 		m.payload = new(prepareRequest)
-	case PrepareResponseType:
+	case dbft.PrepareResponseType:
 		m.payload = new(prepareResponse)
-	case CommitType:
+	case dbft.CommitType:
 		m.payload = new(commit)
-	case RecoveryRequestType:
+	case dbft.RecoveryRequestType:
 		m.payload = new(recoveryRequest)
-	case RecoveryMessageType:
+	case dbft.RecoveryMessageType:
 		m.payload = new(recoveryMessage)
 	default:
 		return errors.Errorf("invalid type: 0x%02x", byte(m.cmType))
@@ -143,17 +80,17 @@ func (m *message) DecodeBinary(r *gob.Decoder) error {
 	return m.payload.(Serializable).DecodeBinary(dec)
 }
 
-func (m message) GetChangeView() ChangeView { return m.payload.(ChangeView) }
-func (m message) GetPrepareRequest() PrepareRequest[crypto.Uint256, crypto.Uint160] {
-	return m.payload.(PrepareRequest[crypto.Uint256, crypto.Uint160])
+func (m message) GetChangeView() dbft.ChangeView { return m.payload.(dbft.ChangeView) }
+func (m message) GetPrepareRequest() dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
+	return m.payload.(dbft.PrepareRequest[crypto.Uint256, crypto.Uint160])
 }
-func (m message) GetPrepareResponse() PrepareResponse[crypto.Uint256] {
-	return m.payload.(PrepareResponse[crypto.Uint256])
+func (m message) GetPrepareResponse() dbft.PrepareResponse[crypto.Uint256] {
+	return m.payload.(dbft.PrepareResponse[crypto.Uint256])
 }
-func (m message) GetCommit() Commit                   { return m.payload.(Commit) }
-func (m message) GetRecoveryRequest() RecoveryRequest { return m.payload.(RecoveryRequest) }
-func (m message) GetRecoveryMessage() RecoveryMessage[crypto.Uint256, crypto.Uint160] {
-	return m.payload.(RecoveryMessage[crypto.Uint256, crypto.Uint160])
+func (m message) GetCommit() dbft.Commit                   { return m.payload.(dbft.Commit) }
+func (m message) GetRecoveryRequest() dbft.RecoveryRequest { return m.payload.(dbft.RecoveryRequest) }
+func (m message) GetRecoveryMessage() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+	return m.payload.(dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160])
 }
 
 // ViewNumber implements ConsensusMessage interface.
@@ -167,12 +104,12 @@ func (m *message) SetViewNumber(view byte) {
 }
 
 // Type implements ConsensusMessage interface.
-func (m message) Type() MessageType {
+func (m message) Type() dbft.MessageType {
 	return m.cmType
 }
 
 // SetType implements ConsensusMessage interface.
-func (m *message) SetType(t MessageType) {
+func (m *message) SetType(t dbft.MessageType) {
 	m.cmType = t
 }
 
