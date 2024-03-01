@@ -1,4 +1,4 @@
-package dbft
+package dbft_test
 
 import (
 	"crypto/rand"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/block"
 	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/nspcc-dev/dbft/payload"
@@ -14,19 +15,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type Payload = ConsensusPayload[crypto.Uint256, crypto.Uint160]
+type Payload = dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]
 
 type testState struct {
 	myIndex    int
 	count      int
-	privs      []PrivateKey
-	pubs       []PublicKey
+	privs      []dbft.PrivateKey
+	pubs       []dbft.PublicKey
 	ch         []Payload
 	currHeight uint32
 	currHash   crypto.Uint256
 	pool       *testPool
-	blocks     []Block[crypto.Uint256, crypto.Uint160]
-	verify     func(b Block[crypto.Uint256, crypto.Uint160]) bool
+	blocks     []dbft.Block[crypto.Uint256, crypto.Uint160]
+	verify     func(b dbft.Block[crypto.Uint256, crypto.Uint160]) bool
 }
 
 type (
@@ -43,7 +44,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 	t.Run("backup sends nothing on start", func(t *testing.T) {
 		s.currHeight = 0
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 
 		service.Start(0)
 		require.Nil(t, s.tryRecv())
@@ -51,12 +52,12 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 	t.Run("primary send PrepareRequest on start", func(t *testing.T) {
 		s.currHeight = 1
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 
 		service.Start(0)
 		p := s.tryRecv()
 		require.NotNil(t, p)
-		require.Equal(t, PrepareRequestType, p.Type())
+		require.Equal(t, dbft.PrepareRequestType, p.Type())
 		require.EqualValues(t, 2, p.Height())
 		require.EqualValues(t, 0, p.ViewNumber())
 		require.NotNil(t, p.Payload())
@@ -68,7 +69,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 			// if there are many faulty must send RecoveryRequest
 			cv := s.tryRecv()
 			require.NotNil(t, cv)
-			require.Equal(t, RecoveryRequestType, cv.Type())
+			require.Equal(t, dbft.RecoveryRequestType, cv.Type())
 			require.Nil(t, s.tryRecv())
 
 			// if all nodes are up must send ChangeView
@@ -79,7 +80,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 			cv = s.tryRecv()
 			require.NotNil(t, cv)
-			require.Equal(t, ChangeViewType, cv.Type())
+			require.Equal(t, dbft.ChangeViewType, cv.Type())
 			require.EqualValues(t, 1, cv.GetChangeView().NewViewNumber())
 			require.Nil(t, s.tryRecv())
 		})
@@ -90,12 +91,12 @@ func TestDBFT_SingleNode(t *testing.T) {
 	s := newTestState(0, 1)
 
 	s.currHeight = 2
-	service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+	service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 
 	service.Start(0)
 	p := s.tryRecv()
 	require.NotNil(t, p)
-	require.Equal(t, PrepareRequestType, p.Type())
+	require.Equal(t, dbft.PrepareRequestType, p.Type())
 	require.EqualValues(t, 3, p.Height())
 	require.EqualValues(t, 0, p.ViewNumber())
 	require.NotNil(t, p.Payload())
@@ -103,7 +104,7 @@ func TestDBFT_SingleNode(t *testing.T) {
 
 	cm := s.tryRecv()
 	require.NotNil(t, cm)
-	require.Equal(t, CommitType, cm.Type())
+	require.Equal(t, dbft.CommitType, cm.Type())
 	require.EqualValues(t, s.currHeight+1, cm.Height())
 	require.EqualValues(t, 0, cm.ViewNumber())
 	require.NotNil(t, cm.Payload())
@@ -116,7 +117,7 @@ func TestDBFT_SingleNode(t *testing.T) {
 
 func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	s := newTestState(2, 7)
-	s.verify = func(b Block[crypto.Uint256, crypto.Uint160]) bool {
+	s.verify = func(b dbft.Block[crypto.Uint256, crypto.Uint160]) bool {
 		for _, tx := range b.Transactions() {
 			if tx.(testTx)%10 == 0 {
 				return false
@@ -128,7 +129,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 	t.Run("receive request from primary", func(t *testing.T) {
 		s.currHeight = 4
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 		txs := []testTx{1}
 		s.pool.Add(txs[0])
 
@@ -139,7 +140,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 		resp := s.tryRecv()
 		require.NotNil(t, resp)
-		require.Equal(t, PrepareResponseType, resp.Type())
+		require.Equal(t, dbft.PrepareResponseType, resp.Type())
 		require.EqualValues(t, s.currHeight+1, resp.Height())
 		require.EqualValues(t, 0, resp.ViewNumber())
 		require.EqualValues(t, s.myIndex, resp.ValidatorIndex())
@@ -160,7 +161,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 	t.Run("change view on invalid tx", func(t *testing.T) {
 		s.currHeight = 4
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 		txs := []testTx{10}
 
 		service.Start(0)
@@ -178,7 +179,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 		cv := s.tryRecv()
 		require.NotNil(t, cv)
-		require.Equal(t, ChangeViewType, cv.Type())
+		require.Equal(t, dbft.ChangeViewType, cv.Type())
 		require.EqualValues(t, s.currHeight+1, cv.Height())
 		require.EqualValues(t, 0, cv.ViewNumber())
 		require.EqualValues(t, s.myIndex, cv.ValidatorIndex())
@@ -188,7 +189,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 	t.Run("receive invalid prepare request", func(t *testing.T) {
 		s.currHeight = 4
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 		txs := []testTx{1, 2}
 		s.pool.Add(txs[0])
 
@@ -219,7 +220,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 			service.OnTransaction(txs[1])
 			resp := s.tryRecv()
 			require.NotNil(t, resp)
-			require.Equal(t, PrepareResponseType, resp.Type())
+			require.Equal(t, dbft.PrepareResponseType, resp.Type())
 			require.EqualValues(t, s.currHeight+1, resp.Height())
 			require.EqualValues(t, 0, resp.ViewNumber())
 			require.EqualValues(t, s.myIndex, resp.ValidatorIndex())
@@ -237,7 +238,7 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 	s := newTestState(0, 4)
 	s.currHeight = 1
 
-	srv := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+	srv := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 	srv.Start(0)
 	require.Nil(t, s.tryRecv())
 
@@ -246,7 +247,7 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 	srv.OnReceive(req)
 	srv.OnReceive(s.getPrepareResponse(1, req.Hash()))
 	srv.OnReceive(s.getPrepareResponse(3, req.Hash()))
-	require.Nil(t, srv.header) // missing transaction.
+	require.Nil(t, srv.Header()) // missing transaction.
 
 	// Test state for forming header.
 	s1 := &testState{
@@ -257,16 +258,16 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 		privs:      s.privs,
 	}
 	s1.pool.Add(tx)
-	srv1 := New[crypto.Uint256, crypto.Uint160](s1.getOptions()...)
+	srv1 := dbft.New[crypto.Uint256, crypto.Uint160](s1.getOptions()...)
 	srv1.Start(0)
 	srv1.OnReceive(req)
 	srv1.OnReceive(s1.getPrepareResponse(1, req.Hash()))
 	srv1.OnReceive(s1.getPrepareResponse(3, req.Hash()))
-	require.NotNil(t, srv1.header)
+	require.NotNil(t, srv1.Header())
 
 	for _, i := range []uint16{1, 2, 3} {
-		require.NoError(t, srv1.header.Sign(s1.privs[i]))
-		c := s1.getCommit(i, srv1.header.Signature())
+		require.NoError(t, srv1.Header().Sign(s1.privs[i]))
+		c := s1.getCommit(i, srv1.Header().Signature())
 		srv.OnReceive(c)
 	}
 
@@ -279,7 +280,7 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("send commit after enough responses", func(t *testing.T) {
 		s.currHeight = 1
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 		service.Start(0)
 
 		req := s.tryRecv()
@@ -294,14 +295,14 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 
 		cm := s.tryRecv()
 		require.NotNil(t, cm)
-		require.Equal(t, CommitType, cm.Type())
+		require.Equal(t, dbft.CommitType, cm.Type())
 		require.EqualValues(t, s.currHeight+1, cm.Height())
 		require.EqualValues(t, 0, cm.ViewNumber())
 		require.EqualValues(t, s.myIndex, cm.ValidatorIndex())
 		require.NotNil(t, cm.Payload())
 
 		pub := s.pubs[s.myIndex]
-		require.NoError(t, service.header.Verify(pub, cm.GetCommit().Signature()))
+		require.NoError(t, service.Header().Verify(pub, cm.GetCommit().Signature()))
 
 		t.Run("send recovery message on timeout", func(t *testing.T) {
 			service.OnTimeout(timer.HV{Height: 1})
@@ -311,20 +312,20 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 
 			r := s.tryRecv()
 			require.NotNil(t, r)
-			require.Equal(t, RecoveryMessageType, r.Type())
+			require.Equal(t, dbft.RecoveryMessageType, r.Type())
 		})
 
 		t.Run("process block after enough commits", func(t *testing.T) {
 			s0 := s.copyWithIndex(0)
-			require.NoError(t, service.header.Sign(s0.privs[0]))
-			c0 := s0.getCommit(0, service.header.Signature())
+			require.NoError(t, service.Header().Sign(s0.privs[0]))
+			c0 := s0.getCommit(0, service.Header().Signature())
 			service.OnReceive(c0)
 			require.Nil(t, s.tryRecv())
 			require.Nil(t, s.nextBlock())
 
 			s1 := s.copyWithIndex(1)
-			require.NoError(t, service.header.Sign(s1.privs[1]))
-			c1 := s1.getCommit(1, service.header.Signature())
+			require.NoError(t, service.Header().Sign(s1.privs[1]))
+			c1 := s1.getCommit(1, service.Header().Signature())
 			service.OnReceive(c1)
 			require.Nil(t, s.tryRecv())
 
@@ -339,7 +340,7 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("send recovery message", func(t *testing.T) {
 		s.currHeight = 1
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 		service.Start(0)
 
 		req := s.tryRecv()
@@ -358,22 +359,22 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 		service.OnReceive(rr)
 		rm := s.tryRecv()
 		require.NotNil(t, rm)
-		require.Equal(t, RecoveryMessageType, rm.Type())
+		require.Equal(t, dbft.RecoveryMessageType, rm.Type())
 
 		other := s.copyWithIndex(3)
-		srv2 := New[crypto.Uint256, crypto.Uint160](other.getOptions()...)
+		srv2 := dbft.New[crypto.Uint256, crypto.Uint160](other.getOptions()...)
 		srv2.Start(0)
 		srv2.OnReceive(rm)
 
 		r2 := other.tryRecv()
 		require.NotNil(t, r2)
-		require.Equal(t, PrepareResponseType, r2.Type())
+		require.Equal(t, dbft.PrepareResponseType, r2.Type())
 
 		cm2 := other.tryRecv()
 		require.NotNil(t, cm2)
-		require.Equal(t, CommitType, cm2.Type())
+		require.Equal(t, dbft.CommitType, cm2.Type())
 		pub := other.pubs[other.myIndex]
-		require.NoError(t, service.header.Verify(pub, cm2.GetCommit().Signature()))
+		require.NoError(t, service.Header().Verify(pub, cm2.GetCommit().Signature()))
 
 		// send commit once during recovery
 		require.Nil(t, s.tryRecv())
@@ -384,7 +385,7 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("change view correctly", func(t *testing.T) {
 		s.currHeight = 6
-		service := New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
 		service.Start(0)
 
 		resp := s.getChangeView(1, 1)
@@ -398,109 +399,109 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 		service.OnTimeout(timer.HV{Height: s.currHeight + 1})
 		cv := s.tryRecv()
 		require.NotNil(t, cv)
-		require.Equal(t, ChangeViewType, cv.Type())
+		require.Equal(t, dbft.ChangeViewType, cv.Type())
 
 		t.Run("primary sends prepare request after timeout", func(t *testing.T) {
 			service.OnTimeout(timer.HV{Height: s.currHeight + 1, View: 1})
 			pr := s.tryRecv()
 			require.NotNil(t, pr)
-			require.Equal(t, PrepareRequestType, pr.Type())
+			require.Equal(t, dbft.PrepareRequestType, pr.Type())
 		})
 	})
 }
 
 func TestDBFT_Invalid(t *testing.T) {
 	t.Run("without keys", func(t *testing.T) {
-		require.Nil(t, New[crypto.Uint256, crypto.Uint160]())
+		require.Nil(t, dbft.New[crypto.Uint256, crypto.Uint160]())
 	})
 
 	priv, pub := crypto.Generate(rand.Reader)
 	require.NotNil(t, priv)
 	require.NotNil(t, pub)
 
-	opts := []func(*Config[crypto.Uint256, crypto.Uint160]){WithKeyPair[crypto.Uint256, crypto.Uint160](priv, pub)}
+	opts := []func(*dbft.Config[crypto.Uint256, crypto.Uint160]){dbft.WithKeyPair[crypto.Uint256, crypto.Uint160](priv, pub)}
 	t.Run("without CurrentHeight", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithCurrentHeight[crypto.Uint256, crypto.Uint160](func() uint32 { return 0 }))
+	opts = append(opts, dbft.WithCurrentHeight[crypto.Uint256, crypto.Uint160](func() uint32 { return 0 }))
 	t.Run("without CurrentBlockHash", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithCurrentBlockHash[crypto.Uint256, crypto.Uint160](func() crypto.Uint256 { return crypto.Uint256{} }))
+	opts = append(opts, dbft.WithCurrentBlockHash[crypto.Uint256, crypto.Uint160](func() crypto.Uint256 { return crypto.Uint256{} }))
 	t.Run("without GetValidators", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithGetValidators[crypto.Uint256, crypto.Uint160](func(...Transaction[crypto.Uint256]) []PublicKey {
-		return []PublicKey{pub}
+	opts = append(opts, dbft.WithGetValidators[crypto.Uint256, crypto.Uint160](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey {
+		return []dbft.PublicKey{pub}
 	}))
 	t.Run("without NewBlockFromContext", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewBlockFromContext[crypto.Uint256, crypto.Uint160](func(_ *Context[crypto.Uint256, crypto.Uint160]) Block[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewBlockFromContext[crypto.Uint256, crypto.Uint160](func(_ *dbft.Context[crypto.Uint256, crypto.Uint160]) dbft.Block[crypto.Uint256, crypto.Uint160] {
 		return nil
 	}))
 	t.Run("without GetConsensusAddress", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithGetConsensusAddress[crypto.Uint256, crypto.Uint160](func(_ ...PublicKey) crypto.Uint160 {
+	opts = append(opts, dbft.WithGetConsensusAddress[crypto.Uint256, crypto.Uint160](func(_ ...dbft.PublicKey) crypto.Uint160 {
 		return crypto.Uint160{}
 	}))
 	t.Run("without NewConsensusPayload", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewConsensusPayload[crypto.Uint256, crypto.Uint160](func(_ *Context[crypto.Uint256, crypto.Uint160], _ MessageType, _ any) ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewConsensusPayload[crypto.Uint256, crypto.Uint160](func(_ *dbft.Context[crypto.Uint256, crypto.Uint160], _ dbft.MessageType, _ any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 		return nil
 	}))
 	t.Run("without NewPrepareRequest", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](func() PrepareRequest[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](func() dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
 		return nil
 	}))
 	t.Run("without NewPrepareResponse", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](func() PrepareResponse[crypto.Uint256] {
+	opts = append(opts, dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](func() dbft.PrepareResponse[crypto.Uint256] {
 		return nil
 	}))
 	t.Run("without NewChangeView", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewChangeView[crypto.Uint256, crypto.Uint160](func() ChangeView {
+	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](func() dbft.ChangeView {
 		return nil
 	}))
 	t.Run("without NewCommit", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewCommit[crypto.Uint256, crypto.Uint160](func() Commit {
+	opts = append(opts, dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](func() dbft.Commit {
 		return nil
 	}))
 	t.Run("without NewRecoveryRequest", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](func() RecoveryRequest {
+	opts = append(opts, dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryRequest {
 		return nil
 	}))
 	t.Run("without NewRecoveryMessage", func(t *testing.T) {
-		require.Nil(t, New(opts...))
+		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](func() RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
 		return nil
 	}))
 	t.Run("with all defaults", func(t *testing.T) {
-		d := New(opts...)
+		d := dbft.New(opts...)
 		require.NotNil(t, d)
 		require.NotNil(t, d.Config.RequestTx)
 		require.NotNil(t, d.Config.GetTx)
@@ -529,25 +530,25 @@ func TestDBFT_Invalid(t *testing.T) {
 func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	r0 := newTestState(0, 4)
 	r0.currHeight = 4
-	s0 := New[crypto.Uint256, crypto.Uint160](r0.getOptions()...)
+	s0 := dbft.New[crypto.Uint256, crypto.Uint160](r0.getOptions()...)
 	s0.Start(0)
 
 	r1 := r0.copyWithIndex(1)
-	s1 := New[crypto.Uint256, crypto.Uint160](r1.getOptions()...)
+	s1 := dbft.New[crypto.Uint256, crypto.Uint160](r1.getOptions()...)
 	s1.Start(0)
 
 	r2 := r0.copyWithIndex(2)
-	s2 := New[crypto.Uint256, crypto.Uint160](r2.getOptions()...)
+	s2 := dbft.New[crypto.Uint256, crypto.Uint160](r2.getOptions()...)
 	s2.Start(0)
 
 	r3 := r0.copyWithIndex(3)
-	s3 := New[crypto.Uint256, crypto.Uint160](r3.getOptions()...)
+	s3 := dbft.New[crypto.Uint256, crypto.Uint160](r3.getOptions()...)
 	s3.Start(0)
 
 	// Step 1. The primary (at view 0) replica 1 sends the PrepareRequest message.
 	reqV0 := r1.tryRecv()
 	require.NotNil(t, reqV0)
-	require.Equal(t, PrepareRequestType, reqV0.Type())
+	require.Equal(t, dbft.PrepareRequestType, reqV0.Type())
 
 	// Step 2 will be performed later, see the comment to Step 2.
 
@@ -556,7 +557,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s0.OnReceive(reqV0)
 	resp0V0 := r0.tryRecv()
 	require.NotNil(t, resp0V0)
-	require.Equal(t, PrepareResponseType, resp0V0.Type())
+	require.Equal(t, dbft.PrepareResponseType, resp0V0.Type())
 
 	// Step 4 will be performed later, see the comment to Step 4.
 
@@ -565,14 +566,14 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s2.OnReceive(reqV0)
 	resp2V0 := r2.tryRecv()
 	require.NotNil(t, resp2V0)
-	require.Equal(t, PrepareResponseType, resp2V0.Type())
+	require.Equal(t, dbft.PrepareResponseType, resp2V0.Type())
 
 	// Step 6. The backup (at view 0) replica 2 collects M prepare messages (from
 	// itself and replicas 0, 1) and broadcasts the Commit message for view 0.
 	s2.OnReceive(resp0V0)
 	cm2V0 := r2.tryRecv()
 	require.NotNil(t, cm2V0)
-	require.Equal(t, CommitType, cm2V0.Type())
+	require.Equal(t, dbft.CommitType, cm2V0.Type())
 
 	// Step 7. The backup (at view 0) replica 3 decides to change its view
 	// (possible on timeout) and sends the ChangeView message.
@@ -581,7 +582,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s3.OnTimeout(timer.HV{Height: r3.currHeight + 1, View: 0})
 	cv3V0 := r3.tryRecv()
 	require.NotNil(t, cv3V0)
-	require.Equal(t, ChangeViewType, cv3V0.Type())
+	require.Equal(t, dbft.ChangeViewType, cv3V0.Type())
 
 	// Step 2. The primary (at view 0) replica 1 decides to change its view
 	// (possible on timeout after receiving at least M non-commit messages from the
@@ -591,7 +592,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s1.OnTimeout(timer.HV{Height: r1.currHeight + 1, View: 0})
 	cv1V0 := r1.tryRecv()
 	require.NotNil(t, cv1V0)
-	require.Equal(t, ChangeViewType, cv1V0.Type())
+	require.Equal(t, dbft.ChangeViewType, cv1V0.Type())
 
 	// Step 4. The backup (at view 0) replica 0 decides to change its view
 	// (possible on timeout after receiving at least M non-commit messages from the
@@ -600,7 +601,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 0})
 	cv0V0 := r0.tryRecv()
 	require.NotNil(t, cv0V0)
-	require.Equal(t, ChangeViewType, cv0V0.Type())
+	require.Equal(t, dbft.ChangeViewType, cv0V0.Type())
 
 	// Step 8. The primary (at view 0) replica 1 collects M ChangeView messages
 	// (from itself and replicas 1, 3) and changes its view to 1.
@@ -616,14 +617,14 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 1})
 	reqV1 := r0.tryRecv()
 	require.NotNil(t, reqV1)
-	require.Equal(t, PrepareRequestType, reqV1.Type())
+	require.Equal(t, dbft.PrepareRequestType, reqV1.Type())
 
 	// Step 11. The backup (at view 1) replica 1 receives the PrepareRequest of
 	// view 1 and sends the PrepareResponse.
 	s1.OnReceive(reqV1)
 	resp1V1 := r1.tryRecv()
 	require.NotNil(t, resp1V1)
-	require.Equal(t, PrepareResponseType, resp1V1.Type())
+	require.Equal(t, dbft.PrepareResponseType, resp1V1.Type())
 
 	// Steps 12, 13 will be performed later, see the comments to Step 12, 13.
 
@@ -639,7 +640,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s3.OnTimeout(timer.HV{Height: r3.currHeight + 1, View: 1})
 	rcvr3V1 := r3.tryRecv()
 	require.NotNil(t, rcvr3V1)
-	require.Equal(t, RecoveryRequestType, rcvr3V1.Type())
+	require.Equal(t, dbft.RecoveryRequestType, rcvr3V1.Type())
 
 	// Intermediate step B. The backup (at view 1) replica 1 should receive any
 	// message from replica 3 to be able to change view. However, it couldn't be
@@ -649,7 +650,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s1.OnReceive(rcvr3V1)
 	rcvrResp1V1 := r1.tryRecv()
 	require.NotNil(t, rcvrResp1V1)
-	require.Equal(t, RecoveryMessageType, rcvrResp1V1.Type())
+	require.Equal(t, dbft.RecoveryMessageType, rcvrResp1V1.Type())
 
 	// Intermediate step C. The primary (at view 1) replica 0 should receive
 	// RecoveryRequest from replica 3. The purpose of this step is the same as
@@ -657,7 +658,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s0.OnReceive(rcvr3V1)
 	rcvrResp0V1 := r0.tryRecv()
 	require.NotNil(t, rcvrResp0V1)
-	require.Equal(t, RecoveryMessageType, rcvrResp0V1.Type())
+	require.Equal(t, dbft.RecoveryMessageType, rcvrResp0V1.Type())
 
 	// Step 12. According to the neo-project/neo#792, at this step the backup (at view 1)
 	// replica 1 decides to change its view (possible on timeout) and sends the
@@ -674,7 +675,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s1.OnTimeout(timer.HV{Height: r1.currHeight + 1, View: 1})
 	cv1V1 := r1.tryRecv()
 	require.NotNil(t, cv1V1)
-	require.Equal(t, ChangeViewType, cv1V1.Type())
+	require.Equal(t, dbft.ChangeViewType, cv1V1.Type())
 
 	// Step 13. The primary (at view 1) replica 0 decides to change its view
 	// (possible on timeout) and sends the ChangeView message.
@@ -682,21 +683,21 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 1})
 	cv0V1 := r0.tryRecv()
 	require.NotNil(t, cv0V1)
-	require.Equal(t, ChangeViewType, cv0V1.Type())
+	require.Equal(t, dbft.ChangeViewType, cv0V1.Type())
 
 	// Step 15. The backup (at view 1) replica 3 receives PrepareRequest of view
 	// 1 and broadcasts its PrepareResponse.
 	s3.OnReceive(reqV1)
 	resp3V1 := r3.tryRecv()
 	require.NotNil(t, resp3V1)
-	require.Equal(t, PrepareResponseType, resp3V1.Type())
+	require.Equal(t, dbft.PrepareResponseType, resp3V1.Type())
 
 	// Step 16. The backup (at view 1) replica 3 collects M prepare messages and
 	// broadcasts the Commit message for view 1.
 	s3.OnReceive(resp1V1)
 	cm3V1 := r3.tryRecv()
 	require.NotNil(t, cm3V1)
-	require.Equal(t, CommitType, cm3V1.Type())
+	require.Equal(t, dbft.CommitType, cm3V1.Type())
 
 	// Intermediate step D. It is needed to enable step 17 and to check that
 	// MoreThanFNodesCommittedOrLost works properly and counts Commit messages from
@@ -711,13 +712,13 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	s0.OnReceive(resp3V1)
 	cm0V1 := r0.tryRecv()
 	require.NotNil(t, cm0V1)
-	require.Equal(t, CommitType, cm0V1.Type())
+	require.Equal(t, dbft.CommitType, cm0V1.Type())
 
 	s1.OnReceive(cm0V1)
 	s1.OnReceive(resp3V1)
 	cm1V1 := r1.tryRecv()
 	require.NotNil(t, cm1V1)
-	require.Equal(t, CommitType, cm1V1.Type())
+	require.Equal(t, dbft.CommitType, cm1V1.Type())
 
 	// Finally, send missing Commit message to replicas 0 and 1, they should accept
 	// the block.
@@ -735,7 +736,7 @@ func (s testState) getChangeView(from uint16, view byte) Payload {
 	cv.SetNewViewNumber(view)
 
 	p := s.getPayload(from)
-	p.SetType(ChangeViewType)
+	p.SetType(dbft.ChangeViewType)
 	p.SetPayload(cv)
 
 	return p
@@ -743,7 +744,7 @@ func (s testState) getChangeView(from uint16, view byte) Payload {
 
 func (s testState) getRecoveryRequest(from uint16) Payload {
 	p := s.getPayload(from)
-	p.SetType(RecoveryRequestType)
+	p.SetType(dbft.RecoveryRequestType)
 	p.SetPayload(payload.NewRecoveryRequest())
 
 	return p
@@ -754,7 +755,7 @@ func (s testState) getCommit(from uint16, sign []byte) Payload {
 	c.SetSignature(sign)
 
 	p := s.getPayload(from)
-	p.SetType(CommitType)
+	p.SetType(dbft.CommitType)
 	p.SetPayload(c)
 
 	return p
@@ -765,7 +766,7 @@ func (s testState) getPrepareResponse(from uint16, phash crypto.Uint256) Payload
 	resp.SetPreparationHash(phash)
 
 	p := s.getPayload(from)
-	p.SetType(PrepareResponseType)
+	p.SetType(dbft.PrepareResponseType)
 	p.SetPayload(resp)
 
 	return p
@@ -777,7 +778,7 @@ func (s testState) getPrepareRequest(from uint16, hashes ...crypto.Uint256) Payl
 	req.SetNextConsensus(s.nextConsensus())
 
 	p := s.getPayload(from)
-	p.SetType(PrepareRequestType)
+	p.SetType(dbft.PrepareRequestType)
 	p.SetPayload(req)
 
 	return p
@@ -814,7 +815,7 @@ func (s *testState) tryRecv() Payload {
 	return p
 }
 
-func (s *testState) nextBlock() Block[crypto.Uint256, crypto.Uint160] {
+func (s *testState) nextBlock() dbft.Block[crypto.Uint256, crypto.Uint160] {
 	if len(s.blocks) == 0 {
 		return nil
 	}
@@ -837,56 +838,56 @@ func (s testState) copyWithIndex(myIndex int) *testState {
 	}
 }
 
-func (s testState) nextConsensus(...PublicKey) crypto.Uint160 {
+func (s testState) nextConsensus(...dbft.PublicKey) crypto.Uint160 {
 	return crypto.Uint160{1}
 }
 
-func (s *testState) getOptions() []func(*Config[crypto.Uint256, crypto.Uint160]) {
-	opts := []func(*Config[crypto.Uint256, crypto.Uint160]){
-		WithCurrentHeight[crypto.Uint256, crypto.Uint160](func() uint32 { return s.currHeight }),
-		WithCurrentBlockHash[crypto.Uint256, crypto.Uint160](func() crypto.Uint256 { return s.currHash }),
-		WithGetValidators[crypto.Uint256, crypto.Uint160](func(...Transaction[crypto.Uint256]) []PublicKey { return s.pubs }),
-		WithKeyPair[crypto.Uint256, crypto.Uint160](s.privs[s.myIndex], s.pubs[s.myIndex]),
-		WithBroadcast[crypto.Uint256, crypto.Uint160](func(p Payload) { s.ch = append(s.ch, p) }),
-		WithGetTx[crypto.Uint256, crypto.Uint160](s.pool.Get),
-		WithProcessBlock[crypto.Uint256, crypto.Uint160](func(b Block[crypto.Uint256, crypto.Uint160]) { s.blocks = append(s.blocks, b) }),
-		WithGetConsensusAddress[crypto.Uint256, crypto.Uint160](s.nextConsensus),
-		WithWatchOnly[crypto.Uint256, crypto.Uint160](func() bool { return false }),
-		WithGetBlock[crypto.Uint256, crypto.Uint160](func(crypto.Uint256) Block[crypto.Uint256, crypto.Uint160] { return nil }),
-		WithTimer[crypto.Uint256, crypto.Uint160](timer.New()),
-		WithLogger[crypto.Uint256, crypto.Uint160](zap.NewNop()),
-		WithNewBlockFromContext[crypto.Uint256, crypto.Uint160](newBlockFromContext),
-		WithSecondsPerBlock[crypto.Uint256, crypto.Uint160](time.Second * 10),
-		WithRequestTx[crypto.Uint256, crypto.Uint160](func(...crypto.Uint256) {}),
-		WithGetVerified[crypto.Uint256, crypto.Uint160](func() []Transaction[crypto.Uint256] { return []Transaction[crypto.Uint256]{} }),
+func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256, crypto.Uint160]) {
+	opts := []func(*dbft.Config[crypto.Uint256, crypto.Uint160]){
+		dbft.WithCurrentHeight[crypto.Uint256, crypto.Uint160](func() uint32 { return s.currHeight }),
+		dbft.WithCurrentBlockHash[crypto.Uint256, crypto.Uint160](func() crypto.Uint256 { return s.currHash }),
+		dbft.WithGetValidators[crypto.Uint256, crypto.Uint160](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey { return s.pubs }),
+		dbft.WithKeyPair[crypto.Uint256, crypto.Uint160](s.privs[s.myIndex], s.pubs[s.myIndex]),
+		dbft.WithBroadcast[crypto.Uint256, crypto.Uint160](func(p Payload) { s.ch = append(s.ch, p) }),
+		dbft.WithGetTx[crypto.Uint256, crypto.Uint160](s.pool.Get),
+		dbft.WithProcessBlock[crypto.Uint256, crypto.Uint160](func(b dbft.Block[crypto.Uint256, crypto.Uint160]) { s.blocks = append(s.blocks, b) }),
+		dbft.WithGetConsensusAddress[crypto.Uint256, crypto.Uint160](s.nextConsensus),
+		dbft.WithWatchOnly[crypto.Uint256, crypto.Uint160](func() bool { return false }),
+		dbft.WithGetBlock[crypto.Uint256, crypto.Uint160](func(crypto.Uint256) dbft.Block[crypto.Uint256, crypto.Uint160] { return nil }),
+		dbft.WithTimer[crypto.Uint256, crypto.Uint160](timer.New()),
+		dbft.WithLogger[crypto.Uint256, crypto.Uint160](zap.NewNop()),
+		dbft.WithNewBlockFromContext[crypto.Uint256, crypto.Uint160](newBlockFromContext),
+		dbft.WithSecondsPerBlock[crypto.Uint256, crypto.Uint160](time.Second * 10),
+		dbft.WithRequestTx[crypto.Uint256, crypto.Uint160](func(...crypto.Uint256) {}),
+		dbft.WithGetVerified[crypto.Uint256, crypto.Uint160](func() []dbft.Transaction[crypto.Uint256] { return []dbft.Transaction[crypto.Uint256]{} }),
 
-		WithNewConsensusPayload[crypto.Uint256, crypto.Uint160](newConsensusPayload),
-		WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](payload.NewPrepareRequest),
-		WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](payload.NewPrepareResponse),
-		WithNewChangeView[crypto.Uint256, crypto.Uint160](payload.NewChangeView),
-		WithNewCommit[crypto.Uint256, crypto.Uint160](payload.NewCommit),
-		WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](payload.NewRecoveryRequest),
-		WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](payload.NewRecoveryMessage),
+		dbft.WithNewConsensusPayload[crypto.Uint256, crypto.Uint160](newConsensusPayload),
+		dbft.WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](payload.NewPrepareRequest),
+		dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](payload.NewPrepareResponse),
+		dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](payload.NewChangeView),
+		dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](payload.NewCommit),
+		dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](payload.NewRecoveryRequest),
+		dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](payload.NewRecoveryMessage),
 	}
 
 	verify := s.verify
 	if verify == nil {
-		verify = func(Block[crypto.Uint256, crypto.Uint160]) bool { return true }
+		verify = func(dbft.Block[crypto.Uint256, crypto.Uint160]) bool { return true }
 	}
 
-	opts = append(opts, WithVerifyBlock(verify))
+	opts = append(opts, dbft.WithVerifyBlock(verify))
 
 	if debugTests {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.DisableStacktrace = true
 		logger, _ := cfg.Build()
-		opts = append(opts, WithLogger[crypto.Uint256, crypto.Uint160](logger))
+		opts = append(opts, dbft.WithLogger[crypto.Uint256, crypto.Uint160](logger))
 	}
 
 	return opts
 }
 
-func newBlockFromContext(ctx *Context[crypto.Uint256, crypto.Uint160]) Block[crypto.Uint256, crypto.Uint160] {
+func newBlockFromContext(ctx *dbft.Context[crypto.Uint256, crypto.Uint160]) dbft.Block[crypto.Uint256, crypto.Uint160] {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
@@ -896,7 +897,7 @@ func newBlockFromContext(ctx *Context[crypto.Uint256, crypto.Uint160]) Block[cry
 
 // newConsensusPayload is a function for creating consensus payload of specific
 // type.
-func newConsensusPayload(c *Context[crypto.Uint256, crypto.Uint160], t MessageType, msg any) ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+func newConsensusPayload(c *dbft.Context[crypto.Uint256, crypto.Uint160], t dbft.MessageType, msg any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	cp := payload.NewConsensusPayload()
 	cp.SetHeight(c.BlockIndex)
 	cp.SetValidatorIndex(uint16(c.MyIndex))
@@ -907,7 +908,7 @@ func newConsensusPayload(c *Context[crypto.Uint256, crypto.Uint160], t MessageTy
 	return cp
 }
 
-func getTestValidators(n int) (privs []PrivateKey, pubs []PublicKey) {
+func getTestValidators(n int) (privs []dbft.PrivateKey, pubs []dbft.PublicKey) {
 	for i := 0; i < n; i++ {
 		priv, pub := crypto.Generate(rand.Reader)
 		privs = append(privs, priv)
@@ -932,7 +933,7 @@ func (p *testPool) Add(tx testTx) {
 	p.storage[tx.Hash()] = tx
 }
 
-func (p *testPool) Get(h crypto.Uint256) Transaction[crypto.Uint256] {
+func (p *testPool) Get(h crypto.Uint256) dbft.Transaction[crypto.Uint256] {
 	if tx, ok := p.storage[h]; ok {
 		return tx
 	}

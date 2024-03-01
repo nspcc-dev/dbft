@@ -630,3 +630,9 @@ func (d *DBFT[H, A]) extendTimer(count time.Duration) {
 		d.Timer.Extend(count * d.SecondsPerBlock / time.Duration(d.M()))
 	}
 }
+
+// Header returns current header from context. May be nil in case if no
+// header is constructed yet. Do not change the resulting header.
+func (d *DBFT[H, A]) Header() Block[H, A] {
+	return d.header
+}
