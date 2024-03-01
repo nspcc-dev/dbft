@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 
 	"github.com/nspcc-dev/dbft"
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 )
 
 type (

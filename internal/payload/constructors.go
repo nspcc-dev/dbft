@@ -2,7 +2,7 @@ package payload
 
 import (
 	"github.com/nspcc-dev/dbft"
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 )
 
 // NewConsensusPayload returns minimal ConsensusPayload implementation.

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/nspcc-dev/dbft"
-	"github.com/nspcc-dev/dbft/block"
-	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/dbft/payload"
+	"github.com/nspcc-dev/dbft/internal/block"
+	"github.com/nspcc-dev/dbft/internal/crypto"
+	"github.com/nspcc-dev/dbft/internal/payload"
 	"github.com/nspcc-dev/dbft/timer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

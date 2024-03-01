@@ -5,8 +5,8 @@ import (
 	"encoding/gob"
 
 	"github.com/nspcc-dev/dbft"
-	"github.com/nspcc-dev/dbft/crypto"
-	"github.com/nspcc-dev/dbft/merkle"
+	"github.com/nspcc-dev/dbft/internal/crypto"
+	"github.com/nspcc-dev/dbft/internal/merkle"
 )
 
 type (
