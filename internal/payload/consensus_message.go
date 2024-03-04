@@ -3,10 +3,10 @@ package payload
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 
 	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/internal/crypto"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -72,7 +72,7 @@ func (m *message) DecodeBinary(r *gob.Decoder) error {
 	case dbft.RecoveryMessageType:
 		m.payload = new(recoveryMessage)
 	default:
-		return errors.Errorf("invalid type: 0x%02x", byte(m.cmType))
+		return fmt.Errorf("invalid type: 0x%02x", byte(m.cmType))
 	}
 
 	rr := bytes.NewReader(aux.Payload)

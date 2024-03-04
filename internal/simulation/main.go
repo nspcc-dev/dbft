@@ -20,7 +20,7 @@ import (
 	"github.com/nspcc-dev/dbft/internal/block"
 	"github.com/nspcc-dev/dbft/internal/crypto"
 	"github.com/nspcc-dev/dbft/internal/payload"
-	"github.com/spaolacci/murmur3"
+	"github.com/twmb/murmur3"
 	"go.uber.org/zap"
 )
 
@@ -229,7 +229,7 @@ func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256, crypto.Uint160]) {
 	n.lastHash = b.Hash()
 }
 
-// VerifyPrepareRequest verifies that payload was received from a good validator.
+// VerifyPayload verifies that payload was received from a good validator.
 func (n *simNode) VerifyPayload(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]) error {
 	if *blocked != -1 && p.ValidatorIndex() == uint16(*blocked) {
 		return fmt.Errorf("message from blocked validator: %d", *blocked)
