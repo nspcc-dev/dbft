@@ -21,6 +21,7 @@ Improvements:
  * minimum required Go version upgrade to Go 1.19 (#83)
  * log messages adjustment (#88)
  * untie `dbft` module from `github.com/nspcc-dev/neo-go` dependency (#94)
+ * minimum required Go version upgrade to Go 1.20 (#100)
 
 Bugs fixed:
 
