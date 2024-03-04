@@ -21,13 +21,14 @@ documentation. Refer to `identity.go` for `Hash`/`Address` description. No defau
 provided.
 4. `dbft` package contains `Block` and `Transaction` abstractions located at the `block.go` and
 `transaction.go` files. Every block must be able to be signed and verified as well as implement setters
-and getters for main fields. `Transaction` is an entity which can be hashed. Two transactions having
+and getters for main fields. `Transaction` is an entity which can be hashed. Two entities having
 equal hashes are considered equal. No default implementation is provided.
-5. `dbft` contains interfaces for payloads. No default implementation is
-provided.
+5. `dbft` contains generic interfaces for payloads. No default implementation is provided.
 6. `timer` contains default time provider. It should make it easier to write tests
 concerning dBFT's time depending behaviour.
-7. `simulation` contains an example of dBFT's usage with 6-node consensus.
+7. `internal` contains an example of custom identity types and payloads implementation used to implement
+an example of dBFT's usage with 6-node consensus. Refer to `internal` subpackages for type-specific dBFT
+implementation and tests. Refer to `internal/simulation` for an example of dBFT library usage.
 8. `formal-models` contains the set of dBFT's models written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html)
    language and instructions on how to run and check them. Please, refer to the [README](./formal-models/README.md)
    for more details.
@@ -42,7 +43,7 @@ process:
 - `OnReceive()` which must be called everytime new payload is received
 - `OnTimer()` which must be called everytime timer fires
 
-A minimal example can be found in `simulation/main.go`.
+A minimal example can be found in `internal/simulation/main.go`.
 
 ## Links
 - dBFT high-level description on NEO website [https://docs.neo.org/docs/en-us/basic/consensus/dbft.html](https://docs.neo.org/docs/en-us/basic/consensus/dbft.html)
