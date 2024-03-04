@@ -5,8 +5,8 @@ go 1.20
 require (
 	github.com/nspcc-dev/rfc6979 v0.2.0
 	github.com/pkg/errors v0.8.1
-	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.7.0
+	github.com/twmb/murmur3 v1.1.8
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.17.0
 )

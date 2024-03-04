@@ -20,7 +20,7 @@ import (
 	"github.com/nspcc-dev/dbft/internal/block"
 	"github.com/nspcc-dev/dbft/internal/crypto"
 	"github.com/nspcc-dev/dbft/internal/payload"
-	"github.com/spaolacci/murmur3"
+	"github.com/twmb/murmur3"
 	"go.uber.org/zap"
 )
 
