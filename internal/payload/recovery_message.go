@@ -4,36 +4,17 @@ import (
 	"encoding/gob"
 	"errors"
 
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 )
 
 type (
-	// RecoveryMessage represents dBFT Recovery message.
-	RecoveryMessage[H crypto.Hash, A crypto.Address] interface {
-		// AddPayload adds payload from this epoch to be recovered.
-		AddPayload(p ConsensusPayload[H, A])
-		// GetPrepareRequest returns PrepareRequest to be processed.
-		GetPrepareRequest(p ConsensusPayload[H, A], validators []crypto.PublicKey, primary uint16) ConsensusPayload[H, A]
-		// GetPrepareResponses returns a slice of PrepareResponse in any order.
-		GetPrepareResponses(p ConsensusPayload[H, A], validators []crypto.PublicKey) []ConsensusPayload[H, A]
-		// GetChangeViews returns a slice of ChangeView in any order.
-		GetChangeViews(p ConsensusPayload[H, A], validators []crypto.PublicKey) []ConsensusPayload[H, A]
-		// GetCommits returns a slice of Commit in any order.
-		GetCommits(p ConsensusPayload[H, A], validators []crypto.PublicKey) []ConsensusPayload[H, A]
-
-		// PreparationHash returns has of PrepareRequest payload for this epoch.
-		// It can be useful in case only PrepareResponse payloads were received.
-		PreparationHash() *H
-		// SetPreparationHash sets preparation hash.
-		SetPreparationHash(h *H)
-	}
-
 	recoveryMessage struct {
 		preparationHash     *crypto.Uint256
 		preparationPayloads []preparationCompact
 		commitPayloads      []commitCompact
 		changeViewPayloads  []changeViewCompact
-		prepareRequest      PrepareRequest[crypto.Uint256, crypto.Uint160]
+		prepareRequest      dbft.PrepareRequest[crypto.Uint256, crypto.Uint160]
 	}
 	// recoveryMessageAux is an auxiliary structure for recoveryMessage encoding.
 	recoveryMessageAux struct {
@@ -43,7 +24,7 @@ type (
 	}
 )
 
-var _ RecoveryMessage[crypto.Uint256, crypto.Uint160] = (*recoveryMessage)(nil)
+var _ dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] = (*recoveryMessage)(nil)
 
 // PreparationHash implements RecoveryMessage interface.
 func (m *recoveryMessage) PreparationHash() *crypto.Uint256 {
@@ -56,23 +37,23 @@ func (m *recoveryMessage) SetPreparationHash(h *crypto.Uint256) {
 }
 
 // AddPayload implements RecoveryMessage interface.
-func (m *recoveryMessage) AddPayload(p ConsensusPayload[crypto.Uint256, crypto.Uint160]) {
+func (m *recoveryMessage) AddPayload(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]) {
 	switch p.Type() {
-	case PrepareRequestType:
+	case dbft.PrepareRequestType:
 		m.prepareRequest = p.GetPrepareRequest()
 		prepHash := p.Hash()
 		m.preparationHash = &prepHash
-	case PrepareResponseType:
+	case dbft.PrepareResponseType:
 		m.preparationPayloads = append(m.preparationPayloads, preparationCompact{
 			ValidatorIndex: p.ValidatorIndex(),
 		})
-	case ChangeViewType:
+	case dbft.ChangeViewType:
 		m.changeViewPayloads = append(m.changeViewPayloads, changeViewCompact{
 			ValidatorIndex:     p.ValidatorIndex(),
 			OriginalViewNumber: p.ViewNumber(),
 			Timestamp:          0,
 		})
-	case CommitType:
+	case dbft.CommitType:
 		cc := commitCompact{
 			ViewNumber:     p.ViewNumber(),
 			ValidatorIndex: p.ValidatorIndex(),
@@ -82,7 +63,7 @@ func (m *recoveryMessage) AddPayload(p ConsensusPayload[crypto.Uint256, crypto.U
 	}
 }
 
-func fromPayload(t MessageType, recovery ConsensusPayload[crypto.Uint256, crypto.Uint160], p Serializable) *Payload {
+func fromPayload(t dbft.MessageType, recovery dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], p Serializable) *Payload {
 	return &Payload{
 		message: message{
 			cmType:     t,
@@ -94,12 +75,12 @@ func fromPayload(t MessageType, recovery ConsensusPayload[crypto.Uint256, crypto
 }
 
 // GetPrepareRequest implements RecoveryMessage interface.
-func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey, ind uint16) ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+func (m *recoveryMessage) GetPrepareRequest(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []dbft.PublicKey, ind uint16) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	if m.prepareRequest == nil {
 		return nil
 	}
 
-	req := fromPayload(PrepareRequestType, p, &prepareRequest{
+	req := fromPayload(dbft.PrepareRequestType, p, &prepareRequest{
 		// prepareRequest.Timestamp() here returns nanoseconds-precision value, so convert it to seconds again
 		timestamp:         nanoSecToSec(m.prepareRequest.Timestamp()),
 		nonce:             m.prepareRequest.Nonce(),
@@ -112,15 +93,15 @@ func (m *recoveryMessage) GetPrepareRequest(p ConsensusPayload[crypto.Uint256, c
 }
 
 // GetPrepareResponses implements RecoveryMessage interface.
-func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey) []ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+func (m *recoveryMessage) GetPrepareResponses(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []dbft.PublicKey) []dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	if m.preparationHash == nil {
 		return nil
 	}
 
-	payloads := make([]ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.preparationPayloads))
+	payloads := make([]dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.preparationPayloads))
 
 	for i, resp := range m.preparationPayloads {
-		payloads[i] = fromPayload(PrepareResponseType, p, &prepareResponse{
+		payloads[i] = fromPayload(dbft.PrepareResponseType, p, &prepareResponse{
 			preparationHash: *m.preparationHash,
 		})
 		payloads[i].SetValidatorIndex(resp.ValidatorIndex)
@@ -130,11 +111,11 @@ func (m *recoveryMessage) GetPrepareResponses(p ConsensusPayload[crypto.Uint256,
 }
 
 // GetChangeViews implements RecoveryMessage interface.
-func (m *recoveryMessage) GetChangeViews(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey) []ConsensusPayload[crypto.Uint256, crypto.Uint160] {
-	payloads := make([]ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.changeViewPayloads))
+func (m *recoveryMessage) GetChangeViews(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []dbft.PublicKey) []dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	payloads := make([]dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.changeViewPayloads))
 
 	for i, cv := range m.changeViewPayloads {
-		payloads[i] = fromPayload(ChangeViewType, p, &changeView{
+		payloads[i] = fromPayload(dbft.ChangeViewType, p, &changeView{
 			newViewNumber: cv.OriginalViewNumber + 1,
 			timestamp:     cv.Timestamp,
 		})
@@ -145,11 +126,11 @@ func (m *recoveryMessage) GetChangeViews(p ConsensusPayload[crypto.Uint256, cryp
 }
 
 // GetCommits implements RecoveryMessage interface.
-func (m *recoveryMessage) GetCommits(p ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []crypto.PublicKey) []ConsensusPayload[crypto.Uint256, crypto.Uint160] {
-	payloads := make([]ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.commitPayloads))
+func (m *recoveryMessage) GetCommits(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], _ []dbft.PublicKey) []dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	payloads := make([]dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160], len(m.commitPayloads))
 
 	for i, c := range m.commitPayloads {
-		payloads[i] = fromPayload(CommitType, p, &commit{signature: c.Signature})
+		payloads[i] = fromPayload(dbft.CommitType, p, &commit{signature: c.Signature})
 		payloads[i].SetValidatorIndex(c.ValidatorIndex)
 	}
 

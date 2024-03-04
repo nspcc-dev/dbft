@@ -2,17 +2,9 @@ package payload
 
 import (
 	"encoding/gob"
+
+	"github.com/nspcc-dev/dbft"
 )
-
-// Commit is an interface for dBFT Commit message.
-type Commit interface {
-	// Signature returns commit's signature field
-	// which is a block signature for the current epoch.
-	Signature() []byte
-
-	// SetSignature sets commit's signature.
-	SetSignature(signature []byte)
-}
 
 type (
 	commit struct {
@@ -26,7 +18,7 @@ type (
 
 const signatureSize = 64
 
-var _ Commit = (*commit)(nil)
+var _ dbft.Commit = (*commit)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (c commit) EncodeBinary(w *gob.Encoder) error {

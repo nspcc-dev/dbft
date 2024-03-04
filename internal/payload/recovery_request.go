@@ -2,15 +2,9 @@ package payload
 
 import (
 	"encoding/gob"
-)
 
-// RecoveryRequest represents dBFT RecoveryRequest message.
-type RecoveryRequest interface {
-	// Timestamp returns this message's timestamp.
-	Timestamp() uint64
-	// SetTimestamp sets this message's timestamp.
-	SetTimestamp(ts uint64)
-}
+	"github.com/nspcc-dev/dbft"
+)
 
 type (
 	recoveryRequest struct {
@@ -22,7 +16,7 @@ type (
 	}
 )
 
-var _ RecoveryRequest = (*recoveryRequest)(nil)
+var _ dbft.RecoveryRequest = (*recoveryRequest)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (m recoveryRequest) EncodeBinary(w *gob.Encoder) error {

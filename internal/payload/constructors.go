@@ -1,39 +1,42 @@
 package payload
 
-import "github.com/nspcc-dev/dbft/crypto"
+import (
+	"github.com/nspcc-dev/dbft"
+	"github.com/nspcc-dev/dbft/internal/crypto"
+)
 
 // NewConsensusPayload returns minimal ConsensusPayload implementation.
-func NewConsensusPayload() ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+func NewConsensusPayload() dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
 	return &Payload{}
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
-func NewPrepareRequest() PrepareRequest[crypto.Uint256, crypto.Uint160] {
+func NewPrepareRequest() dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
 	return new(prepareRequest)
 }
 
 // NewPrepareResponse returns minimal PrepareResponse implementation.
-func NewPrepareResponse() PrepareResponse[crypto.Uint256] {
+func NewPrepareResponse() dbft.PrepareResponse[crypto.Uint256] {
 	return new(prepareResponse)
 }
 
 // NewChangeView returns minimal ChangeView implementation.
-func NewChangeView() ChangeView {
+func NewChangeView() dbft.ChangeView {
 	return new(changeView)
 }
 
 // NewCommit returns minimal Commit implementation.
-func NewCommit() Commit {
+func NewCommit() dbft.Commit {
 	return new(commit)
 }
 
 // NewRecoveryRequest returns minimal RecoveryRequest implementation.
-func NewRecoveryRequest() RecoveryRequest {
+func NewRecoveryRequest() dbft.RecoveryRequest {
 	return new(recoveryRequest)
 }
 
 // NewRecoveryMessage returns minimal RecoveryMessage implementation.
-func NewRecoveryMessage() RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+func NewRecoveryMessage() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
 	return &recoveryMessage{
 		preparationPayloads: make([]preparationCompact, 0),
 		commitPayloads:      make([]commitCompact, 0),

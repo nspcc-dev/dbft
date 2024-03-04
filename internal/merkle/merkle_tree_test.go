@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 	"github.com/stretchr/testify/require"
 )
 

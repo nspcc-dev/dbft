@@ -1,11 +1,10 @@
 package dbft
 
 import (
-	"github.com/nspcc-dev/dbft/payload"
 	"go.uber.org/zap"
 )
 
-func (d *DBFT[H, A]) broadcast(msg payload.ConsensusPayload[H, A]) {
+func (d *DBFT[H, A]) broadcast(msg ConsensusPayload[H, A]) {
 	d.Logger.Debug("broadcasting message",
 		zap.Stringer("type", msg.Type()),
 		zap.Uint32("height", d.BlockIndex),
@@ -15,7 +14,7 @@ func (d *DBFT[H, A]) broadcast(msg payload.ConsensusPayload[H, A]) {
 	d.Broadcast(msg)
 }
 
-func (c *Context[H, A]) makePrepareRequest() payload.ConsensusPayload[H, A] {
+func (c *Context[H, A]) makePrepareRequest() ConsensusPayload[H, A] {
 	c.Fill()
 
 	req := c.Config.NewPrepareRequest()
@@ -24,7 +23,7 @@ func (c *Context[H, A]) makePrepareRequest() payload.ConsensusPayload[H, A] {
 	req.SetNextConsensus(c.NextConsensus)
 	req.SetTransactionHashes(c.TransactionHashes)
 
-	return c.Config.NewConsensusPayload(c, payload.PrepareRequestType, req)
+	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }
 
 func (d *DBFT[H, A]) sendPrepareRequest() {
@@ -42,19 +41,19 @@ func (d *DBFT[H, A]) sendPrepareRequest() {
 	d.checkPrepare()
 }
 
-func (c *Context[H, A]) makeChangeView(ts uint64, reason payload.ChangeViewReason) payload.ConsensusPayload[H, A] {
+func (c *Context[H, A]) makeChangeView(ts uint64, reason ChangeViewReason) ConsensusPayload[H, A] {
 	cv := c.Config.NewChangeView()
 	cv.SetNewViewNumber(c.ViewNumber + 1)
 	cv.SetTimestamp(ts)
 	cv.SetReason(reason)
 
-	msg := c.Config.NewConsensusPayload(c, payload.ChangeViewType, cv)
+	msg := c.Config.NewConsensusPayload(c, ChangeViewType, cv)
 	c.ChangeViewPayloads[c.MyIndex] = msg
 
 	return msg
 }
 
-func (d *DBFT[H, A]) sendChangeView(reason payload.ChangeViewReason) {
+func (d *DBFT[H, A]) sendChangeView(reason ChangeViewReason) {
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -65,7 +64,7 @@ func (d *DBFT[H, A]) sendChangeView(reason payload.ChangeViewReason) {
 	nc := d.CountCommitted()
 	nf := d.CountFailed()
 
-	if reason == payload.CVTimeout && nc+nf > d.F() {
+	if reason == CVTimeout && nc+nf > d.F() {
 		d.Logger.Info("skip change view", zap.Int("nc", nc), zap.Int("nf", nf))
 		d.sendRecoveryRequest()
 
@@ -73,8 +72,8 @@ func (d *DBFT[H, A]) sendChangeView(reason payload.ChangeViewReason) {
 	}
 
 	// Timeout while missing transactions, set the real reason.
-	if !d.hasAllTransactions() && reason == payload.CVTimeout {
-		reason = payload.CVTxNotFound
+	if !d.hasAllTransactions() && reason == CVTimeout {
+		reason = CVTxNotFound
 	}
 
 	d.Logger.Info("request change view",
@@ -91,11 +90,11 @@ func (d *DBFT[H, A]) sendChangeView(reason payload.ChangeViewReason) {
 	d.checkChangeView(newView)
 }
 
-func (c *Context[H, A]) makePrepareResponse() payload.ConsensusPayload[H, A] {
+func (c *Context[H, A]) makePrepareResponse() ConsensusPayload[H, A] {
 	resp := c.Config.NewPrepareResponse()
 	resp.SetPreparationHash(c.PreparationPayloads[c.PrimaryIndex].Hash())
 
-	msg := c.Config.NewConsensusPayload(c, payload.PrepareResponseType, resp)
+	msg := c.Config.NewConsensusPayload(c, PrepareResponseType, resp)
 	c.PreparationPayloads[c.MyIndex] = msg
 
 	return msg
@@ -108,7 +107,7 @@ func (d *DBFT[H, A]) sendPrepareResponse() {
 	d.broadcast(msg)
 }
 
-func (c *Context[H, A]) makeCommit() payload.ConsensusPayload[H, A] {
+func (c *Context[H, A]) makeCommit() ConsensusPayload[H, A] {
 	if msg := c.CommitPayloads[c.MyIndex]; msg != nil {
 		return msg
 	}
@@ -122,7 +121,7 @@ func (c *Context[H, A]) makeCommit() payload.ConsensusPayload[H, A] {
 		commit := c.Config.NewCommit()
 		commit.SetSignature(sign)
 
-		return c.Config.NewConsensusPayload(c, payload.CommitType, commit)
+		return c.Config.NewConsensusPayload(c, CommitType, commit)
 	}
 
 	return nil
@@ -143,10 +142,10 @@ func (d *DBFT[H, A]) sendRecoveryRequest() {
 	}
 	req := d.NewRecoveryRequest()
 	req.SetTimestamp(uint64(d.Timer.Now().UnixNano()))
-	d.broadcast(d.Config.NewConsensusPayload(&d.Context, payload.RecoveryRequestType, req))
+	d.broadcast(d.Config.NewConsensusPayload(&d.Context, RecoveryRequestType, req))
 }
 
-func (c *Context[H, A]) makeRecoveryMessage() payload.ConsensusPayload[H, A] {
+func (c *Context[H, A]) makeRecoveryMessage() ConsensusPayload[H, A] {
 	recovery := c.Config.NewRecoveryMessage()
 
 	for _, p := range c.PreparationPayloads {
@@ -173,7 +172,7 @@ func (c *Context[H, A]) makeRecoveryMessage() payload.ConsensusPayload[H, A] {
 		}
 	}
 
-	return c.Config.NewConsensusPayload(c, payload.RecoveryMessageType, recovery)
+	return c.Config.NewConsensusPayload(c, RecoveryMessageType, recovery)
 }
 
 func (d *DBFT[H, A]) sendRecoveryMessage() {

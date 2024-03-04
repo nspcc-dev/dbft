@@ -7,32 +7,31 @@ This repo contains Go implementation of the dBFT 2.0 consensus algorithm and its
 written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html) language.
 
 ## Design and structure
-1. All control flow is done in main package. Most of the code which communicates with external
+1. All control flow is done in main `dbft` package. Most of the code which communicates with external
 world (event time events) is hidden behind interfaces, callbacks and generic parameters. As a
 consequence it is highly flexible and extendable. Description of config options can be found
 in `config.go`.
-2. `crypto` package contains `PrivateKey`/`PublicKey` interfaces which permits usage of one's own
-cryptography for signing blocks on `Commit` stage.
-Default implementation with ECDSA signatures is provided, BLS multisignatures could be added
-in the nearest future.
-3. `crypto` package contains `Hash`/`Address` interfaces which permits usage of one's own
+2. `dbft` package contains `PrivateKey`/`PublicKey` interfaces which permits usage of one's own
+cryptography for signing blocks on `Commit` stage. Refer to `identity.go` for `PrivateKey`/`PublicKey`
+description. No default implementation is provided.
+3. `dbft` package contains `Hash`/`Address` interfaces which permits usage of one's own
 hash/address implementation without additional overhead on conversions. Instantiate dBFT with
 custom hash/address implementation that matches requirements specified in the corresponding
-documentation.
-3. `block` package contains `Block` and `Transaction` abstractions.
-Every block must be able to be signed and verified as well as
-implement setters and getters for main fields. Minimal default implementation is provided.
-`Transaction` is an entity which can be hashed. Two transactions having equal hashes are considered
-equal.
-4. `payload` contains interfaces for payloads and minimal implementations. Note that
-default implementations do not contain any signatures, so you must wrap them or implement your
-own payloads in order to sign and verify messages.
-5. `timer` contains default time provider. It should make it easier to write tests
+documentation. Refer to `identity.go` for `Hash`/`Address` description. No default implementation is
+provided.
+4. `dbft` package contains `Block` and `Transaction` abstractions located at the `block.go` and
+`transaction.go` files. Every block must be able to be signed and verified as well as implement setters
+and getters for main fields. `Transaction` is an entity which can be hashed. Two entities having
+equal hashes are considered equal. No default implementation is provided.
+5. `dbft` contains generic interfaces for payloads. No default implementation is provided.
+6. `timer` contains default time provider. It should make it easier to write tests
 concerning dBFT's time depending behaviour.
-6. `simulation` contains an example of dBFT's usage with 6-node consensus. 
-7. `formal-models` contains the set of dBFT's models written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html)
-   language and instructions on how to run and check them. Please, refer to the [README](./formal-models/README.md)
-   for more details.
+7. `internal` contains an example of custom identity types and payloads implementation used to implement
+an example of dBFT's usage with 6-node consensus. Refer to `internal` subpackages for type-specific dBFT
+implementation and tests. Refer to `internal/simulation` for an example of dBFT library usage.
+8. `formal-models` contains the set of dBFT's models written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html)
+language and instructions on how to run and check them. Please, refer to the [README](./formal-models/README.md)
+for more details.
 
 ## Usage
 A client of the library must implement its own event loop.
@@ -44,7 +43,7 @@ process:
 - `OnReceive()` which must be called everytime new payload is received
 - `OnTimer()` which must be called everytime timer fires
 
-A minimal example can be found in `simulation/main.go`.
+A minimal example can be found in `internal/simulation/main.go`.
 
 ## Links
 - dBFT high-level description on NEO website [https://docs.neo.org/docs/en-us/basic/consensus/dbft.html](https://docs.neo.org/docs/en-us/basic/consensus/dbft.html)

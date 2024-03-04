@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/rfc6979"
 )
 
@@ -23,7 +24,7 @@ type (
 	}
 )
 
-func generateECDSA(r io.Reader) (PrivateKey, PublicKey) {
+func generateECDSA(r io.Reader) (dbft.PrivateKey, dbft.PublicKey) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), r)
 	if err != nil {
 		return nil, nil
@@ -33,14 +34,14 @@ func generateECDSA(r io.Reader) (PrivateKey, PublicKey) {
 }
 
 // NewECDSAPublicKey returns new PublicKey from *ecdsa.PublicKey.
-func NewECDSAPublicKey(pub *ecdsa.PublicKey) PublicKey {
+func NewECDSAPublicKey(pub *ecdsa.PublicKey) dbft.PublicKey {
 	return &ECDSAPub{
 		PublicKey: pub,
 	}
 }
 
 // NewECDSAPrivateKey returns new PublicKey from *ecdsa.PrivateKey.
-func NewECDSAPrivateKey(key *ecdsa.PrivateKey) PrivateKey {
+func NewECDSAPrivateKey(key *ecdsa.PrivateKey) dbft.PrivateKey {
 	return &ECDSAPriv{
 		PrivateKey: key,
 	}

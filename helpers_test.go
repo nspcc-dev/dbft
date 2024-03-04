@@ -3,28 +3,100 @@ package dbft
 import (
 	"testing"
 
-	"github.com/nspcc-dev/dbft/crypto"
 	"github.com/stretchr/testify/require"
-
-	"github.com/nspcc-dev/dbft/payload"
 )
 
-func TestMessageCache(t *testing.T) {
-	c := newCache[crypto.Uint256, crypto.Uint160]()
+// Structures used for type-specific dBFT/payloads implementation to avoid cyclic
+// dependency.
+type (
+	address     struct{}
+	hash        struct{}
+	payloadStub struct {
+		height         uint32
+		typ            MessageType
+		validatorIndex uint16
+	}
+)
 
-	p1 := payload.NewConsensusPayload()
-	p1.SetHeight(3)
-	p1.SetType(payload.PrepareRequestType)
+func (hash) String() string {
+	return ""
+}
+
+func (address) String() string {
+	return ""
+}
+
+func (p payloadStub) ViewNumber() byte {
+	panic("TODO")
+}
+func (p payloadStub) SetViewNumber(byte) {
+	panic("TODO")
+}
+func (p payloadStub) Type() MessageType {
+	return p.typ
+}
+func (p payloadStub) SetType(MessageType) {
+	panic("TODO")
+}
+func (p payloadStub) Payload() any {
+	panic("TODO")
+}
+func (p payloadStub) SetPayload(any) {
+	panic("TODO")
+}
+func (p payloadStub) GetChangeView() ChangeView {
+	panic("TODO")
+}
+func (p payloadStub) GetPrepareRequest() PrepareRequest[hash, address] {
+	panic("TODO")
+}
+func (p payloadStub) GetPrepareResponse() PrepareResponse[hash] {
+	panic("TODO")
+}
+func (p payloadStub) GetCommit() Commit {
+	panic("TODO")
+}
+func (p payloadStub) GetRecoveryRequest() RecoveryRequest {
+	panic("TODO")
+}
+func (p payloadStub) GetRecoveryMessage() RecoveryMessage[hash, address] {
+	panic("TODO")
+}
+func (p payloadStub) ValidatorIndex() uint16 {
+	return p.validatorIndex
+}
+func (p payloadStub) SetValidatorIndex(uint16) {
+	panic("TODO")
+}
+func (p payloadStub) Height() uint32 {
+	return p.height
+}
+func (p payloadStub) SetHeight(uint32) {
+	panic("TODO")
+}
+func (p payloadStub) Hash() hash {
+	panic("TODO")
+}
+
+func TestMessageCache(t *testing.T) {
+	c := newCache[hash, address]()
+
+	p1 := payloadStub{
+		height: 3,
+		typ:    PrepareRequestType,
+	}
 	c.addMessage(p1)
 
-	p2 := payload.NewConsensusPayload()
-	p2.SetHeight(4)
-	p2.SetType(payload.ChangeViewType)
+	p2 := payloadStub{
+		height: 4,
+		typ:    ChangeViewType,
+	}
 	c.addMessage(p2)
 
-	p3 := payload.NewConsensusPayload()
-	p3.SetHeight(4)
-	p3.SetType(payload.CommitType)
+	p3 := payloadStub{
+		height: 4,
+		typ:    CommitType,
+	}
 	c.addMessage(p3)
 
 	box := c.getHeight(3)

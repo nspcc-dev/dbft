@@ -1,4 +1,4 @@
-package payload
+package dbft
 
 //go:generate stringer -type=ChangeViewReason -linecomment
 

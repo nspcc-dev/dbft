@@ -42,5 +42,5 @@ jobs:
 
       - name: Run simulation
         run: |
-          cd ./simulation
+          cd ./internal/simulation
           go run main.go

@@ -3,17 +3,9 @@ package payload
 import (
 	"encoding/gob"
 
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 )
-
-// PrepareResponse represents dBFT PrepareResponse message.
-type PrepareResponse[H crypto.Hash] interface {
-	// PreparationHash returns the hash of PrepareRequest payload
-	// for this epoch.
-	PreparationHash() H
-	// SetPreparationHash sets preparations hash.
-	SetPreparationHash(h H)
-}
 
 type (
 	prepareResponse struct {
@@ -25,7 +17,7 @@ type (
 	}
 )
 
-var _ PrepareResponse[crypto.Uint256] = (*prepareResponse)(nil)
+var _ dbft.PrepareResponse[crypto.Uint256] = (*prepareResponse)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p prepareResponse) EncodeBinary(w *gob.Encoder) error {

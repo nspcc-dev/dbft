@@ -1,7 +1,7 @@
 package merkle
 
 import (
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 )
 
 type (

@@ -2,28 +2,9 @@ package payload
 
 import (
 	"encoding/gob"
+
+	"github.com/nspcc-dev/dbft"
 )
-
-// ChangeView represents dBFT ChangeView message.
-type ChangeView interface {
-	// NewViewNumber returns proposed view number.
-	NewViewNumber() byte
-
-	// SetNewViewNumber sets the proposed view number.
-	SetNewViewNumber(view byte)
-
-	// Timestamp returns message's timestamp.
-	Timestamp() uint64
-
-	// SetTimestamp sets message's timestamp.
-	SetTimestamp(ts uint64)
-
-	// Reason returns change view reason.
-	Reason() ChangeViewReason
-
-	// SetReason sets change view reason.
-	SetReason(reason ChangeViewReason)
-}
 
 type (
 	changeView struct {
@@ -36,7 +17,7 @@ type (
 	}
 )
 
-var _ ChangeView = (*changeView)(nil)
+var _ dbft.ChangeView = (*changeView)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (c changeView) EncodeBinary(w *gob.Encoder) error {
@@ -76,10 +57,10 @@ func (c *changeView) SetTimestamp(ts uint64) {
 }
 
 // Reason implements ChangeView interface.
-func (c changeView) Reason() ChangeViewReason {
-	return CVUnknown
+func (c changeView) Reason() dbft.ChangeViewReason {
+	return dbft.CVUnknown
 }
 
 // SetReason implements ChangeView interface.
-func (c *changeView) SetReason(_ ChangeViewReason) {
+func (c *changeView) SetReason(_ dbft.ChangeViewReason) {
 }

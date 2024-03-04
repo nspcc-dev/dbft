@@ -6,7 +6,8 @@ import (
 	"encoding/gob"
 	"testing"
 
-	"github.com/nspcc-dev/dbft/crypto"
+	"github.com/nspcc-dev/dbft"
+	"github.com/nspcc-dev/dbft/internal/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	m.SetViewNumber(3)
 
 	t.Run("PrepareRequest", func(t *testing.T) {
-		m.SetType(PrepareRequestType)
+		m.SetType(dbft.PrepareRequestType)
 		m.SetPayload(&prepareRequest{
 			nonce:     123,
 			timestamp: 345,
@@ -35,7 +36,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("PrepareResponse", func(t *testing.T) {
-		m.SetType(PrepareResponseType)
+		m.SetType(dbft.PrepareResponseType)
 		m.SetPayload(&prepareResponse{
 			preparationHash: crypto.Uint256{3},
 		})
@@ -45,7 +46,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("Commit", func(t *testing.T) {
-		m.SetType(CommitType)
+		m.SetType(dbft.CommitType)
 		var cc commit
 		fillRandom(t, cc.signature[:])
 		m.SetPayload(&cc)
@@ -55,7 +56,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("ChangeView", func(t *testing.T) {
-		m.SetType(ChangeViewType)
+		m.SetType(dbft.ChangeViewType)
 		m.SetPayload(&changeView{
 			timestamp:     12345,
 			newViewNumber: 4,
@@ -66,7 +67,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
-		m.SetType(RecoveryMessageType)
+		m.SetType(dbft.RecoveryMessageType)
 		m.SetPayload(&recoveryMessage{
 			changeViewPayloads: []changeViewCompact{
 				{
@@ -96,7 +97,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("RecoveryRequest", func(t *testing.T) {
-		m.SetType(RecoveryRequestType)
+		m.SetType(dbft.RecoveryRequestType)
 		m.SetPayload(&recoveryRequest{
 			timestamp: 17334,
 		})
@@ -115,17 +116,17 @@ func TestRecoveryMessage_NoPayloads(t *testing.T) {
 	m.SetViewNumber(3)
 	m.SetPayload(&recoveryMessage{})
 
-	validators := make([]crypto.PublicKey, 1)
+	validators := make([]dbft.PublicKey, 1)
 	_, validators[0] = crypto.Generate(rand.Reader)
 
 	rec := m.GetRecoveryMessage()
 	require.NotNil(t, rec)
 
-	var p ConsensusPayload[crypto.Uint256, crypto.Uint160]
+	var p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]
 	require.NotPanics(t, func() { p = rec.GetPrepareRequest(p, validators, 0) })
 	require.Nil(t, p)
 
-	var ps []ConsensusPayload[crypto.Uint256, crypto.Uint160]
+	var ps []dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]
 	require.NotPanics(t, func() { ps = rec.GetPrepareResponses(p, validators) })
 	require.Len(t, ps, 0)
 
@@ -193,12 +194,12 @@ func TestPayload_Setters(t *testing.T) {
 }
 
 func TestMessageType_String(t *testing.T) {
-	require.Equal(t, "ChangeView", ChangeViewType.String())
-	require.Equal(t, "PrepareRequest", PrepareRequestType.String())
-	require.Equal(t, "PrepareResponse", PrepareResponseType.String())
-	require.Equal(t, "Commit", CommitType.String())
-	require.Equal(t, "RecoveryRequest", RecoveryRequestType.String())
-	require.Equal(t, "RecoveryMessage", RecoveryMessageType.String())
+	require.Equal(t, "ChangeView", dbft.ChangeViewType.String())
+	require.Equal(t, "PrepareRequest", dbft.PrepareRequestType.String())
+	require.Equal(t, "PrepareResponse", dbft.PrepareResponseType.String())
+	require.Equal(t, "Commit", dbft.CommitType.String())
+	require.Equal(t, "RecoveryRequest", dbft.RecoveryRequestType.String())
+	require.Equal(t, "RecoveryMessage", dbft.RecoveryMessageType.String())
 }
 
 func testEncodeDecode(t *testing.T, expected, actual Serializable) {

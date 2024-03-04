@@ -1,7 +1,6 @@
 package dbft
 
 import (
-	"github.com/nspcc-dev/dbft/payload"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +19,7 @@ func (d *DBFT[H, A]) checkPrepare() {
 				count++
 			}
 
-			if msg.Type() == payload.PrepareRequestType {
+			if msg.Type() == PrepareRequestType {
 				hasRequest = true
 			}
 		}
@@ -98,7 +97,7 @@ func (d *DBFT[H, A]) checkChangeView(view byte) {
 	if !d.Context.WatchOnly() {
 		msg := d.ChangeViewPayloads[d.MyIndex]
 		if msg != nil && msg.GetChangeView().NewViewNumber() < view {
-			d.broadcast(d.makeChangeView(uint64(d.Timer.Now().UnixNano()), payload.CVChangeAgreement))
+			d.broadcast(d.makeChangeView(uint64(d.Timer.Now().UnixNano()), CVChangeAgreement))
 		}
 	}
 
