@@ -3,8 +3,6 @@ package crypto
 import (
 	"crypto/sha256"
 	"encoding/hex"
-
-	"golang.org/x/crypto/ripemd160" //nolint:staticcheck // SA1019: package golang.org/x/crypto/ripemd160 is deprecated
 )
 
 const (
@@ -37,12 +35,12 @@ func Hash256(data []byte) Uint256 {
 
 // Hash160 returns ripemd160 from sha256 of data.
 func Hash160(data []byte) Uint160 {
-	h1 := sha256.Sum256(data)
-	rp := ripemd160.New()
-	_, _ = rp.Write(h1[:])
+	var (
+		h1 = sha256.Sum256(data)
+		h  Uint160
+	)
 
-	var h Uint160
-	copy(h[:], rp.Sum(nil))
+	copy(h[:], h1[:Uint160Size])
 
 	return h
 }
