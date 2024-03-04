@@ -30,8 +30,8 @@ concerning dBFT's time depending behaviour.
 an example of dBFT's usage with 6-node consensus. Refer to `internal` subpackages for type-specific dBFT
 implementation and tests. Refer to `internal/simulation` for an example of dBFT library usage.
 8. `formal-models` contains the set of dBFT's models written in [TLA⁺](https://lamport.azurewebsites.net/tla/tla.html)
-   language and instructions on how to run and check them. Please, refer to the [README](./formal-models/README.md)
-   for more details.
+language and instructions on how to run and check them. Please, refer to the [README](./formal-models/README.md)
+for more details.
 
 ## Usage
 A client of the library must implement its own event loop.
