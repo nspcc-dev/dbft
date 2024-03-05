@@ -4,18 +4,10 @@ package dbft
 type ConsensusMessage[H Hash, A Address] interface {
 	// ViewNumber returns view number when this message was originated.
 	ViewNumber() byte
-	// SetViewNumber sets view number.
-	SetViewNumber(view byte)
-
 	// Type returns type of this message.
 	Type() MessageType
-	// SetType sets the type of this message.
-	SetType(t MessageType)
-
 	// Payload returns this message's actual payload.
 	Payload() any
-	// SetPayload sets this message's payload to p.
-	SetPayload(p any)
 
 	// GetChangeView returns payload as if it was ChangeView.
 	GetChangeView() ChangeView

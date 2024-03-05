@@ -121,14 +121,7 @@ func newBlockFromContext(ctx *dbft.Context[crypto.Uint256, crypto.Uint160]) dbft
 // defaultNewConsensusPayload is default function for creating
 // consensus payload of specific type.
 func defaultNewConsensusPayload(c *dbft.Context[crypto.Uint256, crypto.Uint160], t dbft.MessageType, msg any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
-	cp := payload.NewConsensusPayload()
-	cp.SetHeight(c.BlockIndex)
-	cp.SetValidatorIndex(uint16(c.MyIndex))
-	cp.SetViewNumber(c.ViewNumber)
-	cp.SetType(t)
-	cp.SetPayload(msg)
-
-	return cp
+	return payload.NewConsensusPayload(t, c.BlockIndex, uint16(c.MyIndex), c.ViewNumber, msg)
 }
 
 func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
@@ -164,7 +157,9 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 		dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](payload.NewPrepareResponse),
 		dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](payload.NewChangeView),
 		dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](payload.NewCommit),
-		dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](payload.NewRecoveryMessage),
+		dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+			return payload.NewRecoveryMessage(nil)
+		}),
 		dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](payload.NewRecoveryRequest),
 	)
 

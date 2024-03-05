@@ -62,15 +62,15 @@ type Config[H Hash, A Address] struct {
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
 	NewConsensusPayload func(*Context[H, A], MessageType, any) ConsensusPayload[H, A]
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
-	NewPrepareRequest func() PrepareRequest[H, A]
+	NewPrepareRequest func(ts uint64, nonce uint64, nextConsensus A, transactionHashes []H) PrepareRequest[H, A]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
-	NewPrepareResponse func() PrepareResponse[H]
+	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
-	NewChangeView func() ChangeView
+	NewChangeView func(newViewNumber byte, reason ChangeViewReason, timestamp uint64) ChangeView
 	// NewCommit is a constructor for payload.Commit.
-	NewCommit func() Commit
+	NewCommit func(signature []byte) Commit
 	// NewRecoveryRequest is a constructor for payload.RecoveryRequest.
-	NewRecoveryRequest func() RecoveryRequest
+	NewRecoveryRequest func(ts uint64) RecoveryRequest
 	// NewRecoveryMessage is a constructor for payload.RecoveryMessage.
 	NewRecoveryMessage func() RecoveryMessage[H, A]
 	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
@@ -306,35 +306,35 @@ func WithNewConsensusPayload[H Hash, A Address](f func(*Context[H, A], MessageTy
 }
 
 // WithNewPrepareRequest sets NewPrepareRequest.
-func WithNewPrepareRequest[H Hash, A Address](f func() PrepareRequest[H, A]) func(config *Config[H, A]) {
+func WithNewPrepareRequest[H Hash, A Address](f func(ts uint64, nonce uint64, nextConsensus A, transactionsHashes []H) PrepareRequest[H, A]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewPrepareRequest = f
 	}
 }
 
 // WithNewPrepareResponse sets NewPrepareResponse.
-func WithNewPrepareResponse[H Hash, A Address](f func() PrepareResponse[H]) func(config *Config[H, A]) {
+func WithNewPrepareResponse[H Hash, A Address](f func(preparationHash H) PrepareResponse[H]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewPrepareResponse = f
 	}
 }
 
 // WithNewChangeView sets NewChangeView.
-func WithNewChangeView[H Hash, A Address](f func() ChangeView) func(config *Config[H, A]) {
+func WithNewChangeView[H Hash, A Address](f func(byte, ChangeViewReason, uint64) ChangeView) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewChangeView = f
 	}
 }
 
 // WithNewCommit sets NewCommit.
-func WithNewCommit[H Hash, A Address](f func() Commit) func(config *Config[H, A]) {
+func WithNewCommit[H Hash, A Address](f func([]byte) Commit) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewCommit = f
 	}
 }
 
 // WithNewRecoveryRequest sets NewRecoveryRequest.
-func WithNewRecoveryRequest[H Hash, A Address](f func() RecoveryRequest) func(config *Config[H, A]) {
+func WithNewRecoveryRequest[H Hash, A Address](f func(ts uint64) RecoveryRequest) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewRecoveryRequest = f
 	}

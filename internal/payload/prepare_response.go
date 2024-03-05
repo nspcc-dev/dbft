@@ -41,8 +41,3 @@ func (p *prepareResponse) DecodeBinary(r *gob.Decoder) error {
 func (p *prepareResponse) PreparationHash() crypto.Uint256 {
 	return p.preparationHash
 }
-
-// SetPreparationHash implements PrepareResponse interface.
-func (p *prepareResponse) SetPreparationHash(h crypto.Uint256) {
-	p.preparationHash = h
-}

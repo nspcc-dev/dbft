@@ -41,8 +41,3 @@ func (c *commit) DecodeBinary(r *gob.Decoder) error {
 func (c commit) Signature() []byte {
 	return c.signature[:]
 }
-
-// SetSignature implements Commit interface.
-func (c *commit) SetSignature(sig []byte) {
-	copy(c.signature[:], sig)
-}

@@ -4,6 +4,4 @@ package dbft
 type RecoveryRequest interface {
 	// Timestamp returns this message's timestamp.
 	Timestamp() uint64
-	// SetTimestamp sets this message's timestamp.
-	SetTimestamp(ts uint64)
 }

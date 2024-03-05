@@ -100,11 +100,6 @@ func (p Payload) Version() uint32 {
 	return p.version
 }
 
-// SetVersion implements ConsensusPayload interface.
-func (p *Payload) SetVersion(v uint32) {
-	p.version = v
-}
-
 // ValidatorIndex implements ConsensusPayload interface.
 func (p Payload) ValidatorIndex() uint16 {
 	return p.validatorIndex
@@ -120,17 +115,7 @@ func (p Payload) PrevHash() crypto.Uint256 {
 	return p.prevHash
 }
 
-// SetPrevHash implements ConsensusPayload interface.
-func (p *Payload) SetPrevHash(h crypto.Uint256) {
-	p.prevHash = h
-}
-
 // Height implements ConsensusPayload interface.
 func (p Payload) Height() uint32 {
 	return p.height
-}
-
-// SetHeight implements ConsensusPayload interface.
-func (p *Payload) SetHeight(h uint32) {
-	p.height = h
 }

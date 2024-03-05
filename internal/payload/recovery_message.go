@@ -31,11 +31,6 @@ func (m *recoveryMessage) PreparationHash() *crypto.Uint256 {
 	return m.preparationHash
 }
 
-// SetPreparationHash implements RecoveryMessage interface.
-func (m *recoveryMessage) SetPreparationHash(h *crypto.Uint256) {
-	m.preparationHash = h
-}
-
 // AddPayload implements RecoveryMessage interface.
 func (m *recoveryMessage) AddPayload(p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]) {
 	switch p.Type() {

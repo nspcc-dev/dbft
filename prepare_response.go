@@ -5,6 +5,4 @@ type PrepareResponse[H Hash] interface {
 	// PreparationHash returns the hash of PrepareRequest payload
 	// for this epoch.
 	PreparationHash() H
-	// SetPreparationHash sets preparations hash.
-	SetPreparationHash(h H)
 }

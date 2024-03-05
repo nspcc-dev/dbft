@@ -16,6 +16,4 @@ type RecoveryMessage[H Hash, A Address] interface {
 	// PreparationHash returns has of PrepareRequest payload for this epoch.
 	// It can be useful in case only PrepareResponse payloads were received.
 	PreparationHash() *H
-	// SetPreparationHash sets preparation hash.
-	SetPreparationHash(h *H)
 }

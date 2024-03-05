@@ -98,27 +98,12 @@ func (m message) ViewNumber() byte {
 	return m.viewNumber
 }
 
-// SetViewNumber implements ConsensusMessage interface.
-func (m *message) SetViewNumber(view byte) {
-	m.viewNumber = view
-}
-
 // Type implements ConsensusMessage interface.
 func (m message) Type() dbft.MessageType {
 	return m.cmType
 }
 
-// SetType implements ConsensusMessage interface.
-func (m *message) SetType(t dbft.MessageType) {
-	m.cmType = t
-}
-
 // Payload implements ConsensusMessage interface.
 func (m message) Payload() any {
 	return m.payload
-}
-
-// SetPayload implements ConsensusMessage interface.
-func (m *message) SetPayload(p any) {
-	m.payload = p
 }

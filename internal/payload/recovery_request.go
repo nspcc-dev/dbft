@@ -40,8 +40,3 @@ func (m *recoveryRequest) DecodeBinary(r *gob.Decoder) error {
 func (m *recoveryRequest) Timestamp() uint64 {
 	return secToNanoSec(m.timestamp)
 }
-
-// SetTimestamp implements RecoveryRequest interface.
-func (m *recoveryRequest) SetTimestamp(ts uint64) {
-	m.timestamp = nanoSecToSec(ts)
-}

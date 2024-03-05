@@ -17,11 +17,7 @@ func (d *DBFT[H, A]) broadcast(msg ConsensusPayload[H, A]) {
 func (c *Context[H, A]) makePrepareRequest() ConsensusPayload[H, A] {
 	c.Fill()
 
-	req := c.Config.NewPrepareRequest()
-	req.SetTimestamp(c.Timestamp)
-	req.SetNonce(c.Nonce)
-	req.SetNextConsensus(c.NextConsensus)
-	req.SetTransactionHashes(c.TransactionHashes)
+	req := c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.NextConsensus, c.TransactionHashes)
 
 	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }
@@ -42,10 +38,7 @@ func (d *DBFT[H, A]) sendPrepareRequest() {
 }
 
 func (c *Context[H, A]) makeChangeView(ts uint64, reason ChangeViewReason) ConsensusPayload[H, A] {
-	cv := c.Config.NewChangeView()
-	cv.SetNewViewNumber(c.ViewNumber + 1)
-	cv.SetTimestamp(ts)
-	cv.SetReason(reason)
+	cv := c.Config.NewChangeView(c.ViewNumber+1, reason, ts)
 
 	msg := c.Config.NewConsensusPayload(c, ChangeViewType, cv)
 	c.ChangeViewPayloads[c.MyIndex] = msg
@@ -91,8 +84,7 @@ func (d *DBFT[H, A]) sendChangeView(reason ChangeViewReason) {
 }
 
 func (c *Context[H, A]) makePrepareResponse() ConsensusPayload[H, A] {
-	resp := c.Config.NewPrepareResponse()
-	resp.SetPreparationHash(c.PreparationPayloads[c.PrimaryIndex].Hash())
+	resp := c.Config.NewPrepareResponse(c.PreparationPayloads[c.PrimaryIndex].Hash())
 
 	msg := c.Config.NewConsensusPayload(c, PrepareResponseType, resp)
 	c.PreparationPayloads[c.MyIndex] = msg
@@ -118,8 +110,7 @@ func (c *Context[H, A]) makeCommit() ConsensusPayload[H, A] {
 			sign = b.Signature()
 		}
 
-		commit := c.Config.NewCommit()
-		commit.SetSignature(sign)
+		commit := c.Config.NewCommit(sign)
 
 		return c.Config.NewConsensusPayload(c, CommitType, commit)
 	}
@@ -140,8 +131,7 @@ func (d *DBFT[H, A]) sendRecoveryRequest() {
 	if d.RequestSentOrReceived() && !d.hasAllTransactions() {
 		d.processMissingTx()
 	}
-	req := d.NewRecoveryRequest()
-	req.SetTimestamp(uint64(d.Timer.Now().UnixNano()))
+	req := d.NewRecoveryRequest(uint64(d.Timer.Now().UnixNano()))
 	d.broadcast(d.Config.NewConsensusPayload(&d.Context, RecoveryRequestType, req))
 }
 
