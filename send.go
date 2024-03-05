@@ -42,10 +42,7 @@ func (d *DBFT[H, A]) sendPrepareRequest() {
 }
 
 func (c *Context[H, A]) makeChangeView(ts uint64, reason ChangeViewReason) ConsensusPayload[H, A] {
-	cv := c.Config.NewChangeView()
-	cv.SetNewViewNumber(c.ViewNumber + 1)
-	cv.SetTimestamp(ts)
-	cv.SetReason(reason)
+	cv := c.Config.NewChangeView(c.ViewNumber+1, reason, ts)
 
 	msg := c.Config.NewConsensusPayload(c, ChangeViewType, cv)
 	c.ChangeViewPayloads[c.MyIndex] = msg

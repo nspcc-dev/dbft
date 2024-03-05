@@ -29,8 +29,11 @@ func NewPrepareResponse() dbft.PrepareResponse[crypto.Uint256] {
 }
 
 // NewChangeView returns minimal ChangeView implementation.
-func NewChangeView() dbft.ChangeView {
-	return new(changeView)
+func NewChangeView(newViewNumber byte, _ dbft.ChangeViewReason, ts uint64) dbft.ChangeView {
+	return &changeView{
+		newViewNumber: newViewNumber,
+		timestamp:     nanoSecToSec(ts),
+	}
 }
 
 // NewCommit returns minimal Commit implementation.

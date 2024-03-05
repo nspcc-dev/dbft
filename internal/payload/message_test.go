@@ -154,12 +154,9 @@ func TestCompact_EncodeDecode(t *testing.T) {
 
 func TestPayload_Setters(t *testing.T) {
 	t.Run("ChangeView", func(t *testing.T) {
-		cv := NewChangeView()
+		cv := NewChangeView(4, 0, secToNanoSec(1234))
 
-		cv.SetTimestamp(secToNanoSec(1234))
 		assert.EqualValues(t, secToNanoSec(1234), cv.Timestamp())
-
-		cv.SetNewViewNumber(4)
 		assert.EqualValues(t, 4, cv.NewViewNumber())
 	})
 
