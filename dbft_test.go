@@ -202,8 +202,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		})
 
 		t.Run("old height", func(t *testing.T) {
-			p := s.getPrepareRequest(5, txs[0].Hash())
-			p.SetHeight(3)
+			p := s.getPrepareRequestWithHeight(5, 3, txs[0].Hash())
 			service.OnReceive(p)
 			require.Nil(t, s.tryRecv())
 		})
@@ -735,18 +734,12 @@ func (s testState) getChangeView(from uint16, view byte) Payload {
 	cv := payload.NewChangeView()
 	cv.SetNewViewNumber(view)
 
-	p := s.getPayload(from)
-	p.SetType(dbft.ChangeViewType)
-	p.SetPayload(cv)
-
+	p := payload.NewConsensusPayload(dbft.ChangeViewType, s.currHeight+1, from, view, cv)
 	return p
 }
 
 func (s testState) getRecoveryRequest(from uint16) Payload {
-	p := s.getPayload(from)
-	p.SetType(dbft.RecoveryRequestType)
-	p.SetPayload(payload.NewRecoveryRequest())
-
+	p := payload.NewConsensusPayload(dbft.RecoveryRequestType, s.currHeight+1, from, 0, payload.NewRecoveryRequest())
 	return p
 }
 
@@ -754,10 +747,7 @@ func (s testState) getCommit(from uint16, sign []byte) Payload {
 	c := payload.NewCommit()
 	c.SetSignature(sign)
 
-	p := s.getPayload(from)
-	p.SetType(dbft.CommitType)
-	p.SetPayload(c)
-
+	p := payload.NewConsensusPayload(dbft.CommitType, s.currHeight+1, from, 0, c)
 	return p
 }
 
@@ -765,30 +755,20 @@ func (s testState) getPrepareResponse(from uint16, phash crypto.Uint256) Payload
 	resp := payload.NewPrepareResponse()
 	resp.SetPreparationHash(phash)
 
-	p := s.getPayload(from)
-	p.SetType(dbft.PrepareResponseType)
-	p.SetPayload(resp)
-
+	p := payload.NewConsensusPayload(dbft.PrepareResponseType, s.currHeight+1, from, 0, resp)
 	return p
 }
 
 func (s testState) getPrepareRequest(from uint16, hashes ...crypto.Uint256) Payload {
+	return s.getPrepareRequestWithHeight(from, s.currHeight+1, hashes...)
+}
+
+func (s testState) getPrepareRequestWithHeight(from uint16, height uint32, hashes ...crypto.Uint256) Payload {
 	req := payload.NewPrepareRequest()
 	req.SetTransactionHashes(hashes)
 	req.SetNextConsensus(s.nextConsensus())
 
-	p := s.getPayload(from)
-	p.SetType(dbft.PrepareRequestType)
-	p.SetPayload(req)
-
-	return p
-}
-
-func (s testState) getPayload(from uint16) Payload {
-	p := payload.NewConsensusPayload()
-	p.SetHeight(s.currHeight + 1)
-	p.SetValidatorIndex(from)
-
+	p := payload.NewConsensusPayload(dbft.PrepareRequestType, height, from, 0, req)
 	return p
 }
 
@@ -867,7 +847,9 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256, crypto.Uint
 		dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](payload.NewChangeView),
 		dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](payload.NewCommit),
 		dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](payload.NewRecoveryRequest),
-		dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](payload.NewRecoveryMessage),
+		dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+			return payload.NewRecoveryMessage(nil)
+		}),
 	}
 
 	verify := s.verify
@@ -898,13 +880,7 @@ func newBlockFromContext(ctx *dbft.Context[crypto.Uint256, crypto.Uint160]) dbft
 // newConsensusPayload is a function for creating consensus payload of specific
 // type.
 func newConsensusPayload(c *dbft.Context[crypto.Uint256, crypto.Uint160], t dbft.MessageType, msg any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
-	cp := payload.NewConsensusPayload()
-	cp.SetHeight(c.BlockIndex)
-	cp.SetValidatorIndex(uint16(c.MyIndex))
-	cp.SetViewNumber(c.ViewNumber)
-	cp.SetType(t)
-	cp.SetPayload(msg)
-
+	cp := payload.NewConsensusPayload(t, c.BlockIndex, uint16(c.MyIndex), c.ViewNumber, msg)
 	return cp
 }
 

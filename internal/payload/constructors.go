@@ -6,8 +6,16 @@ import (
 )
 
 // NewConsensusPayload returns minimal ConsensusPayload implementation.
-func NewConsensusPayload() dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
-	return &Payload{}
+func NewConsensusPayload(t dbft.MessageType, height uint32, validatorIndex uint16, viewNumber byte, consensusMessage any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	return &Payload{
+		message: message{
+			cmType:     t,
+			viewNumber: viewNumber,
+			payload:    consensusMessage,
+		},
+		validatorIndex: validatorIndex,
+		height:         height,
+	}
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
@@ -36,8 +44,9 @@ func NewRecoveryRequest() dbft.RecoveryRequest {
 }
 
 // NewRecoveryMessage returns minimal RecoveryMessage implementation.
-func NewRecoveryMessage() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+func NewRecoveryMessage(preparationHash *crypto.Uint256) dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
 	return &recoveryMessage{
+		preparationHash:     preparationHash,
 		preparationPayloads: make([]preparationCompact, 0),
 		commitPayloads:      make([]commitCompact, 0),
 		changeViewPayloads:  make([]changeViewCompact, 0),

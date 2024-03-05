@@ -13,7 +13,6 @@ type ConsensusPayload[H Hash, A Address] interface {
 	SetValidatorIndex(i uint16)
 
 	Height() uint32
-	SetHeight(h uint32)
 
 	// Hash returns 32-byte checksum of the payload.
 	Hash() H

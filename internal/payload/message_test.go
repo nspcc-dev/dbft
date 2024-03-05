@@ -13,16 +13,12 @@ import (
 )
 
 func TestPayload_EncodeDecode(t *testing.T) {
-	m := NewConsensusPayload().(*Payload)
-	m.SetValidatorIndex(10)
-	m.SetHeight(77)
-	m.SetPrevHash(crypto.Uint256{1})
-	m.SetVersion(8)
-	m.SetViewNumber(3)
+	generateMessage := func(typ dbft.MessageType, payload any) *Payload {
+		return NewConsensusPayload(typ, 77, 10, 3, payload).(*Payload)
+	}
 
 	t.Run("PrepareRequest", func(t *testing.T) {
-		m.SetType(dbft.PrepareRequestType)
-		m.SetPayload(&prepareRequest{
+		m := generateMessage(dbft.PrepareRequestType, &prepareRequest{
 			nonce:     123,
 			timestamp: 345,
 			transactionHashes: []crypto.Uint256{
@@ -36,8 +32,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("PrepareResponse", func(t *testing.T) {
-		m.SetType(dbft.PrepareResponseType)
-		m.SetPayload(&prepareResponse{
+		m := generateMessage(dbft.PrepareResponseType, &prepareResponse{
 			preparationHash: crypto.Uint256{3},
 		})
 
@@ -46,18 +41,16 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("Commit", func(t *testing.T) {
-		m.SetType(dbft.CommitType)
 		var cc commit
 		fillRandom(t, cc.signature[:])
-		m.SetPayload(&cc)
+		m := generateMessage(dbft.CommitType, &cc)
 
 		testEncodeDecode(t, m, new(Payload))
 		testMarshalUnmarshal(t, m, new(Payload))
 	})
 
 	t.Run("ChangeView", func(t *testing.T) {
-		m.SetType(dbft.ChangeViewType)
-		m.SetPayload(&changeView{
+		m := generateMessage(dbft.ChangeViewType, &changeView{
 			timestamp:     12345,
 			newViewNumber: 4,
 		})
@@ -67,8 +60,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
-		m.SetType(dbft.RecoveryMessageType)
-		m.SetPayload(&recoveryMessage{
+		m := generateMessage(dbft.RecoveryMessageType, &recoveryMessage{
 			changeViewPayloads: []changeViewCompact{
 				{
 					Timestamp:          123,
@@ -97,8 +89,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("RecoveryRequest", func(t *testing.T) {
-		m.SetType(dbft.RecoveryRequestType)
-		m.SetPayload(&recoveryRequest{
+		m := generateMessage(dbft.RecoveryRequestType, &recoveryRequest{
 			timestamp: 17334,
 		})
 
@@ -108,13 +99,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 }
 
 func TestRecoveryMessage_NoPayloads(t *testing.T) {
-	m := NewConsensusPayload().(*Payload)
-	m.SetValidatorIndex(0)
-	m.SetHeight(77)
-	m.SetPrevHash(crypto.Uint256{1})
-	m.SetVersion(8)
-	m.SetViewNumber(3)
-	m.SetPayload(&recoveryMessage{})
+	m := NewConsensusPayload(dbft.RecoveryRequestType, 77, 0, 3, &recoveryMessage{}).(*Payload)
 
 	validators := make([]dbft.PublicKey, 1)
 	_, validators[0] = crypto.Generate(rand.Reader)
@@ -186,9 +171,8 @@ func TestPayload_Setters(t *testing.T) {
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
-		r := NewRecoveryMessage()
+		r := NewRecoveryMessage(&crypto.Uint256{1, 2, 3})
 
-		r.SetPreparationHash(&crypto.Uint256{1, 2, 3})
 		require.Equal(t, &crypto.Uint256{1, 2, 3}, r.PreparationHash())
 	})
 }
