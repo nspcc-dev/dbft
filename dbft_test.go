@@ -489,7 +489,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryRequest {
+	opts = append(opts, dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](func(uint64) dbft.RecoveryRequest {
 		return nil
 	}))
 	t.Run("without NewRecoveryMessage", func(t *testing.T) {
@@ -738,7 +738,7 @@ func (s testState) getChangeView(from uint16, view byte) Payload {
 }
 
 func (s testState) getRecoveryRequest(from uint16) Payload {
-	p := payload.NewConsensusPayload(dbft.RecoveryRequestType, s.currHeight+1, from, 0, payload.NewRecoveryRequest())
+	p := payload.NewConsensusPayload(dbft.RecoveryRequestType, s.currHeight+1, from, 0, payload.NewRecoveryRequest(0))
 	return p
 }
 

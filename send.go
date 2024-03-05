@@ -131,8 +131,7 @@ func (d *DBFT[H, A]) sendRecoveryRequest() {
 	if d.RequestSentOrReceived() && !d.hasAllTransactions() {
 		d.processMissingTx()
 	}
-	req := d.NewRecoveryRequest()
-	req.SetTimestamp(uint64(d.Timer.Now().UnixNano()))
+	req := d.NewRecoveryRequest(uint64(d.Timer.Now().UnixNano()))
 	d.broadcast(d.Config.NewConsensusPayload(&d.Context, RecoveryRequestType, req))
 }
 

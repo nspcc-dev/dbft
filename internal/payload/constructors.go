@@ -51,8 +51,10 @@ func NewCommit(signature []byte) dbft.Commit {
 }
 
 // NewRecoveryRequest returns minimal RecoveryRequest implementation.
-func NewRecoveryRequest() dbft.RecoveryRequest {
-	return new(recoveryRequest)
+func NewRecoveryRequest(ts uint64) dbft.RecoveryRequest {
+	return &recoveryRequest{
+		timestamp: nanoSecToSec(ts),
+	}
 }
 
 // NewRecoveryMessage returns minimal RecoveryMessage implementation.

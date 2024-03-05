@@ -70,7 +70,7 @@ type Config[H Hash, A Address] struct {
 	// NewCommit is a constructor for payload.Commit.
 	NewCommit func(signature []byte) Commit
 	// NewRecoveryRequest is a constructor for payload.RecoveryRequest.
-	NewRecoveryRequest func() RecoveryRequest
+	NewRecoveryRequest func(ts uint64) RecoveryRequest
 	// NewRecoveryMessage is a constructor for payload.RecoveryMessage.
 	NewRecoveryMessage func() RecoveryMessage[H, A]
 	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
@@ -334,7 +334,7 @@ func WithNewCommit[H Hash, A Address](f func([]byte) Commit) func(config *Config
 }
 
 // WithNewRecoveryRequest sets NewRecoveryRequest.
-func WithNewRecoveryRequest[H Hash, A Address](f func() RecoveryRequest) func(config *Config[H, A]) {
+func WithNewRecoveryRequest[H Hash, A Address](f func(ts uint64) RecoveryRequest) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewRecoveryRequest = f
 	}

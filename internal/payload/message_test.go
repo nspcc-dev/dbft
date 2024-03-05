@@ -161,9 +161,8 @@ func TestPayload_Setters(t *testing.T) {
 	})
 
 	t.Run("RecoveryRequest", func(t *testing.T) {
-		r := NewRecoveryRequest()
+		r := NewRecoveryRequest(secToNanoSec(321))
 
-		r.SetTimestamp(secToNanoSec(321))
 		require.EqualValues(t, secToNanoSec(321), r.Timestamp())
 	})
 
