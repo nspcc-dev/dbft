@@ -3,13 +3,13 @@ package crypto
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"io"
 	"math/big"
 
 	"github.com/nspcc-dev/dbft"
-	"github.com/nspcc-dev/rfc6979"
 )
 
 type (
@@ -50,7 +50,10 @@ func NewECDSAPrivateKey(key *ecdsa.PrivateKey) dbft.PrivateKey {
 // Sign signs message using P-256 curve.
 func (e ECDSAPriv) Sign(msg []byte) ([]byte, error) {
 	h := sha256.Sum256(msg)
-	r, s := rfc6979.SignECDSA(e.PrivateKey, h[:], sha256.New)
+	r, s, err := ecdsa.Sign(rand.Reader, e.PrivateKey, h[:])
+	if err != nil {
+		return nil, err
+	}
 
 	sig := make([]byte, 32*2)
 	_ = r.FillBytes(sig[:32])
