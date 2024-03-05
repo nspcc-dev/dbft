@@ -17,11 +17,7 @@ func (d *DBFT[H, A]) broadcast(msg ConsensusPayload[H, A]) {
 func (c *Context[H, A]) makePrepareRequest() ConsensusPayload[H, A] {
 	c.Fill()
 
-	req := c.Config.NewPrepareRequest()
-	req.SetTimestamp(c.Timestamp)
-	req.SetNonce(c.Nonce)
-	req.SetNextConsensus(c.NextConsensus)
-	req.SetTransactionHashes(c.TransactionHashes)
+	req := c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.NextConsensus, c.TransactionHashes)
 
 	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }

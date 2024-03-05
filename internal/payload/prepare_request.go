@@ -54,19 +54,9 @@ func (p prepareRequest) Timestamp() uint64 {
 	return secToNanoSec(p.timestamp)
 }
 
-// SetTimestamp implements PrepareRequest interface.
-func (p *prepareRequest) SetTimestamp(ts uint64) {
-	p.timestamp = nanoSecToSec(ts)
-}
-
 // Nonce implements PrepareRequest interface.
 func (p prepareRequest) Nonce() uint64 {
 	return p.nonce
-}
-
-// SetNonce implements PrepareRequest interface.
-func (p *prepareRequest) SetNonce(nonce uint64) {
-	p.nonce = nonce
 }
 
 // TransactionHashes implements PrepareRequest interface.
@@ -74,17 +64,7 @@ func (p prepareRequest) TransactionHashes() []crypto.Uint256 {
 	return p.transactionHashes
 }
 
-// SetTransactionHashes implements PrepareRequest interface.
-func (p *prepareRequest) SetTransactionHashes(hs []crypto.Uint256) {
-	p.transactionHashes = hs
-}
-
 // NextConsensus implements PrepareRequest interface.
 func (p prepareRequest) NextConsensus() crypto.Uint160 {
 	return p.nextConsensus
-}
-
-// SetNextConsensus implements PrepareRequest interface.
-func (p *prepareRequest) SetNextConsensus(nc crypto.Uint160) {
-	p.nextConsensus = nc
 }

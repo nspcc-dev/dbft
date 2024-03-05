@@ -461,7 +461,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](func() dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](func(uint64, uint64, crypto.Uint160, []crypto.Uint256) dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
 		return nil
 	}))
 	t.Run("without NewPrepareResponse", func(t *testing.T) {
@@ -475,7 +475,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](func() dbft.ChangeView {
+	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](func(byte, dbft.ChangeViewReason, uint64) dbft.ChangeView {
 		return nil
 	}))
 	t.Run("without NewCommit", func(t *testing.T) {
@@ -731,10 +731,9 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 }
 
 func (s testState) getChangeView(from uint16, view byte) Payload {
-	cv := payload.NewChangeView()
-	cv.SetNewViewNumber(view)
+	cv := payload.NewChangeView(view, 0, 0)
 
-	p := payload.NewConsensusPayload(dbft.ChangeViewType, s.currHeight+1, from, view, cv)
+	p := payload.NewConsensusPayload(dbft.ChangeViewType, s.currHeight+1, from, 0, cv)
 	return p
 }
 
@@ -762,9 +761,7 @@ func (s testState) getPrepareRequest(from uint16, hashes ...crypto.Uint256) Payl
 }
 
 func (s testState) getPrepareRequestWithHeight(from uint16, height uint32, hashes ...crypto.Uint256) Payload {
-	req := payload.NewPrepareRequest()
-	req.SetTransactionHashes(hashes)
-	req.SetNextConsensus(s.nextConsensus())
+	req := payload.NewPrepareRequest(0, 0, s.nextConsensus(), hashes)
 
 	p := payload.NewConsensusPayload(dbft.PrepareRequestType, height, from, 0, req)
 	return p
