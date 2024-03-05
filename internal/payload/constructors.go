@@ -34,8 +34,10 @@ func NewChangeView() dbft.ChangeView {
 }
 
 // NewCommit returns minimal Commit implementation.
-func NewCommit() dbft.Commit {
-	return new(commit)
+func NewCommit(signature []byte) dbft.Commit {
+	c := new(commit)
+	copy(c.signature[:], signature)
+	return c
 }
 
 // NewRecoveryRequest returns minimal RecoveryRequest implementation.

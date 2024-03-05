@@ -482,7 +482,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](func() dbft.Commit {
+	opts = append(opts, dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](func([]byte) dbft.Commit {
 		return nil
 	}))
 	t.Run("without NewRecoveryRequest", func(t *testing.T) {
@@ -744,9 +744,7 @@ func (s testState) getRecoveryRequest(from uint16) Payload {
 }
 
 func (s testState) getCommit(from uint16, sign []byte) Payload {
-	c := payload.NewCommit()
-	c.SetSignature(sign)
-
+	c := payload.NewCommit(sign)
 	p := payload.NewConsensusPayload(dbft.CommitType, s.currHeight+1, from, 0, c)
 	return p
 }

@@ -68,7 +68,7 @@ type Config[H Hash, A Address] struct {
 	// NewChangeView is a constructor for payload.ChangeView.
 	NewChangeView func() ChangeView
 	// NewCommit is a constructor for payload.Commit.
-	NewCommit func() Commit
+	NewCommit func(signature []byte) Commit
 	// NewRecoveryRequest is a constructor for payload.RecoveryRequest.
 	NewRecoveryRequest func() RecoveryRequest
 	// NewRecoveryMessage is a constructor for payload.RecoveryMessage.
@@ -327,7 +327,7 @@ func WithNewChangeView[H Hash, A Address](f func() ChangeView) func(config *Conf
 }
 
 // WithNewCommit sets NewCommit.
-func WithNewCommit[H Hash, A Address](f func() Commit) func(config *Config[H, A]) {
+func WithNewCommit[H Hash, A Address](f func([]byte) Commit) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewCommit = f
 	}

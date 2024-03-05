@@ -118,8 +118,7 @@ func (c *Context[H, A]) makeCommit() ConsensusPayload[H, A] {
 			sign = b.Signature()
 		}
 
-		commit := c.Config.NewCommit()
-		commit.SetSignature(sign)
+		commit := c.Config.NewCommit(sign)
 
 		return c.Config.NewConsensusPayload(c, CommitType, commit)
 	}
