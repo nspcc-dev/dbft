@@ -84,8 +84,7 @@ func (d *DBFT[H, A]) sendChangeView(reason ChangeViewReason) {
 }
 
 func (c *Context[H, A]) makePrepareResponse() ConsensusPayload[H, A] {
-	resp := c.Config.NewPrepareResponse()
-	resp.SetPreparationHash(c.PreparationPayloads[c.PrimaryIndex].Hash())
+	resp := c.Config.NewPrepareResponse(c.PreparationPayloads[c.PrimaryIndex].Hash())
 
 	msg := c.Config.NewConsensusPayload(c, PrepareResponseType, resp)
 	c.PreparationPayloads[c.MyIndex] = msg

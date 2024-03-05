@@ -468,7 +468,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](func() dbft.PrepareResponse[crypto.Uint256] {
+	opts = append(opts, dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](func(crypto.Uint256) dbft.PrepareResponse[crypto.Uint256] {
 		return nil
 	}))
 	t.Run("without NewChangeView", func(t *testing.T) {
@@ -749,8 +749,7 @@ func (s testState) getCommit(from uint16, sign []byte) Payload {
 }
 
 func (s testState) getPrepareResponse(from uint16, phash crypto.Uint256) Payload {
-	resp := payload.NewPrepareResponse()
-	resp.SetPreparationHash(phash)
+	resp := payload.NewPrepareResponse(phash)
 
 	p := payload.NewConsensusPayload(dbft.PrepareResponseType, s.currHeight+1, from, 0, resp)
 	return p

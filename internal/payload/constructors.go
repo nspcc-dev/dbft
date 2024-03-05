@@ -29,8 +29,10 @@ func NewPrepareRequest(ts uint64, nonce uint64, nextConsensus crypto.Uint160, tr
 }
 
 // NewPrepareResponse returns minimal PrepareResponse implementation.
-func NewPrepareResponse() dbft.PrepareResponse[crypto.Uint256] {
-	return new(prepareResponse)
+func NewPrepareResponse(preparationHash crypto.Uint256) dbft.PrepareResponse[crypto.Uint256] {
+	return &prepareResponse{
+		preparationHash: preparationHash,
+	}
 }
 
 // NewChangeView returns minimal ChangeView implementation.

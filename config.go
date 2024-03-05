@@ -64,7 +64,7 @@ type Config[H Hash, A Address] struct {
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
 	NewPrepareRequest func(ts uint64, nonce uint64, nextConsensus A, transactionHashes []H) PrepareRequest[H, A]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
-	NewPrepareResponse func() PrepareResponse[H]
+	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
 	NewChangeView func(newViewNumber byte, reason ChangeViewReason, timestamp uint64) ChangeView
 	// NewCommit is a constructor for payload.Commit.
@@ -313,7 +313,7 @@ func WithNewPrepareRequest[H Hash, A Address](f func(ts uint64, nonce uint64, ne
 }
 
 // WithNewPrepareResponse sets NewPrepareResponse.
-func WithNewPrepareResponse[H Hash, A Address](f func() PrepareResponse[H]) func(config *Config[H, A]) {
+func WithNewPrepareResponse[H Hash, A Address](f func(preparationHash H) PrepareResponse[H]) func(config *Config[H, A]) {
 	return func(cfg *Config[H, A]) {
 		cfg.NewPrepareResponse = f
 	}
