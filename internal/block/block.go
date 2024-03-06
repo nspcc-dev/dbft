@@ -52,11 +52,6 @@ func (b *neoBlock) Index() uint32 {
 	return b.base.Index
 }
 
-// NextConsensus implements Block interface.
-func (b *neoBlock) NextConsensus() crypto.Uint160 {
-	return b.base.NextConsensus
-}
-
 // MerkleRoot implements Block interface.
 func (b *neoBlock) MerkleRoot() crypto.Uint256 {
 	return b.base.MerkleRoot
@@ -78,11 +73,14 @@ func (b *neoBlock) SetTransactions(txx []dbft.Transaction[crypto.Uint256]) {
 }
 
 // NewBlock returns new block.
-func NewBlock(timestamp uint64, index uint32, nextConsensus crypto.Uint160, prevHash crypto.Uint256, version uint32, nonce uint64, txHashes []crypto.Uint256) dbft.Block[crypto.Uint256, crypto.Uint160] {
+func NewBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, version uint32, nonce uint64, txHashes []crypto.Uint256) dbft.Block[crypto.Uint256] {
 	block := new(neoBlock)
 	block.base.Timestamp = uint32(timestamp / 1000000000)
 	block.base.Index = index
-	block.base.NextConsensus = nextConsensus
+	// NextConsensus information is not provided by dBFT context, it's an implementation-specific field,
+	// and thus, should be managed outside the dBFT library. For simulation simplicity, let's assume
+	// that NextConsensus is filled by every CN separately and is not verified.
+	block.base.NextConsensus = crypto.Uint160{1, 2, 3}
 	block.base.PrevHash = prevHash
 	block.base.Version = version
 	block.base.ConsensusData = nonce

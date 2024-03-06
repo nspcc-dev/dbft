@@ -1,7 +1,7 @@
 package dbft
 
 // Block is a generic interface for a block used by dbft.
-type Block[H Hash, A Address] interface {
+type Block[H Hash] interface {
 	// Hash returns block hash.
 	Hash() H
 
@@ -16,8 +16,6 @@ type Block[H Hash, A Address] interface {
 	Index() uint32
 	// ConsensusData is a random nonce.
 	ConsensusData() uint64
-	// NextConsensus returns hash of the validators of the next block.
-	NextConsensus() A
 
 	// Signature returns block's signature.
 	Signature() []byte

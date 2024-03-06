@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type Payload = dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]
+type Payload = dbft.ConsensusPayload[crypto.Uint256]
 
 type testState struct {
 	myIndex    int
@@ -26,8 +26,8 @@ type testState struct {
 	currHeight uint32
 	currHash   crypto.Uint256
 	pool       *testPool
-	blocks     []dbft.Block[crypto.Uint256, crypto.Uint160]
-	verify     func(b dbft.Block[crypto.Uint256, crypto.Uint160]) bool
+	blocks     []dbft.Block[crypto.Uint256]
+	verify     func(b dbft.Block[crypto.Uint256]) bool
 }
 
 type (
@@ -44,7 +44,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 	t.Run("backup sends nothing on start", func(t *testing.T) {
 		s.currHeight = 0
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 
 		service.Start(0)
 		require.Nil(t, s.tryRecv())
@@ -52,7 +52,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 	t.Run("primary send PrepareRequest on start", func(t *testing.T) {
 		s.currHeight = 1
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 
 		service.Start(0)
 		p := s.tryRecv()
@@ -91,7 +91,7 @@ func TestDBFT_SingleNode(t *testing.T) {
 	s := newTestState(0, 1)
 
 	s.currHeight = 2
-	service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+	service := dbft.New[crypto.Uint256](s.getOptions()...)
 
 	service.Start(0)
 	p := s.tryRecv()
@@ -117,7 +117,7 @@ func TestDBFT_SingleNode(t *testing.T) {
 
 func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	s := newTestState(2, 7)
-	s.verify = func(b dbft.Block[crypto.Uint256, crypto.Uint160]) bool {
+	s.verify = func(b dbft.Block[crypto.Uint256]) bool {
 		for _, tx := range b.Transactions() {
 			if tx.(testTx)%10 == 0 {
 				return false
@@ -129,7 +129,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 	t.Run("receive request from primary", func(t *testing.T) {
 		s.currHeight = 4
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 		txs := []testTx{1}
 		s.pool.Add(txs[0])
 
@@ -161,7 +161,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 	t.Run("change view on invalid tx", func(t *testing.T) {
 		s.currHeight = 4
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 		txs := []testTx{10}
 
 		service.Start(0)
@@ -189,7 +189,7 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 
 	t.Run("receive invalid prepare request", func(t *testing.T) {
 		s.currHeight = 4
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 		txs := []testTx{1, 2}
 		s.pool.Add(txs[0])
 
@@ -237,7 +237,7 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 	s := newTestState(0, 4)
 	s.currHeight = 1
 
-	srv := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+	srv := dbft.New[crypto.Uint256](s.getOptions()...)
 	srv.Start(0)
 	require.Nil(t, s.tryRecv())
 
@@ -257,7 +257,7 @@ func TestDBFT_CommitOnTransaction(t *testing.T) {
 		privs:      s.privs,
 	}
 	s1.pool.Add(tx)
-	srv1 := dbft.New[crypto.Uint256, crypto.Uint160](s1.getOptions()...)
+	srv1 := dbft.New[crypto.Uint256](s1.getOptions()...)
 	srv1.Start(0)
 	srv1.OnReceive(req)
 	srv1.OnReceive(s1.getPrepareResponse(1, req.Hash()))
@@ -279,7 +279,7 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("send commit after enough responses", func(t *testing.T) {
 		s.currHeight = 1
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 		service.Start(0)
 
 		req := s.tryRecv()
@@ -339,7 +339,7 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("send recovery message", func(t *testing.T) {
 		s.currHeight = 1
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 		service.Start(0)
 
 		req := s.tryRecv()
@@ -361,7 +361,7 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 		require.Equal(t, dbft.RecoveryMessageType, rm.Type())
 
 		other := s.copyWithIndex(3)
-		srv2 := dbft.New[crypto.Uint256, crypto.Uint160](other.getOptions()...)
+		srv2 := dbft.New[crypto.Uint256](other.getOptions()...)
 		srv2.Start(0)
 		srv2.OnReceive(rm)
 
@@ -384,7 +384,7 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("change view correctly", func(t *testing.T) {
 		s.currHeight = 6
-		service := dbft.New[crypto.Uint256, crypto.Uint160](s.getOptions()...)
+		service := dbft.New[crypto.Uint256](s.getOptions()...)
 		service.Start(0)
 
 		resp := s.getChangeView(1, 1)
@@ -411,92 +411,85 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 
 func TestDBFT_Invalid(t *testing.T) {
 	t.Run("without keys", func(t *testing.T) {
-		require.Nil(t, dbft.New[crypto.Uint256, crypto.Uint160]())
+		require.Nil(t, dbft.New[crypto.Uint256]())
 	})
 
 	priv, pub := crypto.Generate(rand.Reader)
 	require.NotNil(t, priv)
 	require.NotNil(t, pub)
 
-	opts := []func(*dbft.Config[crypto.Uint256, crypto.Uint160]){dbft.WithKeyPair[crypto.Uint256, crypto.Uint160](priv, pub)}
+	opts := []func(*dbft.Config[crypto.Uint256]){dbft.WithKeyPair[crypto.Uint256](priv, pub)}
 	t.Run("without CurrentHeight", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithCurrentHeight[crypto.Uint256, crypto.Uint160](func() uint32 { return 0 }))
+	opts = append(opts, dbft.WithCurrentHeight[crypto.Uint256](func() uint32 { return 0 }))
 	t.Run("without CurrentBlockHash", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithCurrentBlockHash[crypto.Uint256, crypto.Uint160](func() crypto.Uint256 { return crypto.Uint256{} }))
+	opts = append(opts, dbft.WithCurrentBlockHash[crypto.Uint256](func() crypto.Uint256 { return crypto.Uint256{} }))
 	t.Run("without GetValidators", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithGetValidators[crypto.Uint256, crypto.Uint160](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey {
+	opts = append(opts, dbft.WithGetValidators[crypto.Uint256](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey {
 		return []dbft.PublicKey{pub}
 	}))
 	t.Run("without NewBlockFromContext", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewBlockFromContext[crypto.Uint256, crypto.Uint160](func(_ *dbft.Context[crypto.Uint256, crypto.Uint160]) dbft.Block[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewBlockFromContext[crypto.Uint256](func(_ *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
 		return nil
-	}))
-	t.Run("without GetConsensusAddress", func(t *testing.T) {
-		require.Nil(t, dbft.New(opts...))
-	})
-
-	opts = append(opts, dbft.WithGetConsensusAddress[crypto.Uint256, crypto.Uint160](func(_ ...dbft.PublicKey) crypto.Uint160 {
-		return crypto.Uint160{}
 	}))
 	t.Run("without NewConsensusPayload", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewConsensusPayload[crypto.Uint256, crypto.Uint160](func(_ *dbft.Context[crypto.Uint256, crypto.Uint160], _ dbft.MessageType, _ any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewConsensusPayload[crypto.Uint256](func(_ *dbft.Context[crypto.Uint256], _ dbft.MessageType, _ any) dbft.ConsensusPayload[crypto.Uint256] {
 		return nil
 	}))
 	t.Run("without NewPrepareRequest", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](func(uint64, uint64, crypto.Uint160, []crypto.Uint256) dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewPrepareRequest[crypto.Uint256](func(uint64, uint64, []crypto.Uint256) dbft.PrepareRequest[crypto.Uint256] {
 		return nil
 	}))
 	t.Run("without NewPrepareResponse", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](func(crypto.Uint256) dbft.PrepareResponse[crypto.Uint256] {
+	opts = append(opts, dbft.WithNewPrepareResponse[crypto.Uint256](func(crypto.Uint256) dbft.PrepareResponse[crypto.Uint256] {
 		return nil
 	}))
 	t.Run("without NewChangeView", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](func(byte, dbft.ChangeViewReason, uint64) dbft.ChangeView {
+	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256](func(byte, dbft.ChangeViewReason, uint64) dbft.ChangeView {
 		return nil
 	}))
 	t.Run("without NewCommit", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](func([]byte) dbft.Commit {
+	opts = append(opts, dbft.WithNewCommit[crypto.Uint256](func([]byte) dbft.Commit {
 		return nil
 	}))
 	t.Run("without NewRecoveryRequest", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](func(uint64) dbft.RecoveryRequest {
+	opts = append(opts, dbft.WithNewRecoveryRequest[crypto.Uint256](func(uint64) dbft.RecoveryRequest {
 		return nil
 	}))
 	t.Run("without NewRecoveryMessage", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
 
-	opts = append(opts, dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+	opts = append(opts, dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
 		return nil
 	}))
 	t.Run("with all defaults", func(t *testing.T) {
@@ -529,19 +522,19 @@ func TestDBFT_Invalid(t *testing.T) {
 func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	r0 := newTestState(0, 4)
 	r0.currHeight = 4
-	s0 := dbft.New[crypto.Uint256, crypto.Uint160](r0.getOptions()...)
+	s0 := dbft.New[crypto.Uint256](r0.getOptions()...)
 	s0.Start(0)
 
 	r1 := r0.copyWithIndex(1)
-	s1 := dbft.New[crypto.Uint256, crypto.Uint160](r1.getOptions()...)
+	s1 := dbft.New[crypto.Uint256](r1.getOptions()...)
 	s1.Start(0)
 
 	r2 := r0.copyWithIndex(2)
-	s2 := dbft.New[crypto.Uint256, crypto.Uint160](r2.getOptions()...)
+	s2 := dbft.New[crypto.Uint256](r2.getOptions()...)
 	s2.Start(0)
 
 	r3 := r0.copyWithIndex(3)
-	s3 := dbft.New[crypto.Uint256, crypto.Uint160](r3.getOptions()...)
+	s3 := dbft.New[crypto.Uint256](r3.getOptions()...)
 	s3.Start(0)
 
 	// Step 1. The primary (at view 0) replica 1 sends the PrepareRequest message.
@@ -760,7 +753,7 @@ func (s testState) getPrepareRequest(from uint16, hashes ...crypto.Uint256) Payl
 }
 
 func (s testState) getPrepareRequestWithHeight(from uint16, height uint32, hashes ...crypto.Uint256) Payload {
-	req := payload.NewPrepareRequest(0, 0, s.nextConsensus(), hashes)
+	req := payload.NewPrepareRequest(0, 0, hashes)
 
 	p := payload.NewConsensusPayload(dbft.PrepareRequestType, height, from, 0, req)
 	return p
@@ -789,7 +782,7 @@ func (s *testState) tryRecv() Payload {
 	return p
 }
 
-func (s *testState) nextBlock() dbft.Block[crypto.Uint256, crypto.Uint160] {
+func (s *testState) nextBlock() dbft.Block[crypto.Uint256] {
 	if len(s.blocks) == 0 {
 		return nil
 	}
@@ -812,43 +805,38 @@ func (s testState) copyWithIndex(myIndex int) *testState {
 	}
 }
 
-func (s testState) nextConsensus(...dbft.PublicKey) crypto.Uint160 {
-	return crypto.Uint160{1}
-}
+func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
+	opts := []func(*dbft.Config[crypto.Uint256]){
+		dbft.WithCurrentHeight[crypto.Uint256](func() uint32 { return s.currHeight }),
+		dbft.WithCurrentBlockHash[crypto.Uint256](func() crypto.Uint256 { return s.currHash }),
+		dbft.WithGetValidators[crypto.Uint256](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey { return s.pubs }),
+		dbft.WithKeyPair[crypto.Uint256](s.privs[s.myIndex], s.pubs[s.myIndex]),
+		dbft.WithBroadcast[crypto.Uint256](func(p Payload) { s.ch = append(s.ch, p) }),
+		dbft.WithGetTx[crypto.Uint256](s.pool.Get),
+		dbft.WithProcessBlock[crypto.Uint256](func(b dbft.Block[crypto.Uint256]) { s.blocks = append(s.blocks, b) }),
+		dbft.WithWatchOnly[crypto.Uint256](func() bool { return false }),
+		dbft.WithGetBlock[crypto.Uint256](func(crypto.Uint256) dbft.Block[crypto.Uint256] { return nil }),
+		dbft.WithTimer[crypto.Uint256](timer.New()),
+		dbft.WithLogger[crypto.Uint256](zap.NewNop()),
+		dbft.WithNewBlockFromContext[crypto.Uint256](newBlockFromContext),
+		dbft.WithSecondsPerBlock[crypto.Uint256](time.Second * 10),
+		dbft.WithRequestTx[crypto.Uint256](func(...crypto.Uint256) {}),
+		dbft.WithGetVerified[crypto.Uint256](func() []dbft.Transaction[crypto.Uint256] { return []dbft.Transaction[crypto.Uint256]{} }),
 
-func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256, crypto.Uint160]) {
-	opts := []func(*dbft.Config[crypto.Uint256, crypto.Uint160]){
-		dbft.WithCurrentHeight[crypto.Uint256, crypto.Uint160](func() uint32 { return s.currHeight }),
-		dbft.WithCurrentBlockHash[crypto.Uint256, crypto.Uint160](func() crypto.Uint256 { return s.currHash }),
-		dbft.WithGetValidators[crypto.Uint256, crypto.Uint160](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey { return s.pubs }),
-		dbft.WithKeyPair[crypto.Uint256, crypto.Uint160](s.privs[s.myIndex], s.pubs[s.myIndex]),
-		dbft.WithBroadcast[crypto.Uint256, crypto.Uint160](func(p Payload) { s.ch = append(s.ch, p) }),
-		dbft.WithGetTx[crypto.Uint256, crypto.Uint160](s.pool.Get),
-		dbft.WithProcessBlock[crypto.Uint256, crypto.Uint160](func(b dbft.Block[crypto.Uint256, crypto.Uint160]) { s.blocks = append(s.blocks, b) }),
-		dbft.WithGetConsensusAddress[crypto.Uint256, crypto.Uint160](s.nextConsensus),
-		dbft.WithWatchOnly[crypto.Uint256, crypto.Uint160](func() bool { return false }),
-		dbft.WithGetBlock[crypto.Uint256, crypto.Uint160](func(crypto.Uint256) dbft.Block[crypto.Uint256, crypto.Uint160] { return nil }),
-		dbft.WithTimer[crypto.Uint256, crypto.Uint160](timer.New()),
-		dbft.WithLogger[crypto.Uint256, crypto.Uint160](zap.NewNop()),
-		dbft.WithNewBlockFromContext[crypto.Uint256, crypto.Uint160](newBlockFromContext),
-		dbft.WithSecondsPerBlock[crypto.Uint256, crypto.Uint160](time.Second * 10),
-		dbft.WithRequestTx[crypto.Uint256, crypto.Uint160](func(...crypto.Uint256) {}),
-		dbft.WithGetVerified[crypto.Uint256, crypto.Uint160](func() []dbft.Transaction[crypto.Uint256] { return []dbft.Transaction[crypto.Uint256]{} }),
-
-		dbft.WithNewConsensusPayload[crypto.Uint256, crypto.Uint160](newConsensusPayload),
-		dbft.WithNewPrepareRequest[crypto.Uint256, crypto.Uint160](payload.NewPrepareRequest),
-		dbft.WithNewPrepareResponse[crypto.Uint256, crypto.Uint160](payload.NewPrepareResponse),
-		dbft.WithNewChangeView[crypto.Uint256, crypto.Uint160](payload.NewChangeView),
-		dbft.WithNewCommit[crypto.Uint256, crypto.Uint160](payload.NewCommit),
-		dbft.WithNewRecoveryRequest[crypto.Uint256, crypto.Uint160](payload.NewRecoveryRequest),
-		dbft.WithNewRecoveryMessage[crypto.Uint256, crypto.Uint160](func() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
+		dbft.WithNewConsensusPayload[crypto.Uint256](newConsensusPayload),
+		dbft.WithNewPrepareRequest[crypto.Uint256](payload.NewPrepareRequest),
+		dbft.WithNewPrepareResponse[crypto.Uint256](payload.NewPrepareResponse),
+		dbft.WithNewChangeView[crypto.Uint256](payload.NewChangeView),
+		dbft.WithNewCommit[crypto.Uint256](payload.NewCommit),
+		dbft.WithNewRecoveryRequest[crypto.Uint256](payload.NewRecoveryRequest),
+		dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
 			return payload.NewRecoveryMessage(nil)
 		}),
 	}
 
 	verify := s.verify
 	if verify == nil {
-		verify = func(dbft.Block[crypto.Uint256, crypto.Uint160]) bool { return true }
+		verify = func(dbft.Block[crypto.Uint256]) bool { return true }
 	}
 
 	opts = append(opts, dbft.WithVerifyBlock(verify))
@@ -857,23 +845,23 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256, crypto.Uint
 		cfg := zap.NewDevelopmentConfig()
 		cfg.DisableStacktrace = true
 		logger, _ := cfg.Build()
-		opts = append(opts, dbft.WithLogger[crypto.Uint256, crypto.Uint160](logger))
+		opts = append(opts, dbft.WithLogger[crypto.Uint256](logger))
 	}
 
 	return opts
 }
 
-func newBlockFromContext(ctx *dbft.Context[crypto.Uint256, crypto.Uint160]) dbft.Block[crypto.Uint256, crypto.Uint160] {
+func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
-	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.NextConsensus, ctx.PrevHash, ctx.Version, ctx.Nonce, ctx.TransactionHashes)
+	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Version, ctx.Nonce, ctx.TransactionHashes)
 	return block
 }
 
 // newConsensusPayload is a function for creating consensus payload of specific
 // type.
-func newConsensusPayload(c *dbft.Context[crypto.Uint256, crypto.Uint160], t dbft.MessageType, msg any) dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] {
+func newConsensusPayload(c *dbft.Context[crypto.Uint256], t dbft.MessageType, msg any) dbft.ConsensusPayload[crypto.Uint256] {
 	cp := payload.NewConsensusPayload(t, c.BlockIndex, uint16(c.MyIndex), c.ViewNumber, msg)
 	return cp
 }

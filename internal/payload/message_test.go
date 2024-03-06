@@ -107,11 +107,11 @@ func TestRecoveryMessage_NoPayloads(t *testing.T) {
 	rec := m.GetRecoveryMessage()
 	require.NotNil(t, rec)
 
-	var p dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]
+	var p dbft.ConsensusPayload[crypto.Uint256]
 	require.NotPanics(t, func() { p = rec.GetPrepareRequest(p, validators, 0) })
 	require.Nil(t, p)
 
-	var ps []dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160]
+	var ps []dbft.ConsensusPayload[crypto.Uint256]
 	require.NotPanics(t, func() { ps = rec.GetPrepareResponses(p, validators) })
 	require.Len(t, ps, 0)
 

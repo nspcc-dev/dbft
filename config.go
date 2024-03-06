@@ -10,7 +10,7 @@ import (
 )
 
 // Config contains initialization and working parameters for dBFT.
-type Config[H Hash, A Address] struct {
+type Config[H Hash] struct {
 	// Logger
 	Logger *zap.Logger
 	// Timer
@@ -26,7 +26,7 @@ type Config[H Hash, A Address] struct {
 	// together with it's key pair.
 	GetKeyPair func([]PublicKey) (int, PrivateKey, PublicKey)
 	// NewBlockFromContext should allocate, fill from Context and return new block.Block.
-	NewBlockFromContext func(ctx *Context[H, A]) Block[H, A]
+	NewBlockFromContext func(ctx *Context[H]) Block[H]
 	// RequestTx is a callback which is called when transaction contained
 	// in current block can't be found in memory pool.
 	RequestTx func(h ...H)
@@ -39,13 +39,13 @@ type Config[H Hash, A Address] struct {
 	// to be proposed in a new block.
 	GetVerified func() []Transaction[H]
 	// VerifyBlock verifies if block is valid.
-	VerifyBlock func(b Block[H, A]) bool
+	VerifyBlock func(b Block[H]) bool
 	// Broadcast should broadcast payload m to the consensus nodes.
-	Broadcast func(m ConsensusPayload[H, A])
+	Broadcast func(m ConsensusPayload[H])
 	// ProcessBlock is called every time new block is accepted.
-	ProcessBlock func(b Block[H, A])
+	ProcessBlock func(b Block[H])
 	// GetBlock should return block with hash.
-	GetBlock func(h H) Block[H, A]
+	GetBlock func(h H) Block[H]
 	// WatchOnly tells if a node should only watch.
 	WatchOnly func() bool
 	// CurrentHeight returns index of the last accepted block.
@@ -57,12 +57,10 @@ type Config[H Hash, A Address] struct {
 	// list of the validators of the next block.
 	// If this function ever returns 0-length slice, dbft will panic.
 	GetValidators func(...Transaction[H]) []PublicKey
-	// GetConsensusAddress returns hash of the validator list.
-	GetConsensusAddress func(...PublicKey) A
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
-	NewConsensusPayload func(*Context[H, A], MessageType, any) ConsensusPayload[H, A]
+	NewConsensusPayload func(*Context[H], MessageType, any) ConsensusPayload[H]
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
-	NewPrepareRequest func(ts uint64, nonce uint64, nextConsensus A, transactionHashes []H) PrepareRequest[H, A]
+	NewPrepareRequest func(ts uint64, nonce uint64, transactionHashes []H) PrepareRequest[H]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
 	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
@@ -72,20 +70,20 @@ type Config[H Hash, A Address] struct {
 	// NewRecoveryRequest is a constructor for payload.RecoveryRequest.
 	NewRecoveryRequest func(ts uint64) RecoveryRequest
 	// NewRecoveryMessage is a constructor for payload.RecoveryMessage.
-	NewRecoveryMessage func() RecoveryMessage[H, A]
+	NewRecoveryMessage func() RecoveryMessage[H]
 	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
-	VerifyPrepareRequest func(p ConsensusPayload[H, A]) error
+	VerifyPrepareRequest func(p ConsensusPayload[H]) error
 	// VerifyPrepareResponse performs external PrepareResponse verification and returns nil if it's successful.
-	VerifyPrepareResponse func(p ConsensusPayload[H, A]) error
+	VerifyPrepareResponse func(p ConsensusPayload[H]) error
 }
 
 const defaultSecondsPerBlock = time.Second * 15
 
 const defaultTimestampIncrement = uint64(time.Millisecond / time.Nanosecond)
 
-func defaultConfig[H Hash, A Address]() *Config[H, A] {
+func defaultConfig[H Hash]() *Config[H] {
 	// fields which are set to nil must be provided from client
-	return &Config[H, A]{
+	return &Config[H]{
 		Logger:             zap.NewNop(),
 		Timer:              timer.New(),
 		SecondsPerBlock:    defaultSecondsPerBlock,
@@ -95,21 +93,21 @@ func defaultConfig[H Hash, A Address]() *Config[H, A] {
 		StopTxFlow:         func() {},
 		GetTx:              func(H) Transaction[H] { return nil },
 		GetVerified:        func() []Transaction[H] { return make([]Transaction[H], 0) },
-		VerifyBlock:        func(Block[H, A]) bool { return true },
-		Broadcast:          func(ConsensusPayload[H, A]) {},
-		ProcessBlock:       func(Block[H, A]) {},
-		GetBlock:           func(H) Block[H, A] { return nil },
+		VerifyBlock:        func(Block[H]) bool { return true },
+		Broadcast:          func(ConsensusPayload[H]) {},
+		ProcessBlock:       func(Block[H]) {},
+		GetBlock:           func(H) Block[H] { return nil },
 		WatchOnly:          func() bool { return false },
 		CurrentHeight:      nil,
 		CurrentBlockHash:   nil,
 		GetValidators:      nil,
 
-		VerifyPrepareRequest:  func(ConsensusPayload[H, A]) error { return nil },
-		VerifyPrepareResponse: func(ConsensusPayload[H, A]) error { return nil },
+		VerifyPrepareRequest:  func(ConsensusPayload[H]) error { return nil },
+		VerifyPrepareResponse: func(ConsensusPayload[H]) error { return nil },
 	}
 }
 
-func checkConfig[H Hash, A Address](cfg *Config[H, A]) error {
+func checkConfig[H Hash](cfg *Config[H]) error {
 	if cfg.GetKeyPair == nil {
 		return errors.New("private key is nil")
 	} else if cfg.CurrentHeight == nil {
@@ -120,8 +118,6 @@ func checkConfig[H Hash, A Address](cfg *Config[H, A]) error {
 		return errors.New("GetValidators is nil")
 	} else if cfg.NewBlockFromContext == nil {
 		return errors.New("NewBlockFromContext is nil")
-	} else if cfg.GetConsensusAddress == nil {
-		return errors.New("GetConsensusAddress is nil")
 	} else if cfg.NewConsensusPayload == nil {
 		return errors.New("NewConsensusPayload is nil")
 	} else if cfg.NewPrepareRequest == nil {
@@ -143,13 +139,13 @@ func checkConfig[H Hash, A Address](cfg *Config[H, A]) error {
 
 // WithKeyPair sets GetKeyPair to a function returning default key pair
 // if it is present in a list of validators.
-func WithKeyPair[H Hash, A Address](priv PrivateKey, pub PublicKey) func(config *Config[H, A]) {
+func WithKeyPair[H Hash](priv PrivateKey, pub PublicKey) func(config *Config[H]) {
 	myPub, err := pub.MarshalBinary()
 	if err != nil {
 		return nil
 	}
 
-	return func(cfg *Config[H, A]) {
+	return func(cfg *Config[H]) {
 		cfg.GetKeyPair = func(ps []PublicKey) (int, PrivateKey, PublicKey) {
 			for i := range ps {
 				pi, err := ps[i].MarshalBinary()
@@ -166,197 +162,190 @@ func WithKeyPair[H Hash, A Address](priv PrivateKey, pub PublicKey) func(config 
 }
 
 // WithGetKeyPair sets GetKeyPair.
-func WithGetKeyPair[H Hash, A Address](f func([]PublicKey) (int, PrivateKey, PublicKey)) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithGetKeyPair[H Hash](f func([]PublicKey) (int, PrivateKey, PublicKey)) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.GetKeyPair = f
 	}
 }
 
 // WithLogger sets Logger.
-func WithLogger[H Hash, A Address](log *zap.Logger) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithLogger[H Hash](log *zap.Logger) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.Logger = log
 	}
 }
 
 // WithTimer sets Timer.
-func WithTimer[H Hash, A Address](t timer.Timer) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithTimer[H Hash](t timer.Timer) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.Timer = t
 	}
 }
 
 // WithSecondsPerBlock sets SecondsPerBlock.
-func WithSecondsPerBlock[H Hash, A Address](d time.Duration) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithSecondsPerBlock[H Hash](d time.Duration) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.SecondsPerBlock = d
 	}
 }
 
 // WithTimestampIncrement sets TimestampIncrement.
-func WithTimestampIncrement[H Hash, A Address](u uint64) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithTimestampIncrement[H Hash](u uint64) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.TimestampIncrement = u
 	}
 }
 
 // WithNewBlockFromContext sets NewBlockFromContext.
-func WithNewBlockFromContext[H Hash, A Address](f func(ctx *Context[H, A]) Block[H, A]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewBlockFromContext[H Hash](f func(ctx *Context[H]) Block[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewBlockFromContext = f
 	}
 }
 
 // WithRequestTx sets RequestTx.
-func WithRequestTx[H Hash, A Address](f func(h ...H)) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithRequestTx[H Hash](f func(h ...H)) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.RequestTx = f
 	}
 }
 
 // WithStopTxFlow sets StopTxFlow.
-func WithStopTxFlow[H Hash, A Address](f func()) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithStopTxFlow[H Hash](f func()) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.StopTxFlow = f
 	}
 }
 
 // WithGetTx sets GetTx.
-func WithGetTx[H Hash, A Address](f func(h H) Transaction[H]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithGetTx[H Hash](f func(h H) Transaction[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.GetTx = f
 	}
 }
 
 // WithGetVerified sets GetVerified.
-func WithGetVerified[H Hash, A Address](f func() []Transaction[H]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithGetVerified[H Hash](f func() []Transaction[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.GetVerified = f
 	}
 }
 
 // WithVerifyBlock sets VerifyBlock.
-func WithVerifyBlock[H Hash, A Address](f func(b Block[H, A]) bool) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithVerifyBlock[H Hash](f func(b Block[H]) bool) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.VerifyBlock = f
 	}
 }
 
 // WithBroadcast sets Broadcast.
-func WithBroadcast[H Hash, A Address](f func(m ConsensusPayload[H, A])) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithBroadcast[H Hash](f func(m ConsensusPayload[H])) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.Broadcast = f
 	}
 }
 
 // WithProcessBlock sets ProcessBlock.
-func WithProcessBlock[H Hash, A Address](f func(b Block[H, A])) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithProcessBlock[H Hash](f func(b Block[H])) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.ProcessBlock = f
 	}
 }
 
 // WithGetBlock sets GetBlock.
-func WithGetBlock[H Hash, A Address](f func(h H) Block[H, A]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithGetBlock[H Hash](f func(h H) Block[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.GetBlock = f
 	}
 }
 
 // WithWatchOnly sets WatchOnly.
-func WithWatchOnly[H Hash, A Address](f func() bool) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithWatchOnly[H Hash](f func() bool) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.WatchOnly = f
 	}
 }
 
 // WithCurrentHeight sets CurrentHeight.
-func WithCurrentHeight[H Hash, A Address](f func() uint32) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithCurrentHeight[H Hash](f func() uint32) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.CurrentHeight = f
 	}
 }
 
 // WithCurrentBlockHash sets CurrentBlockHash.
-func WithCurrentBlockHash[H Hash, A Address](f func() H) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithCurrentBlockHash[H Hash](f func() H) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.CurrentBlockHash = f
 	}
 }
 
 // WithGetValidators sets GetValidators.
-func WithGetValidators[H Hash, A Address](f func(...Transaction[H]) []PublicKey) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithGetValidators[H Hash](f func(...Transaction[H]) []PublicKey) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.GetValidators = f
 	}
 }
 
-// WithGetConsensusAddress sets GetConsensusAddress.
-func WithGetConsensusAddress[H Hash, A Address](f func(keys ...PublicKey) A) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
-		cfg.GetConsensusAddress = f
-	}
-}
-
 // WithNewConsensusPayload sets NewConsensusPayload.
-func WithNewConsensusPayload[H Hash, A Address](f func(*Context[H, A], MessageType, any) ConsensusPayload[H, A]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewConsensusPayload[H Hash](f func(*Context[H], MessageType, any) ConsensusPayload[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewConsensusPayload = f
 	}
 }
 
 // WithNewPrepareRequest sets NewPrepareRequest.
-func WithNewPrepareRequest[H Hash, A Address](f func(ts uint64, nonce uint64, nextConsensus A, transactionsHashes []H) PrepareRequest[H, A]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionsHashes []H) PrepareRequest[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewPrepareRequest = f
 	}
 }
 
 // WithNewPrepareResponse sets NewPrepareResponse.
-func WithNewPrepareResponse[H Hash, A Address](f func(preparationHash H) PrepareResponse[H]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewPrepareResponse[H Hash](f func(preparationHash H) PrepareResponse[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewPrepareResponse = f
 	}
 }
 
 // WithNewChangeView sets NewChangeView.
-func WithNewChangeView[H Hash, A Address](f func(byte, ChangeViewReason, uint64) ChangeView) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewChangeView[H Hash](f func(byte, ChangeViewReason, uint64) ChangeView) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewChangeView = f
 	}
 }
 
 // WithNewCommit sets NewCommit.
-func WithNewCommit[H Hash, A Address](f func([]byte) Commit) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewCommit[H Hash](f func([]byte) Commit) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewCommit = f
 	}
 }
 
 // WithNewRecoveryRequest sets NewRecoveryRequest.
-func WithNewRecoveryRequest[H Hash, A Address](f func(ts uint64) RecoveryRequest) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewRecoveryRequest[H Hash](f func(ts uint64) RecoveryRequest) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewRecoveryRequest = f
 	}
 }
 
 // WithNewRecoveryMessage sets NewRecoveryMessage.
-func WithNewRecoveryMessage[H Hash, A Address](f func() RecoveryMessage[H, A]) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithNewRecoveryMessage[H Hash](f func() RecoveryMessage[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.NewRecoveryMessage = f
 	}
 }
 
 // WithVerifyPrepareRequest sets VerifyPrepareRequest.
-func WithVerifyPrepareRequest[H Hash, A Address](f func(ConsensusPayload[H, A]) error) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithVerifyPrepareRequest[H Hash](f func(ConsensusPayload[H]) error) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.VerifyPrepareRequest = f
 	}
 }
 
 // WithVerifyPrepareResponse sets VerifyPrepareResponse.
-func WithVerifyPrepareResponse[H Hash, A Address](f func(ConsensusPayload[H, A]) error) func(config *Config[H, A]) {
-	return func(cfg *Config[H, A]) {
+func WithVerifyPrepareResponse[H Hash](f func(ConsensusPayload[H]) error) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
 		cfg.VerifyPrepareResponse = f
 	}
 }

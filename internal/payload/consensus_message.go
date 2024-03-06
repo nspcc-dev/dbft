@@ -31,7 +31,7 @@ type (
 	}
 )
 
-var _ dbft.ConsensusMessage[crypto.Uint256, crypto.Uint160] = (*message)(nil)
+var _ dbft.ConsensusMessage[crypto.Uint256] = (*message)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (m message) EncodeBinary(w *gob.Encoder) error {
@@ -81,16 +81,16 @@ func (m *message) DecodeBinary(r *gob.Decoder) error {
 }
 
 func (m message) GetChangeView() dbft.ChangeView { return m.payload.(dbft.ChangeView) }
-func (m message) GetPrepareRequest() dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] {
-	return m.payload.(dbft.PrepareRequest[crypto.Uint256, crypto.Uint160])
+func (m message) GetPrepareRequest() dbft.PrepareRequest[crypto.Uint256] {
+	return m.payload.(dbft.PrepareRequest[crypto.Uint256])
 }
 func (m message) GetPrepareResponse() dbft.PrepareResponse[crypto.Uint256] {
 	return m.payload.(dbft.PrepareResponse[crypto.Uint256])
 }
 func (m message) GetCommit() dbft.Commit                   { return m.payload.(dbft.Commit) }
 func (m message) GetRecoveryRequest() dbft.RecoveryRequest { return m.payload.(dbft.RecoveryRequest) }
-func (m message) GetRecoveryMessage() dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160] {
-	return m.payload.(dbft.RecoveryMessage[crypto.Uint256, crypto.Uint160])
+func (m message) GetRecoveryMessage() dbft.RecoveryMessage[crypto.Uint256] {
+	return m.payload.(dbft.RecoveryMessage[crypto.Uint256])
 }
 
 // ViewNumber implements ConsensusMessage interface.
