@@ -25,10 +25,9 @@ type (
 	neoBlock struct {
 		base
 
-		consensusData uint64
-		transactions  []dbft.Transaction[crypto.Uint256]
-		signature     []byte
-		hash          *crypto.Uint256
+		transactions []dbft.Transaction[crypto.Uint256]
+		signature    []byte
+		hash         *crypto.Uint256
 	}
 )
 
@@ -45,11 +44,6 @@ func (b *neoBlock) Index() uint32 {
 // MerkleRoot implements Block interface.
 func (b *neoBlock) MerkleRoot() crypto.Uint256 {
 	return b.base.MerkleRoot
-}
-
-// ConsensusData implements Block interface.
-func (b *neoBlock) ConsensusData() uint64 {
-	return b.consensusData
 }
 
 // Transactions implements Block interface.

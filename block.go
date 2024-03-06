@@ -10,8 +10,6 @@ type Block[H Hash] interface {
 	MerkleRoot() H
 	// Index returns block index.
 	Index() uint32
-	// ConsensusData is a random nonce.
-	ConsensusData() uint64
 
 	// Signature returns block's signature.
 	Signature() []byte

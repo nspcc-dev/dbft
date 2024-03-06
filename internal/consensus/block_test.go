@@ -23,9 +23,6 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 
-	b.consensusData = 123
-	assert.EqualValues(t, 123, b.ConsensusData())
-
 	b.base.PrevHash = crypto.Uint256{3, 7}
 	assert.Equal(t, crypto.Uint256{3, 7}, b.PrevHash())
 
