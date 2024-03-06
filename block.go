@@ -4,8 +4,6 @@ package dbft
 type Block[H Hash] interface {
 	// Hash returns block hash.
 	Hash() H
-
-	Version() uint32
 	// PrevHash returns previous block hash.
 	PrevHash() H
 	// MerkleRoot returns a merkle root of the transaction hashes.

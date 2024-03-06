@@ -114,7 +114,7 @@ func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Ui
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
-	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Version, ctx.Nonce, ctx.TransactionHashes)
+	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
 	return block
 }
 

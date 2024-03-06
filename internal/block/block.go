@@ -32,11 +32,6 @@ type (
 	}
 )
 
-// Version implements Block interface.
-func (b neoBlock) Version() uint32 {
-	return b.base.Version
-}
-
 // PrevHash implements Block interface.
 func (b *neoBlock) PrevHash() crypto.Uint256 {
 	return b.base.PrevHash
@@ -73,16 +68,19 @@ func (b *neoBlock) SetTransactions(txx []dbft.Transaction[crypto.Uint256]) {
 }
 
 // NewBlock returns new block.
-func NewBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, version uint32, nonce uint64, txHashes []crypto.Uint256) dbft.Block[crypto.Uint256] {
+func NewBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txHashes []crypto.Uint256) dbft.Block[crypto.Uint256] {
 	block := new(neoBlock)
 	block.base.Timestamp = uint32(timestamp / 1000000000)
 	block.base.Index = index
-	// NextConsensus information is not provided by dBFT context, it's an implementation-specific field,
-	// and thus, should be managed outside the dBFT library. For simulation simplicity, let's assume
-	// that NextConsensus is filled by every CN separately and is not verified.
+
+	// NextConsensus and Version information is not provided by dBFT context,
+	// these are implementation-specific fields, and thus, should be managed outside the
+	// dBFT library. For simulation simplicity, let's assume that these fields are filled
+	// by every CN separately and is not verified.
 	block.base.NextConsensus = crypto.Uint160{1, 2, 3}
+	block.base.Version = 0
+
 	block.base.PrevHash = prevHash
-	block.base.Version = version
 	block.base.ConsensusData = nonce
 
 	if len(txHashes) != 0 {

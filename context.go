@@ -38,7 +38,6 @@ type Context[H Hash] struct {
 	MyIndex int
 	// PrimaryIndex is an index of the primary node in the current epoch.
 	PrimaryIndex uint
-	Version      uint32
 
 	// PrevHash is a hash of the previous block.
 	PrevHash H
