@@ -156,7 +156,6 @@ func TestPayload_Setters(t *testing.T) {
 	t.Run("ChangeView", func(t *testing.T) {
 		cv := NewChangeView(4, 0, secToNanoSec(1234))
 
-		assert.EqualValues(t, secToNanoSec(1234), cv.Timestamp())
 		assert.EqualValues(t, 4, cv.NewViewNumber())
 	})
 

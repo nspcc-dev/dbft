@@ -41,11 +41,6 @@ func (c changeView) NewViewNumber() byte {
 	return c.newViewNumber
 }
 
-// Timestamp implements ChangeView interface.
-func (c changeView) Timestamp() uint64 {
-	return secToNanoSec(c.timestamp)
-}
-
 // Reason implements ChangeView interface.
 func (c changeView) Reason() dbft.ChangeViewReason {
 	return dbft.CVUnknown
