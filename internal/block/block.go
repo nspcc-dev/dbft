@@ -37,11 +37,6 @@ func (b *neoBlock) PrevHash() crypto.Uint256 {
 	return b.base.PrevHash
 }
 
-// Timestamp implements Block interface.
-func (b *neoBlock) Timestamp() uint64 {
-	return uint64(b.base.Timestamp) * 1000000000
-}
-
 // Index implements Block interface.
 func (b *neoBlock) Index() uint32 {
 	return b.base.Index

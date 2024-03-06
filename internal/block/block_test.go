@@ -32,10 +32,6 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.base.MerkleRoot = crypto.Uint256{13}
 	assert.Equal(t, crypto.Uint256{13}, b.MerkleRoot())
 
-	b.base.Timestamp = 1234
-	// 1234s -> 1234000000000ns
-	assert.EqualValues(t, uint64(1234000000000), b.Timestamp())
-
 	b.base.Index = 100
 	assert.EqualValues(t, 100, b.Index())
 

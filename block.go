@@ -8,8 +8,6 @@ type Block[H Hash] interface {
 	PrevHash() H
 	// MerkleRoot returns a merkle root of the transaction hashes.
 	MerkleRoot() H
-	// Timestamp returns block's proposal timestamp.
-	Timestamp() uint64
 	// Index returns block index.
 	Index() uint32
 	// ConsensusData is a random nonce.
