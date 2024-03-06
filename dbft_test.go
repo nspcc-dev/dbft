@@ -63,7 +63,7 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 		require.EqualValues(t, 2, p.ValidatorIndex())
 
 		t.Run("primary send ChangeView on timeout", func(t *testing.T) {
-			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+			service.OnTimeout(timer.HV{H: s.currHeight + 1})
 
 			// if there are many faulty must send RecoveryRequest
 			cv := s.tryRecv()
@@ -73,9 +73,10 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 			// if all nodes are up must send ChangeView
 			for i := range service.LastSeenMessage {
-				service.LastSeenMessage[i] = &timer.HV{Height: s.currHeight + 1}
+				var hv dbft.HV = timer.HV{H: s.currHeight + 1}
+				service.LastSeenMessage[i] = &hv
 			}
-			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+			service.OnTimeout(timer.HV{H: s.currHeight + 1})
 
 			cv = s.tryRecv()
 			require.NotNil(t, cv)
@@ -166,7 +167,8 @@ func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 		service.Start(0)
 
 		for i := range service.LastSeenMessage {
-			service.LastSeenMessage[i] = &timer.HV{Height: s.currHeight + 1}
+			var hv dbft.HV = timer.HV{H: s.currHeight + 1}
+			service.LastSeenMessage[i] = &hv
 		}
 
 		p := s.getPrepareRequest(5, txs[0].Hash())
@@ -303,10 +305,10 @@ func TestDBFT_OnReceiveCommit(t *testing.T) {
 		require.NoError(t, service.Header().Verify(pub, cm.GetCommit().Signature()))
 
 		t.Run("send recovery message on timeout", func(t *testing.T) {
-			service.OnTimeout(timer.HV{Height: 1})
+			service.OnTimeout(timer.HV{H: 1})
 			require.Nil(t, s.tryRecv())
 
-			service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+			service.OnTimeout(timer.HV{H: s.currHeight + 1})
 
 			r := s.tryRecv()
 			require.NotNil(t, r)
@@ -394,13 +396,13 @@ func TestDBFT_OnReceiveChangeView(t *testing.T) {
 		service.OnReceive(resp)
 		require.Nil(t, s.tryRecv())
 
-		service.OnTimeout(timer.HV{Height: s.currHeight + 1})
+		service.OnTimeout(timer.HV{H: s.currHeight + 1})
 		cv := s.tryRecv()
 		require.NotNil(t, cv)
 		require.Equal(t, dbft.ChangeViewType, cv.Type())
 
 		t.Run("primary sends prepare request after timeout", func(t *testing.T) {
-			service.OnTimeout(timer.HV{Height: s.currHeight + 1, View: 1})
+			service.OnTimeout(timer.HV{H: s.currHeight + 1, V: 1})
 			pr := s.tryRecv()
 			require.NotNil(t, pr)
 			require.Equal(t, dbft.PrepareRequestType, pr.Type())
@@ -418,6 +420,16 @@ func TestDBFT_Invalid(t *testing.T) {
 	require.NotNil(t, pub)
 
 	opts := []func(*dbft.Config[crypto.Uint256]){dbft.WithKeyPair[crypto.Uint256](priv, pub)}
+	t.Run("without Timer", func(t *testing.T) {
+		require.Nil(t, dbft.New(opts...))
+	})
+
+	opts = append(opts, dbft.WithTimer[crypto.Uint256](timer.New()))
+	t.Run("without NewHeightView", func(t *testing.T) {
+		require.Nil(t, dbft.New(opts...))
+	})
+
+	opts = append(opts, dbft.WithNewHeightView[crypto.Uint256](timer.NewHV))
 	t.Run("without CurrentHeight", func(t *testing.T) {
 		require.Nil(t, dbft.New(opts...))
 	})
@@ -570,7 +582,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	// (possible on timeout) and sends the ChangeView message.
 	s3.OnReceive(resp0V0)
 	s3.OnReceive(resp2V0)
-	s3.OnTimeout(timer.HV{Height: r3.currHeight + 1, View: 0})
+	s3.OnTimeout(timer.HV{H: r3.currHeight + 1, V: 0})
 	cv3V0 := r3.tryRecv()
 	require.NotNil(t, cv3V0)
 	require.Equal(t, dbft.ChangeViewType, cv3V0.Type())
@@ -580,7 +592,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	// current view) and sends the ChangeView message.
 	s1.OnReceive(resp0V0)
 	s1.OnReceive(cv3V0)
-	s1.OnTimeout(timer.HV{Height: r1.currHeight + 1, View: 0})
+	s1.OnTimeout(timer.HV{H: r1.currHeight + 1, V: 0})
 	cv1V0 := r1.tryRecv()
 	require.NotNil(t, cv1V0)
 	require.Equal(t, dbft.ChangeViewType, cv1V0.Type())
@@ -589,7 +601,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	// (possible on timeout after receiving at least M non-commit messages from the
 	// current view) and sends the ChangeView message.
 	s0.OnReceive(cv3V0)
-	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 0})
+	s0.OnTimeout(timer.HV{H: r0.currHeight + 1, V: 0})
 	cv0V0 := r0.tryRecv()
 	require.NotNil(t, cv0V0)
 	require.Equal(t, dbft.ChangeViewType, cv0V0.Type())
@@ -605,7 +617,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	require.Equal(t, uint8(1), s0.ViewNumber)
 
 	// Step 10. The primary (at view 1) replica 0 sends the PrepareRequest message.
-	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 1})
+	s0.OnTimeout(timer.HV{H: r0.currHeight + 1, V: 1})
 	reqV1 := r0.tryRecv()
 	require.NotNil(t, reqV1)
 	require.Equal(t, dbft.PrepareRequestType, reqV1.Type())
@@ -628,7 +640,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	// Intermediate step A. It is added to make step 14 possible. The backup (at
 	// view 1) replica 3 doesn't receive anything for a long time and sends
 	// RecoveryRequest.
-	s3.OnTimeout(timer.HV{Height: r3.currHeight + 1, View: 1})
+	s3.OnTimeout(timer.HV{H: r3.currHeight + 1, V: 1})
 	rcvr3V1 := r3.tryRecv()
 	require.NotNil(t, rcvr3V1)
 	require.Equal(t, dbft.RecoveryRequestType, rcvr3V1.Type())
@@ -663,7 +675,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	// of "lost" nodes. That's why we'he added Intermediate steps A and B.
 	//
 	// After that replica 1 is allowed to send the CV message.
-	s1.OnTimeout(timer.HV{Height: r1.currHeight + 1, View: 1})
+	s1.OnTimeout(timer.HV{H: r1.currHeight + 1, V: 1})
 	cv1V1 := r1.tryRecv()
 	require.NotNil(t, cv1V1)
 	require.Equal(t, dbft.ChangeViewType, cv1V1.Type())
@@ -671,7 +683,7 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	// Step 13. The primary (at view 1) replica 0 decides to change its view
 	// (possible on timeout) and sends the ChangeView message.
 	s0.OnReceive(resp1V1)
-	s0.OnTimeout(timer.HV{Height: r0.currHeight + 1, View: 1})
+	s0.OnTimeout(timer.HV{H: r0.currHeight + 1, V: 1})
 	cv0V1 := r0.tryRecv()
 	require.NotNil(t, cv0V1)
 	require.Equal(t, dbft.ChangeViewType, cv0V1.Type())
@@ -806,6 +818,8 @@ func (s testState) copyWithIndex(myIndex int) *testState {
 
 func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 	opts := []func(*dbft.Config[crypto.Uint256]){
+		dbft.WithTimer[crypto.Uint256](timer.New()),
+		dbft.WithNewHeightView[crypto.Uint256](timer.NewHV),
 		dbft.WithCurrentHeight[crypto.Uint256](func() uint32 { return s.currHeight }),
 		dbft.WithCurrentBlockHash[crypto.Uint256](func() crypto.Uint256 { return s.currHash }),
 		dbft.WithGetValidators[crypto.Uint256](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey { return s.pubs }),

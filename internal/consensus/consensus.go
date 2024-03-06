@@ -5,6 +5,7 @@ import (
 
 	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/internal/crypto"
+	"github.com/nspcc-dev/dbft/timer"
 	"go.uber.org/zap"
 )
 
@@ -18,6 +19,8 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 	getValidators func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey,
 	verifyPayload func(consensusPayload dbft.ConsensusPayload[crypto.Uint256]) error) *dbft.DBFT[crypto.Uint256] {
 	return dbft.New[crypto.Uint256](
+		dbft.WithTimer[crypto.Uint256](timer.New()),
+		dbft.WithNewHeightView[crypto.Uint256](timer.NewHV),
 		dbft.WithLogger[crypto.Uint256](logger),
 		dbft.WithSecondsPerBlock[crypto.Uint256](time.Second*5),
 		dbft.WithKeyPair[crypto.Uint256](key, pub),
