@@ -1,4 +1,4 @@
-package payload
+package consensus
 
 func secToNanoSec(s uint32) uint64 {
 	return uint64(s) * 1000000000

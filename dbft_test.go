@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/nspcc-dev/dbft"
-	"github.com/nspcc-dev/dbft/internal/block"
+	"github.com/nspcc-dev/dbft/internal/consensus"
 	"github.com/nspcc-dev/dbft/internal/crypto"
-	"github.com/nspcc-dev/dbft/internal/payload"
 	"github.com/nspcc-dev/dbft/timer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -724,27 +723,27 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 }
 
 func (s testState) getChangeView(from uint16, view byte) Payload {
-	cv := payload.NewChangeView(view, 0, 0)
+	cv := consensus.NewChangeView(view, 0, 0)
 
-	p := payload.NewConsensusPayload(dbft.ChangeViewType, s.currHeight+1, from, 0, cv)
+	p := consensus.NewConsensusPayload(dbft.ChangeViewType, s.currHeight+1, from, 0, cv)
 	return p
 }
 
 func (s testState) getRecoveryRequest(from uint16) Payload {
-	p := payload.NewConsensusPayload(dbft.RecoveryRequestType, s.currHeight+1, from, 0, payload.NewRecoveryRequest(0))
+	p := consensus.NewConsensusPayload(dbft.RecoveryRequestType, s.currHeight+1, from, 0, consensus.NewRecoveryRequest(0))
 	return p
 }
 
 func (s testState) getCommit(from uint16, sign []byte) Payload {
-	c := payload.NewCommit(sign)
-	p := payload.NewConsensusPayload(dbft.CommitType, s.currHeight+1, from, 0, c)
+	c := consensus.NewCommit(sign)
+	p := consensus.NewConsensusPayload(dbft.CommitType, s.currHeight+1, from, 0, c)
 	return p
 }
 
 func (s testState) getPrepareResponse(from uint16, phash crypto.Uint256) Payload {
-	resp := payload.NewPrepareResponse(phash)
+	resp := consensus.NewPrepareResponse(phash)
 
-	p := payload.NewConsensusPayload(dbft.PrepareResponseType, s.currHeight+1, from, 0, resp)
+	p := consensus.NewConsensusPayload(dbft.PrepareResponseType, s.currHeight+1, from, 0, resp)
 	return p
 }
 
@@ -753,9 +752,9 @@ func (s testState) getPrepareRequest(from uint16, hashes ...crypto.Uint256) Payl
 }
 
 func (s testState) getPrepareRequestWithHeight(from uint16, height uint32, hashes ...crypto.Uint256) Payload {
-	req := payload.NewPrepareRequest(0, 0, hashes)
+	req := consensus.NewPrepareRequest(0, 0, hashes)
 
-	p := payload.NewConsensusPayload(dbft.PrepareRequestType, height, from, 0, req)
+	p := consensus.NewConsensusPayload(dbft.PrepareRequestType, height, from, 0, req)
 	return p
 }
 
@@ -824,13 +823,13 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 		dbft.WithGetVerified[crypto.Uint256](func() []dbft.Transaction[crypto.Uint256] { return []dbft.Transaction[crypto.Uint256]{} }),
 
 		dbft.WithNewConsensusPayload[crypto.Uint256](newConsensusPayload),
-		dbft.WithNewPrepareRequest[crypto.Uint256](payload.NewPrepareRequest),
-		dbft.WithNewPrepareResponse[crypto.Uint256](payload.NewPrepareResponse),
-		dbft.WithNewChangeView[crypto.Uint256](payload.NewChangeView),
-		dbft.WithNewCommit[crypto.Uint256](payload.NewCommit),
-		dbft.WithNewRecoveryRequest[crypto.Uint256](payload.NewRecoveryRequest),
+		dbft.WithNewPrepareRequest[crypto.Uint256](consensus.NewPrepareRequest),
+		dbft.WithNewPrepareResponse[crypto.Uint256](consensus.NewPrepareResponse),
+		dbft.WithNewChangeView[crypto.Uint256](consensus.NewChangeView),
+		dbft.WithNewCommit[crypto.Uint256](consensus.NewCommit),
+		dbft.WithNewRecoveryRequest[crypto.Uint256](consensus.NewRecoveryRequest),
 		dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
-			return payload.NewRecoveryMessage(nil)
+			return consensus.NewRecoveryMessage(nil)
 		}),
 	}
 
@@ -855,14 +854,14 @@ func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Ui
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
-	block := block.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	block := consensus.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
 	return block
 }
 
 // newConsensusPayload is a function for creating consensus payload of specific
 // type.
 func newConsensusPayload(c *dbft.Context[crypto.Uint256], t dbft.MessageType, msg any) dbft.ConsensusPayload[crypto.Uint256] {
-	cp := payload.NewConsensusPayload(t, c.BlockIndex, uint16(c.MyIndex), c.ViewNumber, msg)
+	cp := consensus.NewConsensusPayload(t, c.BlockIndex, uint16(c.MyIndex), c.ViewNumber, msg)
 	return cp
 }
 

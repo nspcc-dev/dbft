@@ -1,4 +1,4 @@
-package payload
+package consensus
 
 import (
 	"github.com/nspcc-dev/dbft"
