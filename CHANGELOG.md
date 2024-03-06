@@ -13,6 +13,7 @@ Behaviour changes:
  * rename `InitializeConsensus` dBFT method to `Reset` (#95)
  * drop outdated dBFT `Service` interface (#95)
  * move all default implementations to `internal` package (#97)
+ * remove unused APIs of dBFT and payload interfaces (#104)
 
 Improvements:
  * add MIT License (#78, #79)
