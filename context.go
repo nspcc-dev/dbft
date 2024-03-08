@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// HeightView is a block height/consensus view pair.
+type HeightView struct {
+	Height uint32
+	View   byte
+}
+
 // Context is a main dBFT structure which
 // contains all information needed for performing transitions.
 type Context[H Hash] struct {
@@ -63,9 +69,9 @@ type Context[H Hash] struct {
 	ChangeViewPayloads []ConsensusPayload[H]
 	// LastChangeViewPayloads stores consensus ChangeView payloads for the last epoch.
 	LastChangeViewPayloads []ConsensusPayload[H]
-	// LastSeenMessage array stores the height of the last seen message, for each validator.
-	// if this node never heard from validator i, LastSeenMessage[i] will be -1.
-	LastSeenMessage []*HV
+	// LastSeenMessage array stores the height and view of the last seen message, for each validator.
+	// If this node never heard a thing from validator i, LastSeenMessage[i] will be nil.
+	LastSeenMessage []*HeightView
 
 	lastBlockTimestamp uint64    // ns-precision timestamp from the last header (used for the next block timestamp calculations).
 	lastBlockTime      time.Time // Wall clock time of when the last block was first seen (used for timer adjustments).
@@ -118,7 +124,7 @@ func (c *Context[H]) CountCommitted() (count int) {
 // for this view and that hasn't sent the Commit message at the previous views.
 func (c *Context[H]) CountFailed() (count int) {
 	for i, hv := range c.LastSeenMessage {
-		if c.CommitPayloads[i] == nil && (hv == nil || (*hv).Height() < c.BlockIndex || (*hv).View() < c.ViewNumber) {
+		if c.CommitPayloads[i] == nil && (hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber) {
 			count++
 		}
 	}
@@ -198,7 +204,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 		c.LastChangeViewPayloads = make([]ConsensusPayload[H], n)
 
 		if c.LastSeenMessage == nil {
-			c.LastSeenMessage = make([]*HV, n)
+			c.LastSeenMessage = make([]*HeightView, n)
 		}
 		c.blockProcessed = false
 	} else {
@@ -231,8 +237,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	c.ViewNumber = view
 
 	if c.MyIndex >= 0 {
-		hv := c.Config.NewHeightView(c.BlockIndex, c.ViewNumber)
-		c.LastSeenMessage[c.MyIndex] = &hv
+		c.LastSeenMessage[c.MyIndex] = &HeightView{c.BlockIndex, c.ViewNumber}
 	}
 }
 

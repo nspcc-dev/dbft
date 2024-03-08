@@ -14,8 +14,6 @@ type Config[H Hash] struct {
 	Logger *zap.Logger
 	// Timer
 	Timer Timer
-	// NewHeightView is a constructor for [dbft.HV] object.
-	NewHeightView func(height uint32, view byte) HV
 	// SecondsPerBlock is the number of seconds that
 	// need to pass before another block will be accepted.
 	SecondsPerBlock time.Duration
@@ -112,8 +110,6 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 		return errors.New("private key is nil")
 	} else if cfg.Timer == nil {
 		return errors.New("Timer is nil")
-	} else if cfg.NewHeightView == nil {
-		return errors.New("NewHeightView is nil")
 	} else if cfg.CurrentHeight == nil {
 		return errors.New("CurrentHeight is nil")
 	} else if cfg.CurrentBlockHash == nil {
@@ -183,13 +179,6 @@ func WithLogger[H Hash](log *zap.Logger) func(config *Config[H]) {
 func WithTimer[H Hash](t Timer) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.Timer = t
-	}
-}
-
-// WithNewHeightView sets NewHeightView constructor.
-func WithNewHeightView[H Hash](f func(height uint32, view byte) HV) func(config *Config[H]) {
-	return func(cfg *Config[H]) {
-		cfg.NewHeightView = f
 	}
 }
 

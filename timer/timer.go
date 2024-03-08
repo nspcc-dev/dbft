@@ -6,28 +6,17 @@ package timer
 
 import (
 	"time"
-
-	"github.com/nspcc-dev/dbft"
 )
 
 type (
-	value struct {
-		HV
-		s time.Time
-		d time.Duration
-	}
-
-	// HV is a pair of a H and a V that implements [dbft.HV] interface.
-	HV struct {
-		H uint32
-		V byte
-	}
-
 	// Timer is a default [dbft.Timer] implementation.
 	Timer struct {
-		val value
-		tt  *time.Timer
-		ch  chan time.Time
+		height uint32
+		view   byte
+		s      time.Time
+		d      time.Duration
+		tt     *time.Timer
+		ch     chan time.Time
 	}
 )
 
@@ -49,28 +38,31 @@ func (t *Timer) C() <-chan time.Time {
 	return t.tt.C
 }
 
-// HV implements Timer interface.
-func (t *Timer) HV() dbft.HV {
-	return t.val.HV
+// Height returns current timer height.
+func (t *Timer) Height() uint32 {
+	return t.height
+}
+
+// View return current timer view.
+func (t *Timer) View() byte {
+	return t.view
 }
 
 // Reset implements Timer interface.
-func (t *Timer) Reset(hv dbft.HV, d time.Duration) {
+func (t *Timer) Reset(height uint32, view byte, d time.Duration) {
 	t.Stop()
 
-	t.val.s = t.Now()
-	t.val.d = d
-	t.val.HV = HV{
-		H: hv.Height(),
-		V: hv.View(),
-	}
+	t.s = t.Now()
+	t.d = d
+	t.height = height
+	t.view = view
 
-	if t.val.d != 0 {
-		t.tt = time.NewTimer(t.val.d)
+	if t.d != 0 {
+		t.tt = time.NewTimer(t.d)
 	} else {
 		t.tt = nil
 		drain(t.ch)
-		t.ch <- t.val.s
+		t.ch <- t.s
 	}
 }
 
@@ -96,33 +88,15 @@ func (t *Timer) Sleep(d time.Duration) {
 
 // Extend implements Timer interface.
 func (t *Timer) Extend(d time.Duration) {
-	t.val.d += d
+	t.d += d
 
-	if elapsed := time.Since(t.val.s); t.val.d > elapsed {
+	if elapsed := time.Since(t.s); t.d > elapsed {
 		t.Stop()
-		t.tt = time.NewTimer(t.val.d - elapsed)
+		t.tt = time.NewTimer(t.d - elapsed)
 	}
 }
 
 // Now implements Timer interface.
 func (t *Timer) Now() time.Time {
 	return time.Now()
-}
-
-// NewHV is a constructor of HV.
-func NewHV(height uint32, view byte) dbft.HV {
-	return HV{
-		H: height,
-		V: view,
-	}
-}
-
-// Height implements [dbft.HV] interface.
-func (hv HV) Height() uint32 {
-	return hv.H
-}
-
-// View implements [dbft.HV] interface.
-func (hv HV) View() byte {
-	return hv.V
 }

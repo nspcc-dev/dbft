@@ -94,7 +94,7 @@ func (n *simNode) Run(ctx context.Context) {
 			n.log.Info("context cancelled")
 			return
 		case <-n.d.Timer.C():
-			n.d.OnTimeout(n.d.Timer.HV())
+			n.d.OnTimeout(n.d.Timer.Height(), n.d.Timer.View())
 		case msg := <-n.messages:
 			n.d.OnReceive(msg)
 		}
