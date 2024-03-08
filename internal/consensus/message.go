@@ -1,4 +1,4 @@
-package payload
+package consensus
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ type (
 	}
 )
 
-var _ dbft.ConsensusPayload[crypto.Uint256, crypto.Uint160] = (*Payload)(nil)
+var _ dbft.ConsensusPayload[crypto.Uint256] = (*Payload)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p Payload) EncodeBinary(w *gob.Encoder) error {

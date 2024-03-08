@@ -1,53 +1,39 @@
+/*
+Package timer contains default implementation of [dbft.Timer] interface and provides
+all necessary timer-related functionality to [dbft.DBFT] service.
+*/
 package timer
 
 import (
 	"time"
+
+	"github.com/nspcc-dev/dbft"
 )
 
 type (
-	// Timer is an interface which implements all time-related
-	// functions. It can be mocked for testing.
-	Timer interface {
-		// Now returns current time.
-		Now() time.Time
-		// Reset
-		Reset(s HV, d time.Duration)
-		// Sleep stops execution for duration d.
-		Sleep(d time.Duration)
-		// Extend extends current timer with duration d.
-		Extend(d time.Duration)
-		// Stop stops timer.
-		Stop()
-		// HV returns current height and view set for the timer.
-		HV() HV
-		// C returns channel for timer events.
-		C() <-chan time.Time
-	}
-
 	value struct {
 		HV
 		s time.Time
 		d time.Duration
 	}
 
-	// HV is a pair of a Height and a View.
+	// HV is a pair of a H and a V that implements [dbft.HV] interface.
 	HV struct {
-		Height uint32
-		View   byte
+		H uint32
+		V byte
 	}
 
-	timer struct {
+	// Timer is a default [dbft.Timer] implementation.
+	Timer struct {
 		val value
 		tt  *time.Timer
 		ch  chan time.Time
 	}
 )
 
-var _ Timer = (*timer)(nil)
-
 // New returns default Timer implementation.
-func New() Timer {
-	t := &timer{
+func New() *Timer {
+	t := &Timer{
 		ch: make(chan time.Time, 1),
 	}
 
@@ -55,7 +41,7 @@ func New() Timer {
 }
 
 // C implements Timer interface.
-func (t *timer) C() <-chan time.Time {
+func (t *Timer) C() <-chan time.Time {
 	if t.tt == nil {
 		return t.ch
 	}
@@ -64,17 +50,20 @@ func (t *timer) C() <-chan time.Time {
 }
 
 // HV implements Timer interface.
-func (t *timer) HV() HV {
+func (t *Timer) HV() dbft.HV {
 	return t.val.HV
 }
 
 // Reset implements Timer interface.
-func (t *timer) Reset(hv HV, d time.Duration) {
+func (t *Timer) Reset(hv dbft.HV, d time.Duration) {
 	t.Stop()
 
 	t.val.s = t.Now()
 	t.val.d = d
-	t.val.HV = hv
+	t.val.HV = HV{
+		H: hv.Height(),
+		V: hv.View(),
+	}
 
 	if t.val.d != 0 {
 		t.tt = time.NewTimer(t.val.d)
@@ -93,7 +82,7 @@ func drain(ch <-chan time.Time) {
 }
 
 // Stop implements Timer interface.
-func (t *timer) Stop() {
+func (t *Timer) Stop() {
 	if t.tt != nil {
 		t.tt.Stop()
 		t.tt = nil
@@ -101,12 +90,12 @@ func (t *timer) Stop() {
 }
 
 // Sleep implements Timer interface.
-func (t *timer) Sleep(d time.Duration) {
+func (t *Timer) Sleep(d time.Duration) {
 	time.Sleep(d)
 }
 
 // Extend implements Timer interface.
-func (t *timer) Extend(d time.Duration) {
+func (t *Timer) Extend(d time.Duration) {
 	t.val.d += d
 
 	if elapsed := time.Since(t.val.s); t.val.d > elapsed {
@@ -116,6 +105,24 @@ func (t *timer) Extend(d time.Duration) {
 }
 
 // Now implements Timer interface.
-func (t *timer) Now() time.Time {
+func (t *Timer) Now() time.Time {
 	return time.Now()
+}
+
+// NewHV is a constructor of HV.
+func NewHV(height uint32, view byte) dbft.HV {
+	return HV{
+		H: height,
+		V: view,
+	}
+}
+
+// Height implements [dbft.HV] interface.
+func (hv HV) Height() uint32 {
+	return hv.H
+}
+
+// View implements [dbft.HV] interface.
+func (hv HV) View() byte {
+	return hv.V
 }

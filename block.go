@@ -1,23 +1,15 @@
 package dbft
 
 // Block is a generic interface for a block used by dbft.
-type Block[H Hash, A Address] interface {
+type Block[H Hash] interface {
 	// Hash returns block hash.
 	Hash() H
-
-	Version() uint32
 	// PrevHash returns previous block hash.
 	PrevHash() H
 	// MerkleRoot returns a merkle root of the transaction hashes.
 	MerkleRoot() H
-	// Timestamp returns block's proposal timestamp.
-	Timestamp() uint64
 	// Index returns block index.
 	Index() uint32
-	// ConsensusData is a random nonce.
-	ConsensusData() uint64
-	// NextConsensus returns hash of the validators of the next block.
-	NextConsensus() A
 
 	// Signature returns block's signature.
 	Signature() []byte

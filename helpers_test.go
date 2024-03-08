@@ -9,7 +9,6 @@ import (
 // Structures used for type-specific dBFT/payloads implementation to avoid cyclic
 // dependency.
 type (
-	address     struct{}
 	hash        struct{}
 	payloadStub struct {
 		height         uint32
@@ -19,10 +18,6 @@ type (
 )
 
 func (hash) String() string {
-	return ""
-}
-
-func (address) String() string {
 	return ""
 }
 
@@ -47,7 +42,7 @@ func (p payloadStub) SetPayload(any) {
 func (p payloadStub) GetChangeView() ChangeView {
 	panic("TODO")
 }
-func (p payloadStub) GetPrepareRequest() PrepareRequest[hash, address] {
+func (p payloadStub) GetPrepareRequest() PrepareRequest[hash] {
 	panic("TODO")
 }
 func (p payloadStub) GetPrepareResponse() PrepareResponse[hash] {
@@ -59,7 +54,7 @@ func (p payloadStub) GetCommit() Commit {
 func (p payloadStub) GetRecoveryRequest() RecoveryRequest {
 	panic("TODO")
 }
-func (p payloadStub) GetRecoveryMessage() RecoveryMessage[hash, address] {
+func (p payloadStub) GetRecoveryMessage() RecoveryMessage[hash] {
 	panic("TODO")
 }
 func (p payloadStub) ValidatorIndex() uint16 {
@@ -79,7 +74,7 @@ func (p payloadStub) Hash() hash {
 }
 
 func TestMessageCache(t *testing.T) {
-	c := newCache[hash, address]()
+	c := newCache[hash]()
 
 	p1 := payloadStub{
 		height: 3,

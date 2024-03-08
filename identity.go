@@ -31,14 +31,4 @@ type (
 		comparable
 		fmt.Stringer
 	}
-
-	// Address is a generic address interface used by dbft for operations related
-	// to consensus address. It is recommended to implement this interface
-	// using hash functions with low hash collision probability. The following
-	// requirements must be met:
-	// 1. Addresses of two equal sets of consensus members are equal.
-	// 2. Addresses of two different sets of consensus members are different.
-	Address interface {
-		comparable
-	}
 )

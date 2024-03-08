@@ -1,4 +1,4 @@
-package payload
+package consensus
 
 import (
 	"encoding/gob"
@@ -39,11 +39,6 @@ func (c *changeView) DecodeBinary(r *gob.Decoder) error {
 // NewViewNumber implements ChangeView interface.
 func (c changeView) NewViewNumber() byte {
 	return c.newViewNumber
-}
-
-// Timestamp implements ChangeView interface.
-func (c changeView) Timestamp() uint64 {
-	return secToNanoSec(c.timestamp)
 }
 
 // Reason implements ChangeView interface.

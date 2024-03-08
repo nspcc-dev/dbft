@@ -1,4 +1,4 @@
-package payload
+package consensus
 
 import (
 	"encoding/gob"
@@ -12,18 +12,16 @@ type (
 		transactionHashes []crypto.Uint256
 		nonce             uint64
 		timestamp         uint32
-		nextConsensus     crypto.Uint160
 	}
 	// prepareRequestAux is an auxiliary structure for prepareRequest encoding.
 	prepareRequestAux struct {
 		TransactionHashes []crypto.Uint256
 		Nonce             uint64
 		Timestamp         uint32
-		NextConsensus     crypto.Uint160
 	}
 )
 
-var _ dbft.PrepareRequest[crypto.Uint256, crypto.Uint160] = (*prepareRequest)(nil)
+var _ dbft.PrepareRequest[crypto.Uint256] = (*prepareRequest)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {
@@ -31,7 +29,6 @@ func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {
 		TransactionHashes: p.transactionHashes,
 		Nonce:             p.nonce,
 		Timestamp:         p.timestamp,
-		NextConsensus:     p.nextConsensus,
 	})
 }
 
@@ -44,7 +41,6 @@ func (p *prepareRequest) DecodeBinary(r *gob.Decoder) error {
 
 	p.timestamp = aux.Timestamp
 	p.nonce = aux.Nonce
-	p.nextConsensus = aux.NextConsensus
 	p.transactionHashes = aux.TransactionHashes
 	return nil
 }
@@ -62,9 +58,4 @@ func (p prepareRequest) Nonce() uint64 {
 // TransactionHashes implements PrepareRequest interface.
 func (p prepareRequest) TransactionHashes() []crypto.Uint256 {
 	return p.transactionHashes
-}
-
-// NextConsensus implements PrepareRequest interface.
-func (p prepareRequest) NextConsensus() crypto.Uint160 {
-	return p.nextConsensus
 }

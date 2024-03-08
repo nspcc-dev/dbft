@@ -14,18 +14,19 @@ in `config.go`.
 2. `dbft` package contains `PrivateKey`/`PublicKey` interfaces which permits usage of one's own
 cryptography for signing blocks on `Commit` stage. Refer to `identity.go` for `PrivateKey`/`PublicKey`
 description. No default implementation is provided.
-3. `dbft` package contains `Hash`/`Address` interfaces which permits usage of one's own
-hash/address implementation without additional overhead on conversions. Instantiate dBFT with
-custom hash/address implementation that matches requirements specified in the corresponding
-documentation. Refer to `identity.go` for `Hash`/`Address` description. No default implementation is
+3. `dbft` package contains `Hash` interface which permits usage of one's own
+hash implementation without additional overhead on conversions. Instantiate dBFT with
+custom hash implementation that matches requirements specified in the corresponding
+documentation. Refer to `identity.go` for `Hash` description. No default implementation is
 provided.
 4. `dbft` package contains `Block` and `Transaction` abstractions located at the `block.go` and
-`transaction.go` files. Every block must be able to be signed and verified as well as implement setters
-and getters for main fields. `Transaction` is an entity which can be hashed. Two entities having
+`transaction.go` files. Every block must be able to be signed and verified as well as implement getters
+for main fields. `Transaction` is an entity which can be hashed. Two entities having
 equal hashes are considered equal. No default implementation is provided.
 5. `dbft` contains generic interfaces for payloads. No default implementation is provided.
-6. `timer` contains default time provider. It should make it easier to write tests
-concerning dBFT's time depending behaviour.
+6. `dbft` contains generic interfaces for time-related operations (`Timer` and `HV`). `timer` package contains
+default time and height-view providers, it contains minimal required timer functionality and may safely be used in
+production code. It should make it easier to write tests concerning dBFT's time depending behaviour.
 7. `internal` contains an example of custom identity types and payloads implementation used to implement
 an example of dBFT's usage with 6-node consensus. Refer to `internal` subpackages for type-specific dBFT
 implementation and tests. Refer to `internal/simulation` for an example of dBFT library usage.

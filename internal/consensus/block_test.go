@@ -1,4 +1,4 @@
-package block
+package consensus
 
 import (
 	"bytes"
@@ -23,24 +23,11 @@ func TestNeoBlock_Setters(t *testing.T) {
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 
-	b.consensusData = 123
-	assert.EqualValues(t, 123, b.ConsensusData())
-
-	b.base.Version = 42
-	assert.EqualValues(t, 42, b.Version())
-
-	b.base.NextConsensus = crypto.Uint160{1}
-	assert.Equal(t, crypto.Uint160{1}, b.NextConsensus())
-
 	b.base.PrevHash = crypto.Uint256{3, 7}
 	assert.Equal(t, crypto.Uint256{3, 7}, b.PrevHash())
 
 	b.base.MerkleRoot = crypto.Uint256{13}
 	assert.Equal(t, crypto.Uint256{13}, b.MerkleRoot())
-
-	b.base.Timestamp = 1234
-	// 1234s -> 1234000000000ns
-	assert.EqualValues(t, uint64(1234000000000), b.Timestamp())
 
 	b.base.Index = 100
 	assert.EqualValues(t, 100, b.Index())
