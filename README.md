@@ -24,9 +24,9 @@ provided.
 for main fields. `Transaction` is an entity which can be hashed. Two entities having
 equal hashes are considered equal. No default implementation is provided.
 5. `dbft` contains generic interfaces for payloads. No default implementation is provided.
-6. `dbft` contains generic interfaces for time-related operations (`Timer` and `HV`). `timer` package contains
-default time and height-view providers, it contains minimal required timer functionality and may safely be used in
-production code. It should make it easier to write tests concerning dBFT's time depending behaviour.
+6. `dbft` contains generic `Timer` interface for time-related operations. `timer` package contains
+default `Timer` provider that can safely be used in production code. The interface itself
+is mostly created for tests dealing with dBFT's time-dependant behaviour.
 7. `internal` contains an example of custom identity types and payloads implementation used to implement
 an example of dBFT's usage with 6-node consensus. Refer to `internal` subpackages for type-specific dBFT
 implementation and tests. Refer to `internal/simulation` for an example of dBFT library usage.

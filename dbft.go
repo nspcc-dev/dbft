@@ -168,22 +168,22 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 }
 
 // OnTimeout advances state machine as if timeout was fired.
-func (d *DBFT[H]) OnTimeout(hv HV) {
+func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
 	if d.Context.WatchOnly() || d.BlockSent() {
 		return
 	}
 
-	if hv.Height() != d.BlockIndex || hv.View() != d.ViewNumber {
+	if height != d.BlockIndex || view != d.ViewNumber {
 		d.Logger.Debug("timeout: ignore old timer",
-			zap.Uint32("height", hv.Height()),
-			zap.Uint("view", uint(hv.View())))
+			zap.Uint32("height", height),
+			zap.Uint("view", uint(view)))
 
 		return
 	}
 
 	d.Logger.Debug("timeout",
-		zap.Uint32("height", hv.Height()),
-		zap.Uint("view", uint(hv.View())))
+		zap.Uint32("height", height),
+		zap.Uint("view", uint(view)))
 
 	if d.IsPrimary() && !d.RequestSentOrReceived() {
 		d.sendPrepareRequest()
@@ -236,9 +236,8 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 	}
 
 	hv := d.LastSeenMessage[msg.ValidatorIndex()]
-	if hv == nil || (*hv).Height() < msg.Height() || (*hv).View() < msg.ViewNumber() {
-		hv := d.Config.NewHeightView(msg.Height(), msg.ViewNumber())
-		d.LastSeenMessage[msg.ValidatorIndex()] = &hv
+	if hv == nil || hv.Height < msg.Height() || hv.View < msg.ViewNumber() {
+		d.LastSeenMessage[msg.ValidatorIndex()] = &HeightView{msg.Height(), msg.ViewNumber()}
 	}
 
 	if d.BlockSent() && msg.Type() != RecoveryRequestType {
@@ -609,7 +608,7 @@ func (d *DBFT[H]) changeTimer(delay time.Duration) {
 		zap.Uint32("h", d.BlockIndex),
 		zap.Int("v", int(d.ViewNumber)),
 		zap.Duration("delay", delay))
-	d.Timer.Reset(d.Config.NewHeightView(d.BlockIndex, d.ViewNumber), delay)
+	d.Timer.Reset(d.BlockIndex, d.ViewNumber, delay)
 }
 
 func (d *DBFT[H]) extendTimer(count time.Duration) {

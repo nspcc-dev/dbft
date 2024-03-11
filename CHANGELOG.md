@@ -14,6 +14,7 @@ Behaviour changes:
  * drop outdated dBFT `Service` interface (#95)
  * move all default implementations to `internal` package (#97)
  * remove unused APIs of dBFT and payload interfaces (#104)
+ * timer interface refactoring (#105)
 
 Improvements:
  * add MIT License (#78, #79)
