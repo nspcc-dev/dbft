@@ -162,7 +162,7 @@ func WithKeyPair[H Hash](priv PrivateKey, pub PublicKey) func(config *Config[H])
 }
 
 // WithGetKeyPair sets GetKeyPair.
-func WithGetKeyPair[H Hash](f func([]PublicKey) (int, PrivateKey, PublicKey)) func(config *Config[H]) {
+func WithGetKeyPair[H Hash](f func(pubs []PublicKey) (int, PrivateKey, PublicKey)) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.GetKeyPair = f
 	}
@@ -281,14 +281,14 @@ func WithCurrentBlockHash[H Hash](f func() H) func(config *Config[H]) {
 }
 
 // WithGetValidators sets GetValidators.
-func WithGetValidators[H Hash](f func(...Transaction[H]) []PublicKey) func(config *Config[H]) {
+func WithGetValidators[H Hash](f func(txs ...Transaction[H]) []PublicKey) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.GetValidators = f
 	}
 }
 
 // WithNewConsensusPayload sets NewConsensusPayload.
-func WithNewConsensusPayload[H Hash](f func(*Context[H], MessageType, any) ConsensusPayload[H]) func(config *Config[H]) {
+func WithNewConsensusPayload[H Hash](f func(ctx *Context[H], typ MessageType, msg any) ConsensusPayload[H]) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewConsensusPayload = f
 	}
@@ -309,14 +309,14 @@ func WithNewPrepareResponse[H Hash](f func(preparationHash H) PrepareResponse[H]
 }
 
 // WithNewChangeView sets NewChangeView.
-func WithNewChangeView[H Hash](f func(byte, ChangeViewReason, uint64) ChangeView) func(config *Config[H]) {
+func WithNewChangeView[H Hash](f func(newViewNumber byte, reason ChangeViewReason, ts uint64) ChangeView) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewChangeView = f
 	}
 }
 
 // WithNewCommit sets NewCommit.
-func WithNewCommit[H Hash](f func([]byte) Commit) func(config *Config[H]) {
+func WithNewCommit[H Hash](f func(signature []byte) Commit) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewCommit = f
 	}
@@ -337,14 +337,14 @@ func WithNewRecoveryMessage[H Hash](f func() RecoveryMessage[H]) func(config *Co
 }
 
 // WithVerifyPrepareRequest sets VerifyPrepareRequest.
-func WithVerifyPrepareRequest[H Hash](f func(ConsensusPayload[H]) error) func(config *Config[H]) {
+func WithVerifyPrepareRequest[H Hash](f func(prepareReq ConsensusPayload[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.VerifyPrepareRequest = f
 	}
 }
 
 // WithVerifyPrepareResponse sets VerifyPrepareResponse.
-func WithVerifyPrepareResponse[H Hash](f func(ConsensusPayload[H]) error) func(config *Config[H]) {
+func WithVerifyPrepareResponse[H Hash](f func(prepareResp ConsensusPayload[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.VerifyPrepareResponse = f
 	}

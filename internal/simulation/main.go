@@ -121,7 +121,8 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 		cluster:  nodes,
 	}
 
-	nodes[i].d = consensus.New(nodes[i].log, key, pub, nodes[i].pool.Get,
+	var err error
+	nodes[i].d, err = consensus.New(nodes[i].log, key, pub, nodes[i].pool.Get,
 		nodes[i].pool.GetVerified,
 		nodes[i].Broadcast,
 		nodes[i].ProcessBlock,
@@ -130,9 +131,8 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 		nodes[i].GetValidators,
 		nodes[i].VerifyPayload,
 	)
-
-	if nodes[i].d == nil {
-		return errors.New("can't initialize dBFT")
+	if err != nil {
+		return fmt.Errorf("failed to initialize dBFT: %w", err)
 	}
 
 	nodes[i].addTx(*txCount)
