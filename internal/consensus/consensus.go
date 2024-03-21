@@ -17,7 +17,7 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 	currentHeight func() uint32,
 	currentBlockHash func() crypto.Uint256,
 	getValidators func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey,
-	verifyPayload func(consensusPayload dbft.ConsensusPayload[crypto.Uint256]) error) *dbft.DBFT[crypto.Uint256] {
+	verifyPayload func(consensusPayload dbft.ConsensusPayload[crypto.Uint256]) error) (*dbft.DBFT[crypto.Uint256], error) {
 	return dbft.New[crypto.Uint256](
 		dbft.WithTimer[crypto.Uint256](timer.New()),
 		dbft.WithLogger[crypto.Uint256](logger),

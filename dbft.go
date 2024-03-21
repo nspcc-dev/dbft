@@ -1,6 +1,7 @@
 package dbft
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -23,10 +24,10 @@ type (
 )
 
 // New returns new DBFT instance with specified H and A generic parameters
-// using provided options or nil if some of the options are missing or invalid.
+// using provided options or nil and error if some of the options are missing or invalid.
 // H and A generic parameters are used as hash and address representation for
 // dBFT consensus messages, blocks and transactions.
-func New[H Hash](options ...func(config *Config[H])) *DBFT[H] {
+func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 	cfg := defaultConfig[H]()
 
 	for _, option := range options {
@@ -34,7 +35,7 @@ func New[H Hash](options ...func(config *Config[H])) *DBFT[H] {
 	}
 
 	if err := checkConfig(cfg); err != nil {
-		return nil
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	d := &DBFT[H]{
@@ -45,7 +46,7 @@ func New[H Hash](options ...func(config *Config[H])) *DBFT[H] {
 		},
 	}
 
-	return d
+	return d, nil
 }
 
 func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
