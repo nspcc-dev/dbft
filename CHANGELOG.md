@@ -15,6 +15,7 @@ Behaviour changes:
  * move all default implementations to `internal` package (#97)
  * remove unused APIs of dBFT and payload interfaces (#104)
  * timer interface refactoring (#105)
+ * constructor returns some meaningful error on failed dBFT instance creation (#107)
 
 Improvements:
  * add MIT License (#78, #79)
