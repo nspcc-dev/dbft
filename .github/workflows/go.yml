@@ -55,10 +55,14 @@ jobs:
     - name: Tests
       run: go test -coverprofile=coverage.txt -covermode=atomic ./...
 
-    - name: Codecov
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} 
-      run: bash <(curl -s https://codecov.io/bash)
+    - name: Upload coverage results to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        fail_ci_if_error: true
+        files: ./coverage.txt
+        slug: nspcc-dev/dbft
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true
 
   codeql:
     name: CodeQL
