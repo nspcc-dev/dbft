@@ -4,11 +4,15 @@ on:
   pull_request:
     branches:
       - master
+  paths-ignore:
+    - '**/*.md'
+    - 'workflows'
+    - 'formal-models'
 
 jobs:
-  build:
+  check:
+    name: Check for CHANGELOG updates
     runs-on: ubuntu-latest
-    name: Check for updates
     steps:
       - uses: actions/checkout@v4
         with:
