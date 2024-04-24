@@ -7,6 +7,8 @@ This document outlines major changes between releases.
 New features:
 
 Behaviour changes:
+ * simplify PublicKey interface (#114)
+ * remove WithKeyPair callback from dBFT (#114)
 
 Improvements:
 

@@ -114,7 +114,7 @@ func (b *neoBlock) Sign(key dbft.PrivateKey) error {
 // Verify implements Block interface.
 func (b *neoBlock) Verify(pub dbft.PublicKey, sign []byte) error {
 	data := b.GetHashData()
-	return pub.Verify(data, sign)
+	return pub.(*crypto.ECDSAPub).Verify(data, sign)
 }
 
 // Hash implements Block interface.

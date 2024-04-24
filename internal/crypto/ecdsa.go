@@ -62,6 +62,11 @@ func (e ECDSAPriv) Sign(msg []byte) ([]byte, error) {
 	return sig, nil
 }
 
+// Equals implements dbft.PublicKey interface.
+func (e *ECDSAPub) Equals(other dbft.PublicKey) bool {
+	return e.Equal(other.(*ECDSAPub).PublicKey)
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler interface.
 func (e ECDSAPub) MarshalBinary() ([]byte, error) {
 	return elliptic.MarshalCompressed(e.PublicKey.Curve, e.PublicKey.X, e.PublicKey.Y), nil
