@@ -19,7 +19,7 @@ func TestVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 64, len(sign))
 
-	err = pub.Verify(data, sign)
+	err = pub.(*ECDSAPub).Verify(data, sign)
 	require.NoError(t, err)
 }
 

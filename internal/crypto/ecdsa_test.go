@@ -13,7 +13,7 @@ func TestECDSA_MarshalUnmarshal(t *testing.T) {
 	require.NotNil(t, priv)
 	require.NotNil(t, pub)
 
-	data, err := pub.MarshalBinary()
+	data, err := pub.(*ECDSAPub).MarshalBinary()
 	require.NoError(t, err)
 
 	pub1 := new(ECDSAPub)

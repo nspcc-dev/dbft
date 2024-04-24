@@ -1,18 +1,14 @@
 package dbft
 
 import (
-	"encoding"
 	"fmt"
 )
 
 type (
 	// PublicKey is a generic public key interface used by dbft.
 	PublicKey interface {
-		encoding.BinaryMarshaler
-		encoding.BinaryUnmarshaler
-
-		// Verify verifies if sig is indeed msg's signature.
-		Verify(msg, sig []byte) error
+		// Equals returns whether public key is equal to the other.
+		Equals(other PublicKey) bool
 	}
 
 	// PrivateKey is a generic private key interface used by dbft.

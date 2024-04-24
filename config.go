@@ -1,7 +1,6 @@
 package dbft
 
 import (
-	"bytes"
 	"errors"
 	"time"
 
@@ -140,18 +139,10 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 // WithKeyPair sets GetKeyPair to a function returning default key pair
 // if it is present in a list of validators.
 func WithKeyPair[H Hash](priv PrivateKey, pub PublicKey) func(config *Config[H]) {
-	myPub, err := pub.MarshalBinary()
-	if err != nil {
-		return nil
-	}
-
 	return func(cfg *Config[H]) {
 		cfg.GetKeyPair = func(ps []PublicKey) (int, PrivateKey, PublicKey) {
 			for i := range ps {
-				pi, err := ps[i].MarshalBinary()
-				if err != nil {
-					continue
-				} else if bytes.Equal(myPub, pi) {
+				if pub.Equals(ps[i]) {
 					return i, priv, pub
 				}
 			}

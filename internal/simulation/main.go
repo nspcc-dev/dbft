@@ -155,8 +155,8 @@ func updatePublicKeys(nodes []*simNode, n int) {
 
 func sortValidators(pubs []dbft.PublicKey) {
 	sort.Slice(pubs, func(i, j int) bool {
-		p1, _ := pubs[i].MarshalBinary()
-		p2, _ := pubs[j].MarshalBinary()
+		p1, _ := pubs[i].(*crypto.ECDSAPub).MarshalBinary()
+		p2, _ := pubs[j].(*crypto.ECDSAPub).MarshalBinary()
 		return murmur3.Sum64(p1) < murmur3.Sum64(p2)
 	})
 }
