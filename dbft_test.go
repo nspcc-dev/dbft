@@ -418,7 +418,9 @@ func TestDBFT_Invalid(t *testing.T) {
 	require.NotNil(t, priv)
 	require.NotNil(t, pub)
 
-	opts := []func(*dbft.Config[crypto.Uint256]){dbft.WithKeyPair[crypto.Uint256](priv, pub)}
+	opts := []func(*dbft.Config[crypto.Uint256]){dbft.WithGetKeyPair[crypto.Uint256](func(_ []dbft.PublicKey) (int, dbft.PrivateKey, dbft.PublicKey) {
+		return -1, nil, nil
+	})}
 	t.Run("without Timer", func(t *testing.T) {
 		_, err := dbft.New(opts...)
 		require.Error(t, err)
@@ -829,7 +831,9 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 		dbft.WithCurrentHeight[crypto.Uint256](func() uint32 { return s.currHeight }),
 		dbft.WithCurrentBlockHash[crypto.Uint256](func() crypto.Uint256 { return s.currHash }),
 		dbft.WithGetValidators[crypto.Uint256](func(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey { return s.pubs }),
-		dbft.WithKeyPair[crypto.Uint256](s.privs[s.myIndex], s.pubs[s.myIndex]),
+		dbft.WithGetKeyPair[crypto.Uint256](func(_ []dbft.PublicKey) (int, dbft.PrivateKey, dbft.PublicKey) {
+			return s.myIndex, s.privs[s.myIndex], s.pubs[s.myIndex]
+		}),
 		dbft.WithBroadcast[crypto.Uint256](func(p Payload) { s.ch = append(s.ch, p) }),
 		dbft.WithGetTx[crypto.Uint256](s.pool.Get),
 		dbft.WithProcessBlock[crypto.Uint256](func(b dbft.Block[crypto.Uint256]) { s.blocks = append(s.blocks, b) }),

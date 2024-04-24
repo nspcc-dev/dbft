@@ -136,22 +136,6 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 	return nil
 }
 
-// WithKeyPair sets GetKeyPair to a function returning default key pair
-// if it is present in a list of validators.
-func WithKeyPair[H Hash](priv PrivateKey, pub PublicKey) func(config *Config[H]) {
-	return func(cfg *Config[H]) {
-		cfg.GetKeyPair = func(ps []PublicKey) (int, PrivateKey, PublicKey) {
-			for i := range ps {
-				if pub.Equals(ps[i]) {
-					return i, priv, pub
-				}
-			}
-
-			return -1, nil, nil
-		}
-	}
-}
-
 // WithGetKeyPair sets GetKeyPair.
 func WithGetKeyPair[H Hash](f func(pubs []PublicKey) (int, PrivateKey, PublicKey)) func(config *Config[H]) {
 	return func(cfg *Config[H]) {

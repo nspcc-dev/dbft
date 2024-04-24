@@ -22,7 +22,15 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 		dbft.WithTimer[crypto.Uint256](timer.New()),
 		dbft.WithLogger[crypto.Uint256](logger),
 		dbft.WithSecondsPerBlock[crypto.Uint256](time.Second*5),
-		dbft.WithKeyPair[crypto.Uint256](key, pub),
+		dbft.WithGetKeyPair[crypto.Uint256](func(pubs []dbft.PublicKey) (int, dbft.PrivateKey, dbft.PublicKey) {
+			for i := range pubs {
+				if pub.Equals(pubs[i]) {
+					return i, key, pub
+				}
+			}
+
+			return -1, nil, nil
+		}),
 		dbft.WithGetTx[crypto.Uint256](getTx),
 		dbft.WithGetVerified[crypto.Uint256](getVerified),
 		dbft.WithBroadcast[crypto.Uint256](broadcast),
