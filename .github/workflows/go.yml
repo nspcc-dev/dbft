@@ -27,10 +27,24 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         go: [ '1.20', '1.21', '1.22']
+        os: [ubuntu-latest, windows-2022, macos-14]
+        exclude:
+          # Only latest Go version for Windows and MacOS.
+          - os: windows-2022
+            go: '1.20'
+          - os: windows-2022
+            go: '1.21'
+          - os: macos-14
+            go: '1.20'
+          - os: macos-14
+            go: '1.21'
+          # Exclude latest Go version for Ubuntu as Coverage uses it.
+          - os: ubuntu-latest
+            go: '1.22'
     steps:
 
     - name: Setup go
@@ -42,12 +56,32 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Tests
+      run: go test -race ./...
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.22
+
+    - name: Check out
+      uses: actions/checkout@v4
+
+    - name: Collect coverage
       run: go test -coverprofile=coverage.txt -covermode=atomic ./...
 
-    - name: Codecov
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} 
-      run: bash <(curl -s https://codecov.io/bash)
+    - name: Upload coverage results to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        fail_ci_if_error: true
+        files: ./coverage.txt
+        slug: nspcc-dev/dbft
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true
 
   codeql:
     name: CodeQL
