@@ -6,10 +6,7 @@ import (
 
 type (
 	// PublicKey is a generic public key interface used by dbft.
-	PublicKey interface {
-		// Equals returns whether public key is equal to the other.
-		Equals(other PublicKey) bool
-	}
+	PublicKey any
 
 	// PrivateKey is a generic private key interface used by dbft.
 	PrivateKey interface {
