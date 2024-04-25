@@ -356,6 +356,68 @@ configuration:
 * [TLA⁺ specification](./dbft2.1_centralizedCV/dbftCentralizedCV.tla)
 * [TLC Model Checker configuration](./dbft2.1_centralizedCV/dbftCentralizedCV___AllGoodModel.launch)
 
+## MEV-resistant dBFT models
+
+[Neo X chain](https://docs.banelabs.org/) uses dBFT 2.0 algorithm as a consensus engine. As a part of
+the Neo X anti-MEV feature implementation, dBFT 2.0 extension was designed to
+provide single-block finality for encrypted transactions (a.k.a. envelope
+transactions). Compared to dBFT 2.0, MEV-resistant dBFT algorithm includes an
+additional `post-Commit` phase that is required to be passed through by consensus
+nodes before every block acceptance. This phase allows consensus nodes to exchange
+some additional data related to encrypted transactions and to the final state of
+accepting block using a new type of consensus messages. The improved protocol based
+on dBFT 2.0 with an additional phase will be referred below as MEV-resistant dBFT.
+
+We've checked MEV-resistant dBFT model with the TLC Model Checker against the same
+set of launch configurations that was used to reveal the liveness problems of the
+[basic dBFT 2.0 model](#basic-dbft-20-model). MEV-resistant dBFT model brings no extra problems to the
+protocol, but it has been proved that this model has exactly the same
+[liveness bug](https://github.com/neo-project/neo-modules/issues/792) that the
+original dBFT 2.0 model has which is expected.
+
+### Basic MEV-resistant dBFT model
+
+This specification is an extension of the
+[basic dBFT 2.0 model](#basic-dbft-20-model). Compared to the base model,
+MEV-resistant dBFT specification additionally includes:
+
+1. New message type `CommitAck` aimed to reflect an additional protocol
+   message that should be sent by resource manager if at least `M` `Commit`
+   messages were collected by the node (that confirms a.k.a. "PreBlock"
+   final acceptance).
+2. New resource manager state `commitAckSent` aimed to reflect the additional phase
+   of the protocol needed for consensus nodes to exchange some data that was not
+   available at the time of the first commit. This RM state represents a consensus
+   node state when it has sent these additional post-commit data but has not accepted
+   the final block yet.
+3. New specification step `RMSendCommitAck` describing the transition between
+   `commitSent` and `commitAckSent` phases of the protocol, or, which is the same,
+   corresponding resource managers states. This step allows the resource manager to
+   send `CommitAck` message if at least `M` valid `Commit` messages are collected.
+4. Adjusted behaviour of `RMAcceptBlock` step: block acceptance is possible iff the
+   node has sent the `CommitAck` message and there are at least `M` `CommitAck`
+   messages collected by the node.
+5. Adjusted behaviour of "faulty" resource managers: allow malicious nodes to send an
+   `CommitAck` message via `RMFaultySendCommitAck` step.
+
+It should be noted that, in comparison with the dBFT 2.0 protocol where the node is
+being locked in the `commitSent` state until the block acceptance, MEV-resistant dBFT
+does not allow to accept the block right after the `commitSent` state. However, it
+allows the node to move from `commitSent` phase further to the `commitAckSent` state
+and locks the node at this state until the block acceptance. No view change may be
+initiated or accepted by a node entered the `commitAckSent` state.
+
+Here's the scheme of transitions between consensus node states for MEV-resistant dBFT
+algorithm:
+
+![Basic MEV-resistant dBFT model transitions scheme](./.github/dbft_antiMEV.png)
+
+Here you can find the specification file and the basic MEV-resistant dBFT TLC Model
+Checker launch configuration for the four "honest" consensus nodes scenario:
+
+* [TLA⁺ specification](dbft_antiMEV/dbft.tla)
+* [TLC Model Checker configuration](dbft_antiMEV/dbft___AllGoodModel.launch)
+
 ## How to run/check the TLA⁺ specification
 
 ### Prerequirements
