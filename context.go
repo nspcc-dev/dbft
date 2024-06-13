@@ -76,6 +76,7 @@ type Context[H Hash] struct {
 	lastBlockTimestamp uint64    // ns-precision timestamp from the last header (used for the next block timestamp calculations).
 	lastBlockTime      time.Time // Wall clock time of when the last block was first seen (used for timer adjustments).
 	lastBlockIndex     uint32
+	lastBlockView      byte
 }
 
 // N returns total number of validators.
