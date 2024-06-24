@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 New features:
+ * TLA+ model for MEV-resistant dBFT extension (#116)
 
 Behaviour changes:
  * simplify PublicKey interface (#114)
