@@ -30,9 +30,58 @@ func (d *DBFT[H]) checkPrepare() {
 		zap.Int("M", d.M()))
 
 	if hasRequest && count >= d.M() {
+		if d.isAntiMEVExtensionEnabled() {
+			d.sendPreCommit()
+			d.changeTimer(d.SecondsPerBlock)
+			d.checkPreCommit()
+		} else {
+			d.sendCommit()
+			d.changeTimer(d.SecondsPerBlock)
+			d.checkCommit()
+		}
+	}
+}
+
+func (d *DBFT[H]) checkPreCommit() {
+	if !d.hasAllTransactions() {
+		d.Logger.Debug("check preCommit: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
+		return
+	}
+
+	count := 0
+	for _, msg := range d.PreCommitPayloads {
+		if msg != nil && msg.ViewNumber() == d.ViewNumber {
+			count++
+		}
+	}
+
+	if count < d.M() {
+		d.Logger.Debug("not enough PreCommits to create PreBlock", zap.Int("count", count))
+		return
+	}
+
+	d.preBlock = d.CreatePreBlock()
+	// TODO: Hash() holds a purely informational purpose (only used for logs).
+	// Need to uncomment this code and properly implement Hash() on PreBlock
+	// implementation, but for now let it be commented out.
+	//hash := d.preBlock.Hash()
+
+	d.Logger.Info("processing PreBlock",
+		zap.Uint32("height", d.BlockIndex),
+		//zap.Stringer("preBlock hash", hash),
+		zap.Int("tx_count", len(d.preBlock.Transactions())))
+
+	d.preBlockProcessed = true
+	d.ProcessPreBlock(d.preBlock)
+
+	// Require PreCommit sent by self for reliability. This condition may be removed
+	// in the future.
+	if d.PreCommitSent() {
 		d.sendCommit()
 		d.changeTimer(d.SecondsPerBlock)
 		d.checkCommit()
+	} else {
+		d.Logger.Debug("can't send commit since self preCommit not yet sent")
 	}
 }
 

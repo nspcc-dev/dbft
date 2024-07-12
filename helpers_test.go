@@ -51,6 +51,7 @@ func (p payloadStub) GetPrepareResponse() PrepareResponse[hash] {
 func (p payloadStub) GetCommit() Commit {
 	panic("TODO")
 }
+func (p payloadStub) GetPreCommit() PreCommit { panic("TODO") }
 func (p payloadStub) GetRecoveryRequest() RecoveryRequest {
 	panic("TODO")
 }

@@ -189,7 +189,7 @@ func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
 	if d.IsPrimary() && !d.RequestSentOrReceived() {
 		d.sendPrepareRequest()
 	} else if (d.IsPrimary() && d.RequestSentOrReceived()) || d.IsBackup() {
-		if d.CommitSent() {
+		if d.CommitSent() || d.PreCommitSent() {
 			d.Logger.Debug("send recovery to resend commit")
 			d.sendRecoveryMessage()
 			d.changeTimer(d.SecondsPerBlock << 1)
@@ -255,6 +255,14 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 		d.onPrepareResponse(msg)
 	case CommitType:
 		d.onCommit(msg)
+	case PreCommitType:
+		if !d.isAntiMEVExtensionEnabled() {
+			d.Logger.Error(fmt.Sprintf("%s message received but AntiMEVExtension is disabled", PreCommitType),
+				zap.Uint16("from", msg.ValidatorIndex()),
+			)
+			return
+		}
+		d.onPreCommit(msg)
 	case RecoveryRequestType:
 		d.onRecoveryRequest(msg)
 	case RecoveryMessageType:
@@ -366,8 +374,21 @@ func (d *DBFT[H]) processMissingTx() {
 // with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
 func (d *DBFT[H]) createAndCheckBlock() bool {
-	if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
-		d.Logger.Warn("proposed block fails verification")
+	var blockOK bool
+	if d.isAntiMEVExtensionEnabled() {
+		b := d.Context.CreatePreBlock()
+		blockOK = d.VerifyPreBlock(b)
+		if !blockOK {
+			d.Logger.Warn("proposed preBlock fails verification")
+		}
+	} else {
+		b := d.Context.CreateBlock()
+		blockOK = d.VerifyBlock(b)
+		if !blockOK {
+			d.Logger.Warn("proposed block fails verification")
+		}
+	}
+	if !blockOK {
 		d.sendChangeView(CVTxInvalid)
 		return false
 	}
@@ -380,6 +401,21 @@ func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 			resp := m.GetPrepareResponse()
 			if resp != nil && resp.PreparationHash() != msg.Hash() {
 				d.PreparationPayloads[i] = nil
+			}
+		}
+	}
+
+	if d.isAntiMEVExtensionEnabled() {
+		for i, m := range d.PreCommitPayloads {
+			if m != nil && m.ViewNumber() == d.ViewNumber {
+				if preHeader := d.MakePreHeader(); preHeader != nil {
+					pub := d.Validators[m.ValidatorIndex()]
+					if err := preHeader.Verify(pub, m.GetPreCommit().Data()); err != nil {
+						d.PreCommitPayloads[i] = nil
+						d.Logger.Warn("can't validate preCommit data",
+							zap.Error(err))
+					}
+				}
 			}
 		}
 	}
@@ -444,7 +480,7 @@ func (d *DBFT[H]) onPrepareResponse(msg ConsensusPayload[H]) {
 
 	d.extendTimer(2)
 
-	if !d.Context.WatchOnly() && !d.CommitSent() && d.RequestSentOrReceived() {
+	if !d.Context.WatchOnly() && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && d.RequestSentOrReceived() {
 		d.checkPrepare()
 	}
 }
@@ -459,8 +495,8 @@ func (d *DBFT[H]) onChangeView(msg ConsensusPayload[H]) {
 		return
 	}
 
-	if d.CommitSent() {
-		d.Logger.Debug("ignoring ChangeView: commit sent")
+	if d.CommitSent() || d.PreCommitSent() {
+		d.Logger.Debug("ignoring ChangeView: preCommit or commit sent")
 		d.sendRecoveryMessage()
 		return
 	}
@@ -478,6 +514,54 @@ func (d *DBFT[H]) onChangeView(msg ConsensusPayload[H]) {
 
 	d.ChangeViewPayloads[msg.ValidatorIndex()] = msg
 	d.checkChangeView(p.NewViewNumber())
+}
+
+func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
+	existing := d.PreCommitPayloads[msg.ValidatorIndex()]
+	if existing != nil {
+		if existing.Hash() != msg.Hash() {
+			d.Logger.Warn("rejecting preCommit due to existing",
+				zap.Uint("validator", uint(msg.ValidatorIndex())),
+				zap.Uint("existing view", uint(existing.ViewNumber())),
+				zap.Uint("view", uint(msg.ViewNumber())),
+				zap.Stringer("existing hash", existing.Hash()),
+				zap.Stringer("hash", msg.Hash()),
+			)
+		}
+		return
+	}
+	if d.ViewNumber == msg.ViewNumber() {
+		if err := d.VerifyPreCommit(msg); err != nil {
+			d.Logger.Warn("invalid PreCommit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+			return
+		}
+
+		d.Logger.Info("received PreCommit", zap.Uint("validator", uint(msg.ValidatorIndex())))
+		d.extendTimer(4)
+
+		preHeader := d.MakePreHeader()
+		if preHeader == nil {
+			d.PreCommitPayloads[msg.ValidatorIndex()] = msg
+		} else {
+			pub := d.Validators[msg.ValidatorIndex()]
+			if err := preHeader.Verify(pub, msg.GetPreCommit().Data()); err == nil {
+				d.PreCommitPayloads[msg.ValidatorIndex()] = msg
+				d.checkPreCommit()
+			} else {
+				d.Logger.Warn("invalid preCommit data",
+					zap.Uint("validator", uint(msg.ValidatorIndex())),
+					zap.Error(err),
+				)
+			}
+		}
+		return
+	}
+
+	d.Logger.Info("received preCommit for different view",
+		zap.Uint("validator", uint(msg.ValidatorIndex())),
+		zap.Uint("view", uint(msg.ViewNumber())),
+	)
+	d.PreCommitPayloads[msg.ValidatorIndex()] = msg
 }
 
 func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
@@ -523,7 +607,7 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 }
 
 func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
-	if !d.CommitSent() {
+	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		// Limit recoveries to be sent from no more than F nodes
 		// TODO replace loop with a single if
 		shouldSend := false
@@ -568,7 +652,7 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 	}()
 
 	if msg.ViewNumber() > d.ViewNumber {
-		if d.CommitSent() {
+		if d.CommitSent() || d.PreCommitSent() {
 			return
 		}
 
@@ -578,7 +662,7 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 		}
 	}
 
-	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() {
+	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		if !d.RequestSentOrReceived() {
 			prepReq := recovery.GetPrepareRequest(msg, d.Validators, uint16(d.PrimaryIndex))
 			if prepReq != nil {
@@ -613,7 +697,7 @@ func (d *DBFT[H]) changeTimer(delay time.Duration) {
 }
 
 func (d *DBFT[H]) extendTimer(count time.Duration) {
-	if !d.CommitSent() && !d.ViewChanging() {
+	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && !d.ViewChanging() {
 		d.Timer.Extend(count * d.SecondsPerBlock / time.Duration(d.M()))
 	}
 }

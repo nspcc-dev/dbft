@@ -43,7 +43,8 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 
 	t.Run("backup sends nothing on start", func(t *testing.T) {
 		s.currHeight = 0
-		service, _ := dbft.New[crypto.Uint256](s.getOptions()...)
+		service, err := dbft.New[crypto.Uint256](s.getOptions()...)
+		require.NoError(t, err)
 
 		service.Start(0)
 		require.Nil(t, s.tryRecv())

@@ -88,6 +88,7 @@ func (m message) GetPrepareResponse() dbft.PrepareResponse[crypto.Uint256] {
 	return m.payload.(dbft.PrepareResponse[crypto.Uint256])
 }
 func (m message) GetCommit() dbft.Commit                   { return m.payload.(dbft.Commit) }
+func (m message) GetPreCommit() dbft.PreCommit             { return m.payload.(dbft.PreCommit) }
 func (m message) GetRecoveryRequest() dbft.RecoveryRequest { return m.payload.(dbft.RecoveryRequest) }
 func (m message) GetRecoveryMessage() dbft.RecoveryMessage[crypto.Uint256] {
 	return m.payload.(dbft.RecoveryMessage[crypto.Uint256])
