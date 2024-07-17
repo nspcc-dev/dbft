@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"encoding/binary"
+
 	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/internal/crypto"
 )
@@ -46,6 +48,20 @@ func NewChangeView(newViewNumber byte, _ dbft.ChangeViewReason, ts uint64) dbft.
 func NewCommit(signature []byte) dbft.Commit {
 	c := new(commit)
 	copy(c.signature[:], signature)
+	return c
+}
+
+// NewPreCommit returns minimal dbft.PreCommit implementation.
+func NewPreCommit(data []byte) dbft.PreCommit {
+	c := new(preCommit)
+	c.magic = binary.BigEndian.Uint32(data)
+	return c
+}
+
+// NewAMEVCommit returns minimal dbft.Commit implementation for anti-MEV extension.
+func NewAMEVCommit(data []byte) dbft.Commit {
+	c := new(amevCommit)
+	copy(c.data[:], data)
 	return c
 }
 

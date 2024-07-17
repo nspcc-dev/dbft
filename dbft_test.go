@@ -25,6 +25,7 @@ type testState struct {
 	currHeight uint32
 	currHash   crypto.Uint256
 	pool       *testPool
+	preBlocks  []dbft.PreBlock[crypto.Uint256]
 	blocks     []dbft.Block[crypto.Uint256]
 	verify     func(b dbft.Block[crypto.Uint256]) bool
 }
@@ -744,6 +745,85 @@ func TestDBFT_FourGoodNodesDeadlock(t *testing.T) {
 	require.NotNil(t, r1.nextBlock())
 }
 
+func TestDBFT_OnReceiveCommitAMEV(t *testing.T) {
+	s := newTestState(2, 4)
+	t.Run("send preCommit after enough responses", func(t *testing.T) {
+		s.currHeight = 1
+		service, _ := dbft.New[crypto.Uint256](s.getAMEVOptions()...)
+		service.Start(0)
+
+		req := s.tryRecv()
+		require.NotNil(t, req)
+
+		resp := s.getPrepareResponse(1, req.Hash())
+		service.OnReceive(resp)
+		require.Nil(t, s.tryRecv())
+
+		resp = s.getPrepareResponse(0, req.Hash())
+		service.OnReceive(resp)
+
+		cm := s.tryRecv()
+		require.NotNil(t, cm)
+		require.Equal(t, dbft.PreCommitType, cm.Type())
+		require.EqualValues(t, s.currHeight+1, cm.Height())
+		require.EqualValues(t, 0, cm.ViewNumber())
+		require.EqualValues(t, s.myIndex, cm.ValidatorIndex())
+		require.NotNil(t, cm.Payload())
+
+		pub := s.pubs[s.myIndex]
+		require.NoError(t, service.PreHeader().Verify(pub, cm.GetPreCommit().Data()))
+
+		t.Run("send commit after enough preCommits", func(t *testing.T) {
+			s0 := s.copyWithIndex(0)
+			require.NoError(t, service.PreHeader().SetData(s0.privs[0]))
+			preC0 := s0.getPreCommit(0, service.PreHeader().Data())
+			service.OnReceive(preC0)
+			require.Nil(t, s.tryRecv())
+			require.Nil(t, s.nextPreBlock())
+			require.Nil(t, s.nextBlock())
+
+			s1 := s.copyWithIndex(1)
+			require.NoError(t, service.PreHeader().SetData(s1.privs[1]))
+			preC1 := s1.getPreCommit(1, service.PreHeader().Data())
+			service.OnReceive(preC1)
+
+			b := s.nextPreBlock()
+			require.NotNil(t, b)
+			require.Equal(t, []byte{0, 0, 0, 2}, b.Data()) // After SetData it's equal to node index.
+			require.Nil(t, s.nextBlock())
+
+			c := s.tryRecv()
+			require.NotNil(t, c)
+			require.Equal(t, dbft.CommitType, c.Type())
+			require.EqualValues(t, s.currHeight+1, c.Height())
+			require.EqualValues(t, 0, c.ViewNumber())
+			require.EqualValues(t, s.myIndex, c.ValidatorIndex())
+			require.NotNil(t, c.Payload())
+
+			t.Run("process block a after enough commitAcks", func(t *testing.T) {
+				s0 := s.copyWithIndex(0)
+				require.NoError(t, service.Header().Sign(s0.privs[0]))
+				c0 := s0.getAMEVCommit(0, service.Header().Signature())
+				service.OnReceive(c0)
+				require.Nil(t, s.tryRecv())
+				require.Nil(t, s.nextPreBlock())
+				require.Nil(t, s.nextBlock())
+
+				s1 := s.copyWithIndex(1)
+				require.NoError(t, service.Header().Sign(s1.privs[1]))
+				c1 := s1.getAMEVCommit(1, service.Header().Signature())
+				service.OnReceive(c1)
+				require.Nil(t, s.tryRecv())
+				require.Nil(t, s.nextPreBlock())
+
+				b := s.nextBlock()
+				require.NotNil(t, b)
+				require.Equal(t, s.currHeight+1, b.Index())
+			})
+		})
+	})
+}
+
 func (s testState) getChangeView(from uint16, view byte) Payload {
 	cv := consensus.NewChangeView(view, 0, 0)
 
@@ -759,6 +839,18 @@ func (s testState) getRecoveryRequest(from uint16) Payload {
 func (s testState) getCommit(from uint16, sign []byte) Payload {
 	c := consensus.NewCommit(sign)
 	p := consensus.NewConsensusPayload(dbft.CommitType, s.currHeight+1, from, 0, c)
+	return p
+}
+
+func (s testState) getAMEVCommit(from uint16, sign []byte) Payload {
+	c := consensus.NewAMEVCommit(sign)
+	p := consensus.NewConsensusPayload(dbft.CommitType, s.currHeight+1, from, 0, c)
+	return p
+}
+
+func (s testState) getPreCommit(from uint16, data []byte) Payload {
+	c := consensus.NewPreCommit(data)
+	p := consensus.NewConsensusPayload(dbft.PreCommitType, s.currHeight+1, from, 0, c)
 	return p
 }
 
@@ -810,6 +902,17 @@ func (s *testState) nextBlock() dbft.Block[crypto.Uint256] {
 
 	b := s.blocks[0]
 	s.blocks = s.blocks[1:]
+
+	return b
+}
+
+func (s *testState) nextPreBlock() dbft.PreBlock[crypto.Uint256] {
+	if len(s.preBlocks) == 0 {
+		return nil
+	}
+
+	b := s.preBlocks[0]
+	s.preBlocks = s.preBlocks[1:]
 
 	return b
 }
@@ -875,12 +978,48 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 	return opts
 }
 
+func (s *testState) getAMEVOptions() []func(*dbft.Config[crypto.Uint256]) {
+	opts := s.getOptions()
+	opts = append(opts,
+		dbft.WithAntiMEVExtensionEnablingHeight[crypto.Uint256](0),
+		dbft.WithNewPreCommit[crypto.Uint256](consensus.NewPreCommit),
+		dbft.WithNewCommit[crypto.Uint256](consensus.NewAMEVCommit),
+		dbft.WithNewPreBlockFromContext[crypto.Uint256](newPreBlockFromContext),
+		dbft.WithNewBlockFromContext[crypto.Uint256](newAMEVBlockFromContext),
+		dbft.WithProcessPreBlock(func(b dbft.PreBlock[crypto.Uint256]) { s.preBlocks = append(s.preBlocks, b) }),
+	)
+
+	return opts
+}
+
 func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
 	if ctx.TransactionHashes == nil {
 		return nil
 	}
 	block := consensus.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
 	return block
+}
+
+func newPreBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.PreBlock[crypto.Uint256] {
+	if ctx.TransactionHashes == nil {
+		return nil
+	}
+	pre := consensus.NewPreBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	return pre
+}
+
+func newAMEVBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
+	if ctx.TransactionHashes == nil {
+		return nil
+	}
+	var data [][]byte
+	for _, c := range ctx.PreCommitPayloads {
+		if c != nil && c.ViewNumber() == ctx.ViewNumber {
+			data = append(data, c.GetPreCommit().Data())
+		}
+	}
+	pre := consensus.NewAMEVBlock(ctx.PreBlock(), data, ctx.M())
+	return pre
 }
 
 // newConsensusPayload is a function for creating consensus payload of specific

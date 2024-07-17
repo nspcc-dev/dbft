@@ -707,3 +707,9 @@ func (d *DBFT[H]) extendTimer(count time.Duration) {
 func (d *DBFT[H]) Header() Block[H] {
 	return d.header
 }
+
+// PreHeader returns current preHeader from context. May be nil in case if no
+// preHeader is constructed yet. Do not change the resulting preHeader.
+func (d *DBFT[H]) PreHeader() PreBlock[H] {
+	return d.preHeader
+}

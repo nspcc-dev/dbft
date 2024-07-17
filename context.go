@@ -212,6 +212,10 @@ func (c *Context[H]) MoreThanFNodesCommittedOrLost() bool {
 	return c.CountCommitted()+c.CountFailed() > c.F()
 }
 
+func (c *Context[H]) PreBlock() PreBlock[H] {
+	return c.preHeader // without transactions
+}
+
 func (c *Context[H]) reset(view byte, ts uint64) {
 	c.MyIndex = -1
 	c.lastBlockTimestamp = ts
