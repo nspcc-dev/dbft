@@ -77,6 +77,7 @@ func (d *DBFT[H]) checkPreCommit() {
 	// Require PreCommit sent by self for reliability. This condition may be removed
 	// in the future.
 	if d.PreCommitSent() {
+		d.verifyCommitPayloadsAgainstHeader()
 		d.sendCommit()
 		d.changeTimer(d.SecondsPerBlock)
 		d.checkCommit()

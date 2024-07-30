@@ -390,6 +390,8 @@ func (d *DBFT[H]) createAndCheckBlock() bool {
 	return true
 }
 
+// updateExistingPayloads is called _only_ from onPrepareRequest, it validates
+// payloads we may have received before PrepareRequest.
 func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 	for i, m := range d.PreparationPayloads {
 		if m != nil && m.Type() == PrepareResponseType {
@@ -413,8 +415,15 @@ func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 				}
 			}
 		}
+		// Commits can't be verified, we have no idea what's the header.
+	} else {
+		d.verifyCommitPayloadsAgainstHeader()
 	}
+}
 
+// verifyCommitPayloadsAgainstHeader performs verification of commit payloads
+// against generated header.
+func (d *DBFT[H]) verifyCommitPayloadsAgainstHeader() {
 	for i, m := range d.CommitPayloads {
 		if m != nil && m.ViewNumber() == d.ViewNumber {
 			if header := d.MakeHeader(); header != nil {
