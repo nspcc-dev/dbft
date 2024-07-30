@@ -4,11 +4,6 @@ package dbft
 // It holds a "draft" of block that should be converted to a final block with the
 // help of additional data held by PreCommit messages.
 type PreBlock[H Hash] interface {
-	// TODO: used for logs only. Need to uncomment and properly implement this method
-	// for PreBlock implementation.
-	// Hash returns PreBlock hash.
-	// Hash() H // needed for informational log, but may be removed.
-
 	// Data returns PreBlock's data CNs need to exchange during PreCommit phase.
 	// Data represents additional information not related to a final block signature.
 	Data() []byte

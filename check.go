@@ -61,14 +61,10 @@ func (d *DBFT[H]) checkPreCommit() {
 	}
 
 	d.preBlock = d.CreatePreBlock()
-	// TODO: Hash() holds a purely informational purpose (only used for logs).
-	// Need to uncomment this code and properly implement Hash() on PreBlock
-	// implementation, but for now let it be commented out.
-	//hash := d.preBlock.Hash()
 
 	d.Logger.Info("processing PreBlock",
 		zap.Uint32("height", d.BlockIndex),
-		//zap.Stringer("preBlock hash", hash),
+		zap.Uint("view", uint(d.ViewNumber)),
 		zap.Int("tx_count", len(d.preBlock.Transactions())))
 
 	if !d.preBlockProcessed {
