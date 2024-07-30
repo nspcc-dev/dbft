@@ -71,8 +71,10 @@ func (d *DBFT[H]) checkPreCommit() {
 		//zap.Stringer("preBlock hash", hash),
 		zap.Int("tx_count", len(d.preBlock.Transactions())))
 
-	d.preBlockProcessed = true
-	d.ProcessPreBlock(d.preBlock)
+	if !d.preBlockProcessed {
+		d.preBlockProcessed = true
+		d.ProcessPreBlock(d.preBlock)
+	}
 
 	// Require PreCommit sent by self for reliability. This condition may be removed
 	// in the future.

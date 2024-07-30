@@ -32,7 +32,9 @@ type Context[H Hash] struct {
 	// dBFT stops any new transaction or messages processing as far as timeouts handling till
 	// the next call to Reset.
 	blockProcessed bool
-	// TODO: add a comment, t has another meaning than blockProcessed.
+	// preBlockProcessed is true when Config.ProcessPreBlock callback was
+	// invoked for the current height. This happens once and dbft continues
+	// to march towards proper commit after that.
 	preBlockProcessed bool
 
 	// BlockIndex is current block index.
