@@ -232,8 +232,6 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 			zap.Any("cache", d.cache.mail[msg.Height()]))
 		d.cache.addMessage(msg)
 		return
-	} else if msg.ValidatorIndex() > uint16(d.N()) {
-		return
 	}
 
 	hv := d.LastSeenMessage[msg.ValidatorIndex()]
