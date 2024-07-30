@@ -534,6 +534,7 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 		}
 		return
 	}
+	d.PreCommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
 		if err := d.VerifyPreCommit(msg); err != nil {
 			d.Logger.Warn("invalid PreCommit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
@@ -544,14 +545,12 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 		d.extendTimer(4)
 
 		preHeader := d.MakePreHeader()
-		if preHeader == nil {
-			d.PreCommitPayloads[msg.ValidatorIndex()] = msg
-		} else {
+		if preHeader != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
 			if err := preHeader.Verify(pub, msg.GetPreCommit().Data()); err == nil {
-				d.PreCommitPayloads[msg.ValidatorIndex()] = msg
 				d.checkPreCommit()
 			} else {
+				d.PreCommitPayloads[msg.ValidatorIndex()] = nil
 				d.Logger.Warn("invalid preCommit data",
 					zap.Uint("validator", uint(msg.ValidatorIndex())),
 					zap.Error(err),
@@ -565,7 +564,6 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 		zap.Uint("validator", uint(msg.ValidatorIndex())),
 		zap.Uint("view", uint(msg.ViewNumber())),
 	)
-	d.PreCommitPayloads[msg.ValidatorIndex()] = msg
 }
 
 func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
@@ -582,18 +580,17 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 		}
 		return
 	}
+	d.CommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 		header := d.MakeHeader()
-		if header == nil {
-			d.CommitPayloads[msg.ValidatorIndex()] = msg
-		} else {
+		if header != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
 			if header.Verify(pub, msg.GetCommit().Signature()) == nil {
-				d.CommitPayloads[msg.ValidatorIndex()] = msg
 				d.checkCommit()
 			} else {
+				d.CommitPayloads[msg.ValidatorIndex()] = nil
 				d.Logger.Warn("invalid commit signature",
 					zap.Uint("validator", uint(msg.ValidatorIndex())),
 				)
@@ -607,7 +604,6 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 		zap.Uint("validator", uint(msg.ValidatorIndex())),
 		zap.Uint("view", uint(msg.ViewNumber())),
 	)
-	d.CommitPayloads[msg.ValidatorIndex()] = msg
 }
 
 func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
