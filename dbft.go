@@ -145,8 +145,8 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 	// 	zap.Bool("response_sent", d.ResponseSent()),
 	// 	zap.Bool("block_sent", d.BlockSent()))
 	if !d.IsBackup() || d.NotAcceptingPayloadsDueToViewChanging() ||
-		!d.RequestSentOrReceived() || d.ResponseSent() || d.BlockSent() ||
-		len(d.MissingTransactions) == 0 {
+		!d.RequestSentOrReceived() || d.ResponseSent() || d.PreCommitSent() ||
+		d.CommitSent() || d.BlockSent() || len(d.MissingTransactions) == 0 {
 		return
 	}
 
