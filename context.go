@@ -232,6 +232,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 			c.LastSeenMessage = make([]*HeightView, n)
 		}
 		c.blockProcessed = false
+		c.preBlockProcessed = false
 	} else {
 		for i := range c.Validators {
 			m := c.ChangeViewPayloads[i]
