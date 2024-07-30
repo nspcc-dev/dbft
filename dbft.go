@@ -324,9 +324,6 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 	d.extendTimer(2)
 
 	p := msg.GetPrepareRequest()
-	if len(p.TransactionHashes()) == 0 {
-		d.Logger.Debug("received empty PrepareRequest")
-	}
 
 	d.Timestamp = p.Timestamp()
 	d.Nonce = p.Nonce()
