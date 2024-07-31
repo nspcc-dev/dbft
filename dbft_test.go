@@ -3,6 +3,7 @@ package dbft_test
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"testing"
 	"time"
 
@@ -89,31 +90,48 @@ func TestDBFT_OnStartPrimarySendPrepareRequest(t *testing.T) {
 }
 
 func TestDBFT_SingleNode(t *testing.T) {
-	s := newTestState(0, 1)
+	for _, amev := range []bool{false, true} {
+		t.Run(fmt.Sprintf("AMEV %t", amev), func(t *testing.T) {
+			s := newTestState(0, 1)
 
-	s.currHeight = 2
-	service, _ := dbft.New[crypto.Uint256](s.getOptions()...)
+			s.currHeight = 2
+			opts := s.getOptions()
+			if amev {
+				opts = s.getAMEVOptions()
+			}
+			service, _ := dbft.New[crypto.Uint256](opts...)
 
-	service.Start(0)
-	p := s.tryRecv()
-	require.NotNil(t, p)
-	require.Equal(t, dbft.PrepareRequestType, p.Type())
-	require.EqualValues(t, 3, p.Height())
-	require.EqualValues(t, 0, p.ViewNumber())
-	require.NotNil(t, p.Payload())
-	require.EqualValues(t, 0, p.ValidatorIndex())
+			service.Start(0)
+			p := s.tryRecv()
+			require.NotNil(t, p)
+			require.Equal(t, dbft.PrepareRequestType, p.Type())
+			require.EqualValues(t, 3, p.Height())
+			require.EqualValues(t, 0, p.ViewNumber())
+			require.NotNil(t, p.Payload())
+			require.EqualValues(t, 0, p.ValidatorIndex())
 
-	cm := s.tryRecv()
-	require.NotNil(t, cm)
-	require.Equal(t, dbft.CommitType, cm.Type())
-	require.EqualValues(t, s.currHeight+1, cm.Height())
-	require.EqualValues(t, 0, cm.ViewNumber())
-	require.NotNil(t, cm.Payload())
-	require.EqualValues(t, 0, cm.ValidatorIndex())
+			if amev {
+				cm := s.tryRecv()
+				require.NotNil(t, cm)
+				require.Equal(t, dbft.PreCommitType, cm.Type())
+				require.EqualValues(t, s.currHeight+1, cm.Height())
+				require.EqualValues(t, 0, cm.ViewNumber())
+				require.NotNil(t, cm.Payload())
+				require.EqualValues(t, 0, cm.ValidatorIndex())
+			}
+			cm := s.tryRecv()
+			require.NotNil(t, cm)
+			require.Equal(t, dbft.CommitType, cm.Type())
+			require.EqualValues(t, s.currHeight+1, cm.Height())
+			require.EqualValues(t, 0, cm.ViewNumber())
+			require.NotNil(t, cm.Payload())
+			require.EqualValues(t, 0, cm.ValidatorIndex())
 
-	b := s.nextBlock()
-	require.NotNil(t, b)
-	require.Equal(t, s.currHeight+1, b.Index())
+			b := s.nextBlock()
+			require.NotNil(t, b)
+			require.Equal(t, s.currHeight+1, b.Index())
+		})
+	}
 }
 
 func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
