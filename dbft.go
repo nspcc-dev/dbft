@@ -632,21 +632,22 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 	d.Logger.Debug("recovery message received", zap.Any("dump", msg))
 
 	var (
-		validPrepResp, validChViews, validCommits int
-		validPrepReq, totalPrepReq                int
+		validPrepResp, validChViews   int
+		validPreCommits, validCommits int
+		validPrepReq, totalPrepReq    int
+		recovery                      = msg.GetRecoveryMessage()
+		total                         = len(d.Validators)
 	)
-
-	recovery := msg.GetRecoveryMessage()
-	total := len(d.Validators)
 
 	// isRecovering is always set to false again after OnRecoveryMessageReceived
 	d.recovering = true
 
 	defer func() {
-		d.Logger.Sugar().Debugf("recovering finished cv=%d/%d preq=%d/%d presp=%d/%d co=%d/%d",
+		d.Logger.Sugar().Debugf("recovering finished cv=%d/%d preq=%d/%d presp=%d/%d pco=%d/%d co=%d/%d",
 			validChViews, total,
 			validPrepReq, totalPrepReq,
 			validPrepResp, total,
+			validPreCommits, total,
 			validCommits, total)
 		d.recovering = false
 	}()
@@ -679,8 +680,13 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 		}
 	}
 
+	// Ensure we know about all (pre) commits from lower view numbers.
 	if msg.ViewNumber() <= d.ViewNumber {
-		// Ensure we know about all commits from lower view numbers.
+		for _, m := range recovery.GetPreCommits(msg, d.Validators) {
+			validPreCommits++
+			d.OnReceive(m)
+		}
+
 		for _, m := range recovery.GetCommits(msg, d.Validators) {
 			validCommits++
 			d.OnReceive(m)

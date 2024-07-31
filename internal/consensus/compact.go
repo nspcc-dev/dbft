@@ -11,6 +11,12 @@ type (
 		Timestamp          uint32
 	}
 
+	preCommitCompact struct {
+		ViewNumber     byte
+		ValidatorIndex uint16
+		Data           []byte
+	}
+
 	commitCompact struct {
 		ViewNumber     byte
 		ValidatorIndex uint16
@@ -29,6 +35,16 @@ func (p changeViewCompact) EncodeBinary(w *gob.Encoder) error {
 
 // DecodeBinary implements Serializable interface.
 func (p *changeViewCompact) DecodeBinary(r *gob.Decoder) error {
+	return r.Decode(p)
+}
+
+// EncodeBinary implements Serializable interface.
+func (p preCommitCompact) EncodeBinary(w *gob.Encoder) error {
+	return w.Encode(p)
+}
+
+// DecodeBinary implements Serializable interface.
+func (p *preCommitCompact) DecodeBinary(r *gob.Decoder) error {
 	return r.Decode(p)
 }
 

@@ -180,6 +180,14 @@ func (c *Context[H]) makeRecoveryMessage() ConsensusPayload[H] {
 		}
 	}
 
+	if c.PreCommitSent() {
+		for _, p := range c.PreCommitPayloads {
+			if p != nil {
+				recovery.AddPayload(p)
+			}
+		}
+	}
+
 	if c.CommitSent() {
 		for _, p := range c.CommitPayloads {
 			if p != nil {
