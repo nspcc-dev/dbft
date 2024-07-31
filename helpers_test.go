@@ -95,13 +95,21 @@ func TestMessageCache(t *testing.T) {
 	}
 	c.addMessage(p3)
 
+	p4 := payloadStub{
+		height: 3,
+		typ:    PreCommitType,
+	}
+	c.addMessage(p4)
+
 	box := c.getHeight(3)
 	require.Len(t, box.chViews, 0)
 	require.Len(t, box.prepare, 1)
+	require.Len(t, box.preCommit, 1)
 	require.Len(t, box.commit, 0)
 
 	box = c.getHeight(4)
 	require.Len(t, box.chViews, 1)
 	require.Len(t, box.prepare, 0)
+	require.Len(t, box.preCommit, 0)
 	require.Len(t, box.commit, 1)
 }

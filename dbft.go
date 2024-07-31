@@ -283,6 +283,10 @@ func (d *DBFT[H]) start() {
 				d.OnReceive(m)
 			}
 
+			for _, m := range msgs.preCommit {
+				d.OnReceive(m)
+			}
+
 			for _, m := range msgs.commit {
 				d.OnReceive(m)
 			}
