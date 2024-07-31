@@ -72,7 +72,9 @@ func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
 func (d *DBFT[H]) Start(ts uint64) {
 	d.cache = newCache[H]()
 	d.initializeConsensus(0, ts)
-	d.start()
+	if d.IsPrimary() {
+		d.sendPrepareRequest()
+	}
 }
 
 // Reset reinitializes dBFT instance with the given timestamp of the previous
@@ -109,6 +111,25 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 		zap.Uint("view", uint(view)),
 		zap.Int("index", d.MyIndex),
 		zap.String("role", role))
+
+	// Process cached messages if any.
+	if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
+		for _, m := range msgs.prepare {
+			d.OnReceive(m)
+		}
+
+		for _, m := range msgs.chViews {
+			d.OnReceive(m)
+		}
+
+		for _, m := range msgs.preCommit {
+			d.OnReceive(m)
+		}
+
+		for _, m := range msgs.commit {
+			d.OnReceive(m)
+		}
+	}
 
 	if d.Context.WatchOnly() {
 		return
@@ -268,34 +289,6 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 	default:
 		d.Logger.DPanic("wrong message type")
 	}
-}
-
-// start performs initial operations and returns messages to be sent.
-// It must be called after every height or view increment.
-func (d *DBFT[H]) start() {
-	if !d.IsPrimary() {
-		if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
-			for _, m := range msgs.prepare {
-				d.OnReceive(m)
-			}
-
-			for _, m := range msgs.chViews {
-				d.OnReceive(m)
-			}
-
-			for _, m := range msgs.preCommit {
-				d.OnReceive(m)
-			}
-
-			for _, m := range msgs.commit {
-				d.OnReceive(m)
-			}
-		}
-
-		return
-	}
-
-	d.sendPrepareRequest()
 }
 
 func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
