@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"encoding/binary"
 	"encoding/gob"
 	"errors"
 
@@ -12,6 +13,7 @@ type (
 	recoveryMessage struct {
 		preparationHash     *crypto.Uint256
 		preparationPayloads []preparationCompact
+		preCommitPayloads   []preCommitCompact
 		commitPayloads      []commitCompact
 		changeViewPayloads  []changeViewCompact
 		prepareRequest      dbft.PrepareRequest[crypto.Uint256]
@@ -19,6 +21,7 @@ type (
 	// recoveryMessageAux is an auxiliary structure for recoveryMessage encoding.
 	recoveryMessageAux struct {
 		PreparationPayloads []preparationCompact
+		PreCommitPayloads   []preCommitCompact
 		CommitPayloads      []commitCompact
 		ChangeViewPayloads  []changeViewCompact
 	}
@@ -48,6 +51,13 @@ func (m *recoveryMessage) AddPayload(p dbft.ConsensusPayload[crypto.Uint256]) {
 			OriginalViewNumber: p.ViewNumber(),
 			Timestamp:          0,
 		})
+	case dbft.PreCommitType:
+		pcc := preCommitCompact{
+			ViewNumber:     p.ViewNumber(),
+			ValidatorIndex: p.ValidatorIndex(),
+			Data:           p.GetPreCommit().Data(),
+		}
+		m.preCommitPayloads = append(m.preCommitPayloads, pcc)
 	case dbft.CommitType:
 		cc := commitCompact{
 			ViewNumber:     p.ViewNumber(),
@@ -114,6 +124,18 @@ func (m *recoveryMessage) GetChangeViews(p dbft.ConsensusPayload[crypto.Uint256]
 			timestamp:     cv.Timestamp,
 		})
 		payloads[i].SetValidatorIndex(cv.ValidatorIndex)
+	}
+
+	return payloads
+}
+
+// GetPreCommits implements RecoveryMessage interface.
+func (m *recoveryMessage) GetPreCommits(p dbft.ConsensusPayload[crypto.Uint256], _ []dbft.PublicKey) []dbft.ConsensusPayload[crypto.Uint256] {
+	payloads := make([]dbft.ConsensusPayload[crypto.Uint256], len(m.preCommitPayloads))
+
+	for i, c := range m.preCommitPayloads {
+		payloads[i] = fromPayload(dbft.PreCommitType, p, &preCommit{magic: binary.BigEndian.Uint32(c.Data)})
+		payloads[i].SetValidatorIndex(c.ValidatorIndex)
 	}
 
 	return payloads

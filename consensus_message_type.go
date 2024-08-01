@@ -5,11 +5,12 @@ import "fmt"
 // MessageType is a type for dBFT consensus messages.
 type MessageType byte
 
-// 6 following constants enumerate all possible type of consensus message.
+// 7 following constants enumerate all possible type of consensus message.
 const (
 	ChangeViewType      MessageType = 0x00
 	PrepareRequestType  MessageType = 0x20
 	PrepareResponseType MessageType = 0x21
+	PreCommitType       MessageType = 0x31
 	CommitType          MessageType = 0x30
 	RecoveryRequestType MessageType = 0x40
 	RecoveryMessageType MessageType = 0x41
@@ -26,6 +27,8 @@ func (m MessageType) String() string {
 		return "PrepareResponse"
 	case CommitType:
 		return "Commit"
+	case PreCommitType:
+		return "PreCommit"
 	case RecoveryRequestType:
 		return "RecoveryRequest"
 	case RecoveryMessageType:

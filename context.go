@@ -23,13 +23,19 @@ type Context[H Hash] struct {
 	// Pub is node's public key.
 	Pub PublicKey
 
-	block  Block[H]
-	header Block[H]
+	preBlock  PreBlock[H]
+	preHeader PreBlock[H]
+	block     Block[H]
+	header    Block[H]
 	// blockProcessed denotes whether Config.ProcessBlock callback was called for the current
 	// height. If so, then no second call must happen. After new block is received by the user,
 	// dBFT stops any new transaction or messages processing as far as timeouts handling till
 	// the next call to Reset.
 	blockProcessed bool
+	// preBlockProcessed is true when Config.ProcessPreBlock callback was
+	// invoked for the current height. This happens once and dbft continues
+	// to march towards proper commit after that.
+	preBlockProcessed bool
 
 	// BlockIndex is current block index.
 	BlockIndex uint32
@@ -58,6 +64,14 @@ type Context[H Hash] struct {
 
 	// PreparationPayloads stores consensus Prepare* payloads for the current epoch.
 	PreparationPayloads []ConsensusPayload[H]
+	// PreCommitPayloads stores consensus PreCommit payloads sent through all epochs
+	// as a part of anti-MEV dBFT extension. It is assumed that valid PreCommit
+	// payloads can only be sent once by a single node per the whole set of consensus
+	// epochs for particular block. Invalid PreCommit payloads are kicked off this
+	// list immediately (if PrepareRequest was received for the current round, so
+	// it's possible to verify PreCommit against PreBlock built on PrepareRequest)
+	// or stored till the corresponding PrepareRequest receiving.
+	PreCommitPayloads []ConsensusPayload[H]
 	// CommitPayloads stores consensus Commit payloads sent throughout all epochs. It
 	// is assumed that valid Commit payload can only be sent once by a single node per
 	// the whole set of consensus epochs for particular block. Invalid commit payloads
@@ -108,11 +122,13 @@ func (c *Context[H]) IsBackup() bool {
 // WatchOnly returns true iff node takes no active part in consensus.
 func (c *Context[H]) WatchOnly() bool { return c.MyIndex < 0 || c.Config.WatchOnly() }
 
-// CountCommitted returns number of received Commit messages not only for the current
-// epoch but also for any other epoch.
+// CountCommitted returns number of received Commit (or PreCommit for anti-MEV
+// extension) messages not only for the current epoch but also for any other epoch.
 func (c *Context[H]) CountCommitted() (count int) {
 	for i := range c.CommitPayloads {
-		if c.CommitPayloads[i] != nil {
+		// Consider both Commit and PreCommit payloads since node both Commit and PreCommit
+		// phases are one-directional (do not impose view change).
+		if c.CommitPayloads[i] != nil || c.PreCommitPayloads[i] != nil {
 			count++
 		}
 	}
@@ -124,7 +140,8 @@ func (c *Context[H]) CountCommitted() (count int) {
 // for this view and that hasn't sent the Commit message at the previous views.
 func (c *Context[H]) CountFailed() (count int) {
 	for i, hv := range c.LastSeenMessage {
-		if c.CommitPayloads[i] == nil && (hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber) {
+		if (c.CommitPayloads[i] == nil && c.PreCommitPayloads[i] == nil) &&
+			(hv == nil || hv.Height < c.BlockIndex || hv.View < c.ViewNumber) {
 			count++
 		}
 	}
@@ -141,6 +158,12 @@ func (c *Context[H]) RequestSentOrReceived() bool {
 // ResponseSent returns true iff Prepare* message was sent for the current epoch.
 func (c *Context[H]) ResponseSent() bool {
 	return !c.WatchOnly() && c.PreparationPayloads[c.MyIndex] != nil
+}
+
+// PreCommitSent returns true iff PreCommit message was sent for the current epoch
+// assuming that the node can't go further than current epoch after PreCommit was sent.
+func (c *Context[H]) PreCommitSent() bool {
+	return !c.WatchOnly() && c.PreCommitPayloads[c.MyIndex] != nil
 }
 
 // CommitSent returns true iff Commit message was sent for the current epoch
@@ -191,6 +214,10 @@ func (c *Context[H]) MoreThanFNodesCommittedOrLost() bool {
 	return c.CountCommitted()+c.CountFailed() > c.F()
 }
 
+func (c *Context[H]) PreBlock() PreBlock[H] {
+	return c.preHeader // without transactions
+}
+
 func (c *Context[H]) reset(view byte, ts uint64) {
 	c.MyIndex = -1
 	c.lastBlockTimestamp = ts
@@ -207,6 +234,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 			c.LastSeenMessage = make([]*HeightView, n)
 		}
 		c.blockProcessed = false
+		c.preBlockProcessed = false
 	} else {
 		for i := range c.Validators {
 			m := c.ChangeViewPayloads[i]
@@ -226,6 +254,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	n := len(c.Validators)
 	c.ChangeViewPayloads = make([]ConsensusPayload[H], n)
 	if view == 0 {
+		c.PreCommitPayloads = make([]ConsensusPayload[H], n)
 		c.CommitPayloads = make([]ConsensusPayload[H], n)
 	}
 	c.PreparationPayloads = make([]ConsensusPayload[H], n)
@@ -284,10 +313,40 @@ func (c *Context[H]) CreateBlock() Block[H] {
 			txx[i] = c.Transactions[h]
 		}
 
+		// Anti-MEV extension properly sets PreBlock transactions once during PreBlock
+		// construction and then never updates these transactions in the dBFT context.
+		// Thus, user must not reuse txx if anti-MEV extension is enabled. However,
+		// we don't skip a call to Block.SetTransactions since it may be used as a
+		// signal to the user's code to finalize the block.
 		c.block.SetTransactions(txx)
 	}
 
 	return c.block
+}
+
+// CreatePreBlock returns PreBlock for the current epoch.
+func (c *Context[H]) CreatePreBlock() PreBlock[H] {
+	if c.preBlock == nil {
+		if c.preBlock = c.MakePreHeader(); c.preBlock == nil {
+			return nil
+		}
+
+		txx := make([]Transaction[H], len(c.TransactionHashes))
+
+		for i, h := range c.TransactionHashes {
+			txx[i] = c.Transactions[h]
+		}
+
+		c.preBlock.SetTransactions(txx)
+	}
+
+	return c.preBlock
+}
+
+// isAntiMEVExtensionEnabled returns whether Anti-MEV dBFT extension is enabled
+// at the currently processing block height.
+func (c *Context[H]) isAntiMEVExtensionEnabled() bool {
+	return c.Config.AntiMEVExtensionEnablingHeight >= 0 && uint32(c.Config.AntiMEVExtensionEnablingHeight) < c.BlockIndex
 }
 
 // MakeHeader returns half-filled block for the current epoch.
@@ -297,10 +356,36 @@ func (c *Context[H]) MakeHeader() Block[H] {
 		if !c.RequestSentOrReceived() {
 			return nil
 		}
+		// For anti-MEV dBFT extension it's important to have at least M PreCommits received
+		// because PrepareRequest is not enough to construct proper block.
+		if c.isAntiMEVExtensionEnabled() {
+			var count int
+			for _, preCommit := range c.PreCommitPayloads {
+				if preCommit != nil && preCommit.ViewNumber() == c.ViewNumber {
+					count++
+				}
+			}
+			if count < c.M() {
+				return nil
+			}
+		}
 		c.header = c.Config.NewBlockFromContext(c)
 	}
 
 	return c.header
+}
+
+// MakePreHeader returns half-filled block for the current epoch.
+// All hashable fields will be filled.
+func (c *Context[H]) MakePreHeader() PreBlock[H] {
+	if c.preHeader == nil {
+		if !c.RequestSentOrReceived() {
+			return nil
+		}
+		c.preHeader = c.Config.NewPreBlockFromContext(c)
+	}
+
+	return c.preHeader
 }
 
 // hasAllTransactions returns true iff all transactions were received

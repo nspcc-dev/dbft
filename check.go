@@ -30,9 +30,57 @@ func (d *DBFT[H]) checkPrepare() {
 		zap.Int("M", d.M()))
 
 	if hasRequest && count >= d.M() {
+		if d.isAntiMEVExtensionEnabled() {
+			d.sendPreCommit()
+			d.changeTimer(d.SecondsPerBlock)
+			d.checkPreCommit()
+		} else {
+			d.sendCommit()
+			d.changeTimer(d.SecondsPerBlock)
+			d.checkCommit()
+		}
+	}
+}
+
+func (d *DBFT[H]) checkPreCommit() {
+	if !d.hasAllTransactions() {
+		d.Logger.Debug("check preCommit: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
+		return
+	}
+
+	count := 0
+	for _, msg := range d.PreCommitPayloads {
+		if msg != nil && msg.ViewNumber() == d.ViewNumber {
+			count++
+		}
+	}
+
+	if count < d.M() {
+		d.Logger.Debug("not enough PreCommits to create PreBlock", zap.Int("count", count))
+		return
+	}
+
+	d.preBlock = d.CreatePreBlock()
+
+	d.Logger.Info("processing PreBlock",
+		zap.Uint32("height", d.BlockIndex),
+		zap.Uint("view", uint(d.ViewNumber)),
+		zap.Int("tx_count", len(d.preBlock.Transactions())))
+
+	if !d.preBlockProcessed {
+		d.preBlockProcessed = true
+		d.ProcessPreBlock(d.preBlock)
+	}
+
+	// Require PreCommit sent by self for reliability. This condition may be removed
+	// in the future.
+	if d.PreCommitSent() {
+		d.verifyCommitPayloadsAgainstHeader()
 		d.sendCommit()
 		d.changeTimer(d.SecondsPerBlock)
 		d.checkCommit()
+	} else {
+		d.Logger.Debug("can't send commit since self preCommit not yet sent")
 	}
 }
 

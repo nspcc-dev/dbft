@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"encoding/binary"
-	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -202,41 +200,9 @@ func (n *simNode) VerifyPayload(p dbft.ConsensusPayload[crypto.Uint256]) error {
 
 func (n *simNode) addTx(count int) {
 	for i := 0; i < count; i++ {
-		tx := tx64(uint64(i))
+		tx := consensus.Tx64(uint64(i))
 		n.pool.Add(&tx)
 	}
-}
-
-// =============================
-// Small transaction.
-// =============================
-
-type tx64 uint64
-
-var _ dbft.Transaction[crypto.Uint256] = (*tx64)(nil)
-
-func (t *tx64) Hash() (h crypto.Uint256) {
-	binary.LittleEndian.PutUint64(h[:], uint64(*t))
-	return
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler interface.
-func (t *tx64) MarshalBinary() ([]byte, error) {
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(*t))
-
-	return b, nil
-}
-
-// UnmarshalBinary implements encoding.BinaryUnarshaler interface.
-func (t *tx64) UnmarshalBinary(data []byte) error {
-	if len(data) != 8 {
-		return errors.New("length must equal 8 bytes")
-	}
-
-	*t = tx64(binary.LittleEndian.Uint64(data))
-
-	return nil
 }
 
 // =============================

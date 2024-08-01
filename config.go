@@ -20,9 +20,14 @@ type Config[H Hash] struct {
 	// if current time is less than that of previous context.
 	// By default use millisecond precision.
 	TimestampIncrement uint64
+	// AntiMEVExtensionEnablingHeight denotes the height starting from which dBFT
+	// Anti-MEV extensions should be enabled. -1 means no extension is enabled.
+	AntiMEVExtensionEnablingHeight int64
 	// GetKeyPair returns an index of the node in the list of validators
 	// together with it's key pair.
 	GetKeyPair func([]PublicKey) (int, PrivateKey, PublicKey)
+	// NewPreBlockFromContext should allocate, fill from Context and return new block.PreBlock.
+	NewPreBlockFromContext func(ctx *Context[H]) PreBlock[H]
 	// NewBlockFromContext should allocate, fill from Context and return new block.Block.
 	NewBlockFromContext func(ctx *Context[H]) Block[H]
 	// RequestTx is a callback which is called when transaction contained
@@ -36,10 +41,14 @@ type Config[H Hash] struct {
 	// GetVerified returns a slice of verified transactions
 	// to be proposed in a new block.
 	GetVerified func() []Transaction[H]
+	// VerifyPreBlock verifies if preBlock is valid.
+	VerifyPreBlock func(b PreBlock[H]) bool
 	// VerifyBlock verifies if block is valid.
 	VerifyBlock func(b Block[H]) bool
 	// Broadcast should broadcast payload m to the consensus nodes.
 	Broadcast func(m ConsensusPayload[H])
+	// ProcessBlock is called every time new preBlock is accepted.
+	ProcessPreBlock func(b PreBlock[H])
 	// ProcessBlock is called every time new block is accepted.
 	ProcessBlock func(b Block[H])
 	// GetBlock should return block with hash.
@@ -63,6 +72,8 @@ type Config[H Hash] struct {
 	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
 	NewChangeView func(newViewNumber byte, reason ChangeViewReason, timestamp uint64) ChangeView
+	// NewPreCommit is a constructor for payload.PreCommit.
+	NewPreCommit func(data []byte) PreCommit
 	// NewCommit is a constructor for payload.Commit.
 	NewCommit func(signature []byte) Commit
 	// NewRecoveryRequest is a constructor for payload.RecoveryRequest.
@@ -73,6 +84,10 @@ type Config[H Hash] struct {
 	VerifyPrepareRequest func(p ConsensusPayload[H]) error
 	// VerifyPrepareResponse performs external PrepareResponse verification and returns nil if it's successful.
 	VerifyPrepareResponse func(p ConsensusPayload[H]) error
+	// VerifyPreCommit performs external PreCommit verification and returns nil if it's successful.
+	// Note that PreBlock-dependent PreCommit verification should be performed inside PreBlock.Verify
+	// callback.
+	VerifyPreCommit func(p ConsensusPayload[H]) error
 }
 
 const defaultSecondsPerBlock = time.Second * 15
@@ -101,6 +116,10 @@ func defaultConfig[H Hash]() *Config[H] {
 
 		VerifyPrepareRequest:  func(ConsensusPayload[H]) error { return nil },
 		VerifyPrepareResponse: func(ConsensusPayload[H]) error { return nil },
+
+		AntiMEVExtensionEnablingHeight: -1,
+		VerifyPreBlock:                 func(PreBlock[H]) bool { return true },
+		VerifyPreCommit:                func(ConsensusPayload[H]) error { return nil },
 	}
 }
 
@@ -131,6 +150,20 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 		return errors.New("NewRecoveryRequest is nil")
 	} else if cfg.NewRecoveryMessage == nil {
 		return errors.New("NewRecoveryMessage is nil")
+	} else if cfg.AntiMEVExtensionEnablingHeight >= 0 {
+		if cfg.NewPreBlockFromContext == nil {
+			return errors.New("NewPreBlockFromContext is nil")
+		} else if cfg.ProcessPreBlock == nil {
+			return errors.New("ProcessPreBlock is nil")
+		} else if cfg.NewPreCommit == nil {
+			return errors.New("NewPreCommit is nil")
+		}
+	} else if cfg.NewPreBlockFromContext != nil {
+		return errors.New("NewPreBlockFromContext is set, but AntiMEVExtensionEnablingHeight is not specified")
+	} else if cfg.ProcessPreBlock != nil {
+		return errors.New("ProcessPreBlock is set, but AntiMEVExtensionEnablingHeight is not specified")
+	} else if cfg.NewPreCommit != nil {
+		return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
 	}
 
 	return nil
@@ -164,10 +197,24 @@ func WithSecondsPerBlock[H Hash](d time.Duration) func(config *Config[H]) {
 	}
 }
 
+// WithAntiMEVExtensionEnablingHeight sets AntiMEVExtensionEnablingHeight.
+func WithAntiMEVExtensionEnablingHeight[H Hash](h int64) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.AntiMEVExtensionEnablingHeight = h
+	}
+}
+
 // WithTimestampIncrement sets TimestampIncrement.
 func WithTimestampIncrement[H Hash](u uint64) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.TimestampIncrement = u
+	}
+}
+
+// WithNewPreBlockFromContext sets NewPreBlockFromContext.
+func WithNewPreBlockFromContext[H Hash](f func(ctx *Context[H]) PreBlock[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.NewPreBlockFromContext = f
 	}
 }
 
@@ -206,6 +253,13 @@ func WithGetVerified[H Hash](f func() []Transaction[H]) func(config *Config[H]) 
 	}
 }
 
+// WithVerifyPreBlock sets VerifyPreBlock.
+func WithVerifyPreBlock[H Hash](f func(b PreBlock[H]) bool) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.VerifyPreBlock = f
+	}
+}
+
 // WithVerifyBlock sets VerifyBlock.
 func WithVerifyBlock[H Hash](f func(b Block[H]) bool) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
@@ -224,6 +278,13 @@ func WithBroadcast[H Hash](f func(m ConsensusPayload[H])) func(config *Config[H]
 func WithProcessBlock[H Hash](f func(b Block[H])) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.ProcessBlock = f
+	}
+}
+
+// WithProcessPreBlock sets ProcessPreBlock.
+func WithProcessPreBlock[H Hash](f func(b PreBlock[H])) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.ProcessPreBlock = f
 	}
 }
 
@@ -297,6 +358,13 @@ func WithNewCommit[H Hash](f func(signature []byte) Commit) func(config *Config[
 	}
 }
 
+// WithNewPreCommit sets NewPreCommit.
+func WithNewPreCommit[H Hash](f func(signature []byte) PreCommit) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.NewPreCommit = f
+	}
+}
+
 // WithNewRecoveryRequest sets NewRecoveryRequest.
 func WithNewRecoveryRequest[H Hash](f func(ts uint64) RecoveryRequest) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
@@ -322,5 +390,12 @@ func WithVerifyPrepareRequest[H Hash](f func(prepareReq ConsensusPayload[H]) err
 func WithVerifyPrepareResponse[H Hash](f func(prepareResp ConsensusPayload[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.VerifyPrepareResponse = f
+	}
+}
+
+// WithVerifyPreCommit sets VerifyPreCommit.
+func WithVerifyPreCommit[H Hash](f func(preCommit ConsensusPayload[H]) error) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.VerifyPreCommit = f
 	}
 }

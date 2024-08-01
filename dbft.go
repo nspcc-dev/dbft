@@ -72,7 +72,9 @@ func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
 func (d *DBFT[H]) Start(ts uint64) {
 	d.cache = newCache[H]()
 	d.initializeConsensus(0, ts)
-	d.start()
+	if d.IsPrimary() {
+		d.sendPrepareRequest()
+	}
 }
 
 // Reset reinitializes dBFT instance with the given timestamp of the previous
@@ -110,6 +112,25 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 		zap.Int("index", d.MyIndex),
 		zap.String("role", role))
 
+	// Process cached messages if any.
+	if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
+		for _, m := range msgs.prepare {
+			d.OnReceive(m)
+		}
+
+		for _, m := range msgs.chViews {
+			d.OnReceive(m)
+		}
+
+		for _, m := range msgs.preCommit {
+			d.OnReceive(m)
+		}
+
+		for _, m := range msgs.commit {
+			d.OnReceive(m)
+		}
+	}
+
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -145,8 +166,8 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 	// 	zap.Bool("response_sent", d.ResponseSent()),
 	// 	zap.Bool("block_sent", d.BlockSent()))
 	if !d.IsBackup() || d.NotAcceptingPayloadsDueToViewChanging() ||
-		!d.RequestSentOrReceived() || d.ResponseSent() || d.BlockSent() ||
-		len(d.MissingTransactions) == 0 {
+		!d.RequestSentOrReceived() || d.ResponseSent() || d.PreCommitSent() ||
+		d.CommitSent() || d.BlockSent() || len(d.MissingTransactions) == 0 {
 		return
 	}
 
@@ -189,7 +210,7 @@ func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
 	if d.IsPrimary() && !d.RequestSentOrReceived() {
 		d.sendPrepareRequest()
 	} else if (d.IsPrimary() && d.RequestSentOrReceived()) || d.IsBackup() {
-		if d.CommitSent() {
+		if d.CommitSent() || d.PreCommitSent() {
 			d.Logger.Debug("send recovery to resend commit")
 			d.sendRecoveryMessage()
 			d.changeTimer(d.SecondsPerBlock << 1)
@@ -232,8 +253,6 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 			zap.Any("cache", d.cache.mail[msg.Height()]))
 		d.cache.addMessage(msg)
 		return
-	} else if msg.ValidatorIndex() > uint16(d.N()) {
-		return
 	}
 
 	hv := d.LastSeenMessage[msg.ValidatorIndex()]
@@ -255,6 +274,14 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 		d.onPrepareResponse(msg)
 	case CommitType:
 		d.onCommit(msg)
+	case PreCommitType:
+		if !d.isAntiMEVExtensionEnabled() {
+			d.Logger.Error(fmt.Sprintf("%s message received but AntiMEVExtension is disabled", PreCommitType),
+				zap.Uint16("from", msg.ValidatorIndex()),
+			)
+			return
+		}
+		d.onPreCommit(msg)
 	case RecoveryRequestType:
 		d.onRecoveryRequest(msg)
 	case RecoveryMessageType:
@@ -262,30 +289,6 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 	default:
 		d.Logger.DPanic("wrong message type")
 	}
-}
-
-// start performs initial operations and returns messages to be sent.
-// It must be called after every height or view increment.
-func (d *DBFT[H]) start() {
-	if !d.IsPrimary() {
-		if msgs := d.cache.getHeight(d.BlockIndex); msgs != nil {
-			for _, m := range msgs.prepare {
-				d.OnReceive(m)
-			}
-
-			for _, m := range msgs.chViews {
-				d.OnReceive(m)
-			}
-
-			for _, m := range msgs.commit {
-				d.OnReceive(m)
-			}
-		}
-
-		return
-	}
-
-	d.sendPrepareRequest()
 }
 
 func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
@@ -304,7 +307,7 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 		d.Logger.Debug("ignoring wrong view number", zap.Uint("view", uint(msg.ViewNumber())))
 		return
 	} else if uint(msg.ValidatorIndex()) != d.GetPrimaryIndex(d.ViewNumber) {
-		d.Logger.Debug("ignoring PrepareRequest from wrong node", zap.Uint16("from", msg.ValidatorIndex()))
+		d.Logger.Info("ignoring PrepareRequest from wrong node", zap.Uint16("from", msg.ValidatorIndex()))
 		return
 	}
 
@@ -318,9 +321,6 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 	d.extendTimer(2)
 
 	p := msg.GetPrepareRequest()
-	if len(p.TransactionHashes()) == 0 {
-		d.Logger.Debug("received empty PrepareRequest")
-	}
 
 	d.Timestamp = p.Timestamp()
 	d.Nonce = p.Nonce()
@@ -366,14 +366,29 @@ func (d *DBFT[H]) processMissingTx() {
 // with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
 func (d *DBFT[H]) createAndCheckBlock() bool {
-	if b := d.Context.CreateBlock(); !d.VerifyBlock(b) {
-		d.Logger.Warn("proposed block fails verification")
+	var blockOK bool
+	if d.isAntiMEVExtensionEnabled() {
+		b := d.Context.CreatePreBlock()
+		blockOK = d.VerifyPreBlock(b)
+		if !blockOK {
+			d.Logger.Warn("proposed preBlock fails verification")
+		}
+	} else {
+		b := d.Context.CreateBlock()
+		blockOK = d.VerifyBlock(b)
+		if !blockOK {
+			d.Logger.Warn("proposed block fails verification")
+		}
+	}
+	if !blockOK {
 		d.sendChangeView(CVTxInvalid)
 		return false
 	}
 	return true
 }
 
+// updateExistingPayloads is called _only_ from onPrepareRequest, it validates
+// payloads we may have received before PrepareRequest.
 func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 	for i, m := range d.PreparationPayloads {
 		if m != nil && m.Type() == PrepareResponseType {
@@ -384,6 +399,28 @@ func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 		}
 	}
 
+	if d.isAntiMEVExtensionEnabled() {
+		for i, m := range d.PreCommitPayloads {
+			if m != nil && m.ViewNumber() == d.ViewNumber {
+				if preHeader := d.MakePreHeader(); preHeader != nil {
+					pub := d.Validators[m.ValidatorIndex()]
+					if err := preHeader.Verify(pub, m.GetPreCommit().Data()); err != nil {
+						d.PreCommitPayloads[i] = nil
+						d.Logger.Warn("can't validate preCommit data",
+							zap.Error(err))
+					}
+				}
+			}
+		}
+		// Commits can't be verified, we have no idea what's the header.
+	} else {
+		d.verifyCommitPayloadsAgainstHeader()
+	}
+}
+
+// verifyCommitPayloadsAgainstHeader performs verification of commit payloads
+// against generated header.
+func (d *DBFT[H]) verifyCommitPayloadsAgainstHeader() {
 	for i, m := range d.CommitPayloads {
 		if m != nil && m.ViewNumber() == d.ViewNumber {
 			if header := d.MakeHeader(); header != nil {
@@ -444,7 +481,7 @@ func (d *DBFT[H]) onPrepareResponse(msg ConsensusPayload[H]) {
 
 	d.extendTimer(2)
 
-	if !d.Context.WatchOnly() && !d.CommitSent() && d.RequestSentOrReceived() {
+	if !d.Context.WatchOnly() && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && d.RequestSentOrReceived() {
 		d.checkPrepare()
 	}
 }
@@ -459,8 +496,8 @@ func (d *DBFT[H]) onChangeView(msg ConsensusPayload[H]) {
 		return
 	}
 
-	if d.CommitSent() {
-		d.Logger.Debug("ignoring ChangeView: commit sent")
+	if d.CommitSent() || d.PreCommitSent() {
+		d.Logger.Debug("ignoring ChangeView: preCommit or commit sent")
 		d.sendRecoveryMessage()
 		return
 	}
@@ -480,6 +517,52 @@ func (d *DBFT[H]) onChangeView(msg ConsensusPayload[H]) {
 	d.checkChangeView(p.NewViewNumber())
 }
 
+func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
+	existing := d.PreCommitPayloads[msg.ValidatorIndex()]
+	if existing != nil {
+		if existing.Hash() != msg.Hash() {
+			d.Logger.Warn("rejecting preCommit due to existing",
+				zap.Uint("validator", uint(msg.ValidatorIndex())),
+				zap.Uint("existing view", uint(existing.ViewNumber())),
+				zap.Uint("view", uint(msg.ViewNumber())),
+				zap.Stringer("existing hash", existing.Hash()),
+				zap.Stringer("hash", msg.Hash()),
+			)
+		}
+		return
+	}
+	d.PreCommitPayloads[msg.ValidatorIndex()] = msg
+	if d.ViewNumber == msg.ViewNumber() {
+		if err := d.VerifyPreCommit(msg); err != nil {
+			d.Logger.Warn("invalid PreCommit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+			return
+		}
+
+		d.Logger.Info("received PreCommit", zap.Uint("validator", uint(msg.ValidatorIndex())))
+		d.extendTimer(4)
+
+		preHeader := d.MakePreHeader()
+		if preHeader != nil {
+			pub := d.Validators[msg.ValidatorIndex()]
+			if err := preHeader.Verify(pub, msg.GetPreCommit().Data()); err == nil {
+				d.checkPreCommit()
+			} else {
+				d.PreCommitPayloads[msg.ValidatorIndex()] = nil
+				d.Logger.Warn("invalid preCommit data",
+					zap.Uint("validator", uint(msg.ValidatorIndex())),
+					zap.Error(err),
+				)
+			}
+		}
+		return
+	}
+
+	d.Logger.Info("received preCommit for different view",
+		zap.Uint("validator", uint(msg.ValidatorIndex())),
+		zap.Uint("view", uint(msg.ViewNumber())),
+	)
+}
+
 func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 	existing := d.CommitPayloads[msg.ValidatorIndex()]
 	if existing != nil {
@@ -494,18 +577,17 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 		}
 		return
 	}
+	d.CommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 		header := d.MakeHeader()
-		if header == nil {
-			d.CommitPayloads[msg.ValidatorIndex()] = msg
-		} else {
+		if header != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
 			if header.Verify(pub, msg.GetCommit().Signature()) == nil {
-				d.CommitPayloads[msg.ValidatorIndex()] = msg
 				d.checkCommit()
 			} else {
+				d.CommitPayloads[msg.ValidatorIndex()] = nil
 				d.Logger.Warn("invalid commit signature",
 					zap.Uint("validator", uint(msg.ValidatorIndex())),
 				)
@@ -519,11 +601,10 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 		zap.Uint("validator", uint(msg.ValidatorIndex())),
 		zap.Uint("view", uint(msg.ViewNumber())),
 	)
-	d.CommitPayloads[msg.ValidatorIndex()] = msg
 }
 
 func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
-	if !d.CommitSent() {
+	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		// Limit recoveries to be sent from no more than F nodes
 		// TODO replace loop with a single if
 		shouldSend := false
@@ -548,27 +629,28 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 	d.Logger.Debug("recovery message received", zap.Any("dump", msg))
 
 	var (
-		validPrepResp, validChViews, validCommits int
-		validPrepReq, totalPrepReq                int
+		validPrepResp, validChViews   int
+		validPreCommits, validCommits int
+		validPrepReq, totalPrepReq    int
+		recovery                      = msg.GetRecoveryMessage()
+		total                         = len(d.Validators)
 	)
-
-	recovery := msg.GetRecoveryMessage()
-	total := len(d.Validators)
 
 	// isRecovering is always set to false again after OnRecoveryMessageReceived
 	d.recovering = true
 
 	defer func() {
-		d.Logger.Sugar().Debugf("recovering finished cv=%d/%d preq=%d/%d presp=%d/%d co=%d/%d",
+		d.Logger.Sugar().Debugf("recovering finished cv=%d/%d preq=%d/%d presp=%d/%d pco=%d/%d co=%d/%d",
 			validChViews, total,
 			validPrepReq, totalPrepReq,
 			validPrepResp, total,
+			validPreCommits, total,
 			validCommits, total)
 		d.recovering = false
 	}()
 
 	if msg.ViewNumber() > d.ViewNumber {
-		if d.CommitSent() {
+		if d.CommitSent() || d.PreCommitSent() {
 			return
 		}
 
@@ -578,7 +660,7 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 		}
 	}
 
-	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() {
+	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		if !d.RequestSentOrReceived() {
 			prepReq := recovery.GetPrepareRequest(msg, d.Validators, uint16(d.PrimaryIndex))
 			if prepReq != nil {
@@ -595,8 +677,13 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 		}
 	}
 
+	// Ensure we know about all (pre) commits from lower view numbers.
 	if msg.ViewNumber() <= d.ViewNumber {
-		// Ensure we know about all commits from lower view numbers.
+		for _, m := range recovery.GetPreCommits(msg, d.Validators) {
+			validPreCommits++
+			d.OnReceive(m)
+		}
+
 		for _, m := range recovery.GetCommits(msg, d.Validators) {
 			validCommits++
 			d.OnReceive(m)
@@ -613,7 +700,7 @@ func (d *DBFT[H]) changeTimer(delay time.Duration) {
 }
 
 func (d *DBFT[H]) extendTimer(count time.Duration) {
-	if !d.CommitSent() && !d.ViewChanging() {
+	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && !d.ViewChanging() {
 		d.Timer.Extend(count * d.SecondsPerBlock / time.Duration(d.M()))
 	}
 }
@@ -622,4 +709,10 @@ func (d *DBFT[H]) extendTimer(count time.Duration) {
 // header is constructed yet. Do not change the resulting header.
 func (d *DBFT[H]) Header() Block[H] {
 	return d.header
+}
+
+// PreHeader returns current preHeader from context. May be nil in case if no
+// preHeader is constructed yet. Do not change the resulting preHeader.
+func (d *DBFT[H]) PreHeader() PreBlock[H] {
+	return d.preHeader
 }

@@ -99,6 +99,25 @@ func (d *DBFT[H]) sendPrepareResponse() {
 	d.broadcast(msg)
 }
 
+func (c *Context[H]) makePreCommit() ConsensusPayload[H] {
+	if msg := c.PreCommitPayloads[c.MyIndex]; msg != nil {
+		return msg
+	}
+
+	if preB := c.MakePreHeader(); preB != nil {
+		var preData []byte
+		if err := preB.SetData(c.Priv); err == nil {
+			preData = preB.Data()
+		}
+
+		preCommit := c.Config.NewPreCommit(preData)
+
+		return c.Config.NewConsensusPayload(c, PreCommitType, preCommit)
+	}
+
+	return nil
+}
+
 func (c *Context[H]) makeCommit() ConsensusPayload[H] {
 	if msg := c.CommitPayloads[c.MyIndex]; msg != nil {
 		return msg
@@ -116,6 +135,13 @@ func (c *Context[H]) makeCommit() ConsensusPayload[H] {
 	}
 
 	return nil
+}
+
+func (d *DBFT[H]) sendPreCommit() {
+	msg := d.makePreCommit()
+	d.PreCommitPayloads[d.MyIndex] = msg
+	d.Logger.Info("sending PreCommit", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
+	d.broadcast(msg)
 }
 
 func (d *DBFT[H]) sendCommit() {
@@ -151,6 +177,14 @@ func (c *Context[H]) makeRecoveryMessage() ConsensusPayload[H] {
 	for _, p := range cv {
 		if p != nil {
 			recovery.AddPayload(p)
+		}
+	}
+
+	if c.PreCommitSent() {
+		for _, p := range c.PreCommitPayloads {
+			if p != nil {
+				recovery.AddPayload(p)
+			}
 		}
 	}
 

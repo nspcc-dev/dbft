@@ -15,6 +15,8 @@ type ConsensusMessage[H Hash] interface {
 	GetPrepareRequest() PrepareRequest[H]
 	// GetPrepareResponse returns payload as if it was PrepareResponse.
 	GetPrepareResponse() PrepareResponse[H]
+	// GetPreCommit returns payload as if it was PreCommit.
+	GetPreCommit() PreCommit
 	// GetCommit returns payload as if it was Commit.
 	GetCommit() Commit
 	// GetRecoveryRequest returns payload as if it was RecoveryRequest.

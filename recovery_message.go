@@ -10,6 +10,10 @@ type RecoveryMessage[H Hash] interface {
 	GetPrepareResponses(p ConsensusPayload[H], validators []PublicKey) []ConsensusPayload[H]
 	// GetChangeViews returns a slice of ChangeView in any order.
 	GetChangeViews(p ConsensusPayload[H], validators []PublicKey) []ConsensusPayload[H]
+	// GetPreCommits returns a slice of PreCommit messages in any order.
+	// If implemented on networks with no AntiMEV extension it can just
+	// always return nil.
+	GetPreCommits(p ConsensusPayload[H], validators []PublicKey) []ConsensusPayload[H]
 	// GetCommits returns a slice of Commit in any order.
 	GetCommits(p ConsensusPayload[H], validators []PublicKey) []ConsensusPayload[H]
 
