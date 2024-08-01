@@ -12,7 +12,7 @@ Improvements:
 
 Bugs fixed:
 
-## [0.2.0] (01 August 2024)
+## [0.3.0] (01 August 2024)
 
 New features:
  * TLA+ model for MEV-resistant dBFT extension (#116)
