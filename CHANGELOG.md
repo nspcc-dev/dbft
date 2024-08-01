@@ -5,15 +5,22 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 New features:
- * TLA+ model for MEV-resistant dBFT extension (#116)
 
 Behaviour changes:
- * simplify PublicKey interface (#114)
- * remove WithKeyPair callback from dBFT (#114)
 
 Improvements:
 
 Bugs fixed:
+
+## [0.2.0] (01 August 2024)
+
+New features:
+ * TLA+ model for MEV-resistant dBFT extension (#116)
+ * support for additional phase of MEV-resistant dBFT (#118)
+
+Behaviour changes:
+ * simplify PublicKey interface (#114)
+ * remove WithKeyPair callback from dBFT (#114)
 
 ## [0.2.0] (01 April 2024)
 
@@ -55,6 +62,7 @@ Improvements:
 
 Stable dbft 2.0 implementation.
 
-[Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.2.0...master
+[Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.3.0...master
+[0.3.0]: https://github.com/nspcc-dev/dbft/releases/v0.3.0
 [0.2.0]: https://github.com/nspcc-dev/dbft/releases/v0.2.0
 [0.1.0]: https://github.com/nspcc-dev/dbft/releases/v0.1.0
