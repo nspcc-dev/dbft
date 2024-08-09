@@ -151,9 +151,7 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 		var ts = d.Timer.Now()
 		var diff = ts.Sub(d.lastBlockTime)
 		timeout -= diff
-		if timeout < 0 {
-			timeout = 0
-		}
+		timeout = max(0, timeout)
 	}
 	d.changeTimer(timeout)
 }
