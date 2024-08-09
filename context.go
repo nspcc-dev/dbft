@@ -228,9 +228,11 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 		c.Validators = c.Config.GetValidators()
 
 		n := len(c.Validators)
-		c.LastChangeViewPayloads = make([]ConsensusPayload[H], n)
+		c.LastChangeViewPayloads = emptyPayloadSlice(c.LastChangeViewPayloads, n)
 
-		if c.LastSeenMessage == nil {
+		if len(c.LastSeenMessage) == n {
+			clear(c.LastSeenMessage)
+		} else {
 			c.LastSeenMessage = make([]*HeightView, n)
 		}
 		c.blockProcessed = false
@@ -252,12 +254,12 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	c.header = nil
 
 	n := len(c.Validators)
-	c.ChangeViewPayloads = make([]ConsensusPayload[H], n)
+	c.ChangeViewPayloads = emptyPayloadSlice(c.ChangeViewPayloads, n)
 	if view == 0 {
-		c.PreCommitPayloads = make([]ConsensusPayload[H], n)
-		c.CommitPayloads = make([]ConsensusPayload[H], n)
+		c.PreCommitPayloads = emptyPayloadSlice(c.PreCommitPayloads, n)
+		c.CommitPayloads = emptyPayloadSlice(c.CommitPayloads, n)
 	}
-	c.PreparationPayloads = make([]ConsensusPayload[H], n)
+	c.PreparationPayloads = emptyPayloadSlice(c.PreparationPayloads, n)
 
 	if c.Transactions == nil { // Init.
 		c.Transactions = make(map[H]Transaction[H])
@@ -274,6 +276,14 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	if c.MyIndex >= 0 {
 		c.LastSeenMessage[c.MyIndex] = &HeightView{c.BlockIndex, c.ViewNumber}
 	}
+}
+
+func emptyPayloadSlice[H Hash](s []ConsensusPayload[H], n int) []ConsensusPayload[H] {
+	if len(s) == n {
+		clear(s)
+		return s
+	}
+	return make([]ConsensusPayload[H], n)
 }
 
 // Fill initializes consensus when node is a speaker.
