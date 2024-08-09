@@ -259,7 +259,11 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	}
 	c.PreparationPayloads = make([]ConsensusPayload[H], n)
 
-	c.Transactions = make(map[H]Transaction[H])
+	if c.Transactions == nil { // Init.
+		c.Transactions = make(map[H]Transaction[H])
+	} else { // Regular use.
+		clear(c.Transactions)
+	}
 	c.TransactionHashes = nil
 	c.MissingTransactions = nil
 	c.PrimaryIndex = c.GetPrimaryIndex(view)
