@@ -9,7 +9,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
-	"sort"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -152,10 +152,10 @@ func updatePublicKeys(nodes []*simNode, n int) {
 }
 
 func sortValidators(pubs []dbft.PublicKey) {
-	sort.Slice(pubs, func(i, j int) bool {
-		p1, _ := pubs[i].(*crypto.ECDSAPub).MarshalBinary()
-		p2, _ := pubs[j].(*crypto.ECDSAPub).MarshalBinary()
-		return murmur3.Sum64(p1) < murmur3.Sum64(p2)
+	slices.SortFunc(pubs, func(a, b dbft.PublicKey) int {
+		p1, _ := a.(*crypto.ECDSAPub).MarshalBinary()
+		p2, _ := b.(*crypto.ECDSAPub).MarshalBinary()
+		return int(murmur3.Sum64(p2)) - int(murmur3.Sum64(p1))
 	})
 }
 
