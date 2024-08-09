@@ -265,7 +265,9 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 		clear(c.Transactions)
 	}
 	c.TransactionHashes = nil
-	c.MissingTransactions = nil
+	if c.MissingTransactions != nil {
+		c.MissingTransactions = c.MissingTransactions[:0]
+	}
 	c.PrimaryIndex = c.GetPrimaryIndex(view)
 	c.ViewNumber = view
 
