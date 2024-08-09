@@ -2,6 +2,7 @@ package dbft
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -179,11 +180,7 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 			if len(d.MissingTransactions) == 0 {
 				return
 			}
-			theLastOne := len(d.MissingTransactions) - 1
-			if i < theLastOne {
-				d.MissingTransactions[i] = d.MissingTransactions[theLastOne]
-			}
-			d.MissingTransactions = d.MissingTransactions[:theLastOne]
+			d.MissingTransactions = slices.Delete(d.MissingTransactions, i, i+1)
 			return
 		}
 	}
