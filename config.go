@@ -31,7 +31,8 @@ type Config[H Hash] struct {
 	// NewBlockFromContext should allocate, fill from Context and return new block.Block.
 	NewBlockFromContext func(ctx *Context[H]) Block[H]
 	// RequestTx is a callback which is called when transaction contained
-	// in current block can't be found in memory pool.
+	// in current block can't be found in memory pool. The slice received by
+	// this callback MUST NOT be changed.
 	RequestTx func(h ...H)
 	// StopTxFlow is a callback which is called when the process no longer needs
 	// any transactions.
