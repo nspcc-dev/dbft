@@ -605,19 +605,12 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 
 func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
 	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
-		// Limit recoveries to be sent from no more than F nodes
-		// TODO replace loop with a single if
-		shouldSend := false
+		// Ignore the message if our index is not in F+1 range of the
+		// next (%N) ones from the sender. This limits recovery
+		// messages to be broadcasted through the network and F+1
+		// guarantees that at least one node responds.
 
-		for i := 1; i <= d.F()+1; i++ {
-			ind := (int(msg.ValidatorIndex()) + i) % len(d.Validators)
-			if ind == d.MyIndex {
-				shouldSend = true
-				break
-			}
-		}
-
-		if !shouldSend {
+		if (d.MyIndex-int(msg.ValidatorIndex())+d.N()-1)%d.N() > d.F() {
 			return
 		}
 	}
