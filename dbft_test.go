@@ -399,6 +399,53 @@ func TestDBFT_OnReceiveRecoveryRequest(t *testing.T) {
 	})
 }
 
+func TestDBFT_OnReceiveRecoveryRequestResponds(t *testing.T) {
+	type recoveryset struct {
+		nodes    int
+		sender   int
+		receiver int
+		replies  bool
+	}
+	var params []recoveryset
+
+	for _, nodes := range []int{4, 5, 7, 10} { // 5 is a bad BFT number, but we want to test the logic anyway.
+		for sender := 0; sender < nodes; sender++ {
+			for recv := 0; recv < nodes; recv++ {
+				params = append(params, recoveryset{nodes, sender, recv, false})
+
+				for i := 1; i <= ((nodes-1)/3)+1; i++ {
+					ind := (sender + i) % nodes
+					if ind == recv {
+						params[len(params)-1].replies = true
+						break
+					}
+				}
+			}
+		}
+	}
+
+	for _, param := range params {
+		t.Run(fmt.Sprintf("%d nodes, %d sender, %d receiver", param.nodes, param.sender, param.receiver), func(t *testing.T) {
+			s := newTestState(param.receiver, param.nodes)
+			s.currHeight = 1
+			service, _ := dbft.New[crypto.Uint256](s.getOptions()...)
+			service.Start(uint64(param.receiver))
+
+			_ = s.tryRecv() // Flush the queue if primary.
+
+			rr := s.getRecoveryRequest(uint16(param.sender))
+			service.OnReceive(rr)
+			rm := s.tryRecv()
+			if param.replies {
+				require.NotNil(t, rm)
+				require.Equal(t, dbft.RecoveryMessageType, rm.Type())
+			} else {
+				require.Nil(t, rm)
+			}
+		})
+	}
+}
+
 func TestDBFT_OnReceiveChangeView(t *testing.T) {
 	s := newTestState(2, 4)
 	t.Run("change view correctly", func(t *testing.T) {
