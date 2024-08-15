@@ -2,6 +2,7 @@ package dbft
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -150,9 +151,7 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 		var ts = d.Timer.Now()
 		var diff = ts.Sub(d.lastBlockTime)
 		timeout -= diff
-		if timeout < 0 {
-			timeout = 0
-		}
+		timeout = max(0, timeout)
 	}
 	d.changeTimer(timeout)
 }
@@ -171,22 +170,17 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 		return
 	}
 
-	for i := range d.MissingTransactions {
-		if tx.Hash() == d.MissingTransactions[i] {
-			d.addTransaction(tx)
-			// `addTransaction` checks for responses and commits. If this was the last transaction
-			// Context could be initialized on a new height, clearing this field.
-			if len(d.MissingTransactions) == 0 {
-				return
-			}
-			theLastOne := len(d.MissingTransactions) - 1
-			if i < theLastOne {
-				d.MissingTransactions[i] = d.MissingTransactions[theLastOne]
-			}
-			d.MissingTransactions = d.MissingTransactions[:theLastOne]
-			return
-		}
+	i := slices.Index(d.MissingTransactions, tx.Hash())
+	if i < 0 {
+		return
 	}
+	d.addTransaction(tx)
+	// `addTransaction` checks for responses and commits. If this was the last transaction
+	// Context could be initialized on a new height, clearing this field.
+	if len(d.MissingTransactions) == 0 {
+		return
+	}
+	d.MissingTransactions = slices.Delete(d.MissingTransactions, i, i+1)
 }
 
 // OnTimeout advances state machine as if timeout was fired.
@@ -340,24 +334,21 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 }
 
 func (d *DBFT[H]) processMissingTx() {
-	missing := make([]H, 0, len(d.TransactionHashes)/2)
-
 	for _, h := range d.TransactionHashes {
 		if _, ok := d.Transactions[h]; ok {
 			continue
 		}
 		if tx := d.GetTx(h); tx == nil {
-			missing = append(missing, h)
+			d.MissingTransactions = append(d.MissingTransactions, h)
 		} else {
 			d.Transactions[h] = tx
 		}
 	}
 
-	if len(missing) != 0 {
-		d.MissingTransactions = missing
+	if len(d.MissingTransactions) != 0 {
 		d.Logger.Info("missing tx",
-			zap.Int("count", len(missing)))
-		d.RequestTx(missing...)
+			zap.Int("count", len(d.MissingTransactions)))
+		d.RequestTx(d.MissingTransactions...)
 	}
 }
 
