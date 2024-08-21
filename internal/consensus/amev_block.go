@@ -30,7 +30,7 @@ func NewAMEVBlock(pre dbft.PreBlock[crypto.Uint256], cnData [][]byte, m int) dbf
 	// Some artificial rules of new tx creation are invented here, but in Neo X there will
 	// be well-defined custom rules for Envelope transactions.
 	var sum uint32
-	for i := 0; i < m; i++ {
+	for i := range m {
 		sum += binary.BigEndian.Uint32(cnData[i])
 	}
 	tx := Tx64(math.MaxInt64 - int64(sum))

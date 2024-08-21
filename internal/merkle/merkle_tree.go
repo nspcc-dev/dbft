@@ -54,7 +54,7 @@ func buildTree(leaves ...TreeNode) *TreeNode {
 	}
 
 	parents := make([]TreeNode, (l+1)/2)
-	for i := 0; i < len(parents); i++ {
+	for i := range parents {
 		parents[i].Left = &leaves[i*2]
 		leaves[i*2].Parent = &parents[i]
 

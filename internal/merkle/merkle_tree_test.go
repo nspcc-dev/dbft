@@ -25,7 +25,7 @@ func TestNewMerkleTree(t *testing.T) {
 
 	t.Run("predefined tree on 4 leaves", func(t *testing.T) {
 		hashes := make([]crypto.Uint256, 5)
-		for i := 0; i < 5; i++ {
+		for i := range hashes {
 			hashes[i] = sha256.Sum256([]byte{byte(i)})
 		}
 
