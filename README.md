@@ -1,5 +1,7 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/nspcc-dev/dbft.svg)](https://pkg.go.dev/github.com/nspcc-dev/dbft/)
 ![Codecov](https://img.shields.io/codecov/c/github/nspcc-dev/dbft.svg)
 [![Report](https://goreportcard.com/badge/github.com/nspcc-dev/dbft)](https://goreportcard.com/report/github.com/nspcc-dev/dbft)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/nspcc-dev/dbft?sort=semver)
 ![License](https://img.shields.io/github/license/nspcc-dev/dbft.svg?style=popout)
 
 # DBFT

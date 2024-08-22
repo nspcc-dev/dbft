@@ -409,8 +409,8 @@ func TestDBFT_OnReceiveRecoveryRequestResponds(t *testing.T) {
 	var params []recoveryset
 
 	for _, nodes := range []int{4, 5, 7, 10} { // 5 is a bad BFT number, but we want to test the logic anyway.
-		for sender := 0; sender < nodes; sender++ {
-			for recv := 0; recv < nodes; recv++ {
+		for sender := range nodes {
+			for recv := range nodes {
 				params = append(params, recoveryset{nodes, sender, recv, false})
 
 				for i := 1; i <= ((nodes-1)/3)+1; i++ {
@@ -1221,7 +1221,7 @@ func newConsensusPayload(c *dbft.Context[crypto.Uint256], t dbft.MessageType, ms
 }
 
 func getTestValidators(n int) (privs []dbft.PrivateKey, pubs []dbft.PublicKey) {
-	for i := 0; i < n; i++ {
+	for range n {
 		priv, pub := crypto.Generate(rand.Reader)
 		privs = append(privs, priv)
 		pubs = append(pubs, pub)

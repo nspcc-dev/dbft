@@ -30,17 +30,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go: [ '1.21', '1.22']
+        go: [ '1.22', '1.23']
         os: [ubuntu-latest, windows-2022, macos-14]
         exclude:
           # Only latest Go version for Windows and MacOS.
           - os: windows-2022
-            go: '1.21'
+            go: '1.22'
           - os: macos-14
-            go: '1.21'
+            go: '1.22'
           # Exclude latest Go version for Ubuntu as Coverage uses it.
           - os: ubuntu-latest
-            go: '1.22'
+            go: '1.23'
     steps:
 
     - name: Setup go
@@ -62,7 +62,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.22
+        go-version: 1.23
 
     - name: Check out
       uses: actions/checkout@v4
