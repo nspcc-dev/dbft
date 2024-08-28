@@ -13,6 +13,7 @@ Improvements:
 
 Bugs fixed:
  * context-bound PreBlock and PreHeader are not reset properly (#127)   
+ * PreHeader is constructed instead of PreBlock to create PreCommit message (#128)
 
 ## [0.3.0] (01 August 2024)
 

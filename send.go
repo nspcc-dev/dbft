@@ -104,7 +104,7 @@ func (c *Context[H]) makePreCommit() ConsensusPayload[H] {
 		return msg
 	}
 
-	if preB := c.MakePreHeader(); preB != nil {
+	if preB := c.CreatePreBlock(); preB != nil {
 		var preData []byte
 		if err := preB.SetData(c.Priv); err == nil {
 			preData = preB.Data()
