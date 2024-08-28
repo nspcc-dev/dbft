@@ -247,7 +247,9 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	c.MyIndex, c.Priv, c.Pub = c.Config.GetKeyPair(c.Validators)
 
 	c.block = nil
+	c.preBlock = nil
 	c.header = nil
+	c.preHeader = nil
 
 	n := len(c.Validators)
 	c.ChangeViewPayloads = emptyReusableSlice(c.ChangeViewPayloads, n)
