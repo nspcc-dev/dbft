@@ -61,6 +61,8 @@ func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
 			return
 		}
 
+		d.verifyPreCommitPayloadsAgainstPreBlock()
+
 		d.extendTimer(2)
 		d.sendPrepareResponse()
 		d.checkPrepare()
@@ -391,21 +393,31 @@ func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 	}
 
 	if d.isAntiMEVExtensionEnabled() {
-		for i, m := range d.PreCommitPayloads {
-			if m != nil && m.ViewNumber() == d.ViewNumber {
-				if preHeader := d.MakePreHeader(); preHeader != nil {
-					pub := d.Validators[m.ValidatorIndex()]
-					if err := preHeader.Verify(pub, m.GetPreCommit().Data()); err != nil {
-						d.PreCommitPayloads[i] = nil
-						d.Logger.Warn("can't validate preCommit data",
-							zap.Error(err))
-					}
-				}
-			}
-		}
+		d.verifyPreCommitPayloadsAgainstPreBlock()
 		// Commits can't be verified, we have no idea what's the header.
 	} else {
 		d.verifyCommitPayloadsAgainstHeader()
+	}
+}
+
+// verifyPreCommitPayloadsAgainstPreBlock performs verification of PreCommit payloads
+// against generated PreBlock.
+func (d *DBFT[H]) verifyPreCommitPayloadsAgainstPreBlock() {
+	if !d.hasAllTransactions() {
+		return
+	}
+	for i, m := range d.PreCommitPayloads {
+		if m != nil && m.ViewNumber() == d.ViewNumber {
+			if preBlock := d.CreatePreBlock(); preBlock != nil {
+				pub := d.Validators[m.ValidatorIndex()]
+				if err := preBlock.Verify(pub, m.GetPreCommit().Data()); err != nil {
+					d.PreCommitPayloads[i] = nil
+					d.Logger.Warn("PreCommit verification failed",
+						zap.Uint16("from", m.ValidatorIndex()),
+						zap.Error(err))
+				}
+			}
+		}
 	}
 }
 
@@ -532,10 +544,10 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 		d.Logger.Info("received PreCommit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 
-		preHeader := d.MakePreHeader()
-		if preHeader != nil {
+		preBlock := d.CreatePreBlock()
+		if preBlock != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
-			if err := preHeader.Verify(pub, msg.GetPreCommit().Data()); err == nil {
+			if err := preBlock.Verify(pub, msg.GetPreCommit().Data()); err == nil {
 				d.checkPreCommit()
 			} else {
 				d.PreCommitPayloads[msg.ValidatorIndex()] = nil
