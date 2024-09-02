@@ -62,14 +62,21 @@ func (d *DBFT[H]) checkPreCommit() {
 
 	d.preBlock = d.CreatePreBlock()
 
-	d.Logger.Info("processing PreBlock",
-		zap.Uint32("height", d.BlockIndex),
-		zap.Uint("view", uint(d.ViewNumber)),
-		zap.Int("tx_count", len(d.preBlock.Transactions())))
-
 	if !d.preBlockProcessed {
+		d.Logger.Info("processing PreBlock",
+			zap.Uint32("height", d.BlockIndex),
+			zap.Uint("view", uint(d.ViewNumber)),
+			zap.Int("tx_count", len(d.preBlock.Transactions())),
+			zap.Int("preCommit_count", count))
+
+		err := d.ProcessPreBlock(d.preBlock)
+		if err != nil {
+			d.Logger.Info("can't process PreBlock, waiting for more PreCommits to be collected",
+				zap.Error(err),
+				zap.Int("count", count))
+			return
+		}
 		d.preBlockProcessed = true
-		d.ProcessPreBlock(d.preBlock)
 	}
 
 	// Require PreCommit sent by self for reliability. This condition may be removed
