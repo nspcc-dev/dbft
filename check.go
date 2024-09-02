@@ -56,7 +56,7 @@ func (d *DBFT[H]) checkPreCommit() {
 	}
 
 	if count < d.M() {
-		d.Logger.Debug("not enough PreCommits to create PreBlock", zap.Int("count", count))
+		d.Logger.Debug("not enough PreCommits to process PreBlock", zap.Int("count", count))
 		return
 	}
 
