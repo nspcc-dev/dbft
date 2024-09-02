@@ -344,6 +344,9 @@ func (c *Context[H]) CreatePreBlock() PreBlock[H] {
 		if c.preBlock = c.MakePreHeader(); c.preBlock == nil {
 			return nil
 		}
+		if !c.hasAllTransactions() {
+			return nil
+		}
 
 		txx := make([]Transaction[H], len(c.TransactionHashes))
 
