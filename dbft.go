@@ -544,6 +544,9 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 		d.Logger.Info("received PreCommit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 
+		if !d.hasAllTransactions() {
+			return
+		}
 		preBlock := d.CreatePreBlock()
 		if preBlock != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
