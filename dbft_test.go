@@ -1177,7 +1177,10 @@ func (s *testState) getAMEVOptions() []func(*dbft.Config[crypto.Uint256]) {
 		dbft.WithNewCommit[crypto.Uint256](consensus.NewAMEVCommit),
 		dbft.WithNewPreBlockFromContext[crypto.Uint256](newPreBlockFromContext),
 		dbft.WithNewBlockFromContext[crypto.Uint256](newAMEVBlockFromContext),
-		dbft.WithProcessPreBlock(func(b dbft.PreBlock[crypto.Uint256]) { s.preBlocks = append(s.preBlocks, b) }),
+		dbft.WithProcessPreBlock(func(b dbft.PreBlock[crypto.Uint256]) error {
+			s.preBlocks = append(s.preBlocks, b)
+			return nil
+		}),
 	)
 
 	return opts

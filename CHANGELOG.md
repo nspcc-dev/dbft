@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 New features:
 
 Behaviour changes:
+ * adjust behaviour of ProcessPreBlock callback (#129)
 
 Improvements:
  * minimum required Go version is 1.22 (#122, #126)

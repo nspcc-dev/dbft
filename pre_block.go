@@ -12,7 +12,8 @@ type PreBlock[H Hash] interface {
 	SetData(key PrivateKey) error
 	// Verify checks if data related to PreCommit phase is correct. This method is
 	// refined on PreBlock rather than on PreCommit message since PreBlock itself is
-	// required for PreCommit's data verification.
+	// required for PreCommit's data verification. It's guaranteed that all
+	// proposed transactions are collected by the moment of call to Verify.
 	Verify(key PublicKey, data []byte) error
 
 	// Transactions returns PreBlock's transaction list. This list may be different

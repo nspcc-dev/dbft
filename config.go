@@ -49,7 +49,7 @@ type Config[H Hash] struct {
 	// Broadcast should broadcast payload m to the consensus nodes.
 	Broadcast func(m ConsensusPayload[H])
 	// ProcessBlock is called every time new preBlock is accepted.
-	ProcessPreBlock func(b PreBlock[H])
+	ProcessPreBlock func(b PreBlock[H]) error
 	// ProcessBlock is called every time new block is accepted.
 	ProcessBlock func(b Block[H])
 	// GetBlock should return block with hash.
@@ -283,7 +283,7 @@ func WithProcessBlock[H Hash](f func(b Block[H])) func(config *Config[H]) {
 }
 
 // WithProcessPreBlock sets ProcessPreBlock.
-func WithProcessPreBlock[H Hash](f func(b PreBlock[H])) func(config *Config[H]) {
+func WithProcessPreBlock[H Hash](f func(b PreBlock[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.ProcessPreBlock = f
 	}

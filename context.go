@@ -370,16 +370,11 @@ func (c *Context[H]) MakeHeader() Block[H] {
 		if !c.RequestSentOrReceived() {
 			return nil
 		}
-		// For anti-MEV dBFT extension it's important to have at least M PreCommits received
-		// because PrepareRequest is not enough to construct proper block.
+		// For anti-MEV dBFT extension it's important to have PreBlock processed and
+		// all envelopes decrypted, because a single PrepareRequest is not enough to
+		// construct proper Block.
 		if c.isAntiMEVExtensionEnabled() {
-			var count int
-			for _, preCommit := range c.PreCommitPayloads {
-				if preCommit != nil && preCommit.ViewNumber() == c.ViewNumber {
-					count++
-				}
-			}
-			if count < c.M() {
+			if !c.preBlockProcessed {
 				return nil
 			}
 		}
