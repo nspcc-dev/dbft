@@ -36,7 +36,7 @@ func NewAMEVBlock(pre dbft.PreBlock[crypto.Uint256], cnData [][]byte, m int) dbf
 	tx := Tx64(math.MaxInt64 - int64(sum))
 	res.transactions = append(preB.initialTransactions, &tx)
 
-	// Rebuild Merkle root for the new set of transations.
+	// Rebuild Merkle root for the new set of transactions.
 	txHashes := make([]crypto.Uint256, len(res.transactions))
 	for i := range txHashes {
 		txHashes[i] = res.transactions[i].Hash()
