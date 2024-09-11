@@ -56,5 +56,8 @@ func (c *cache[H]) addMessage(m ConsensusPayload[H]) {
 		msgs.preCommit[m.ValidatorIndex()] = m
 	case CommitType:
 		msgs.commit[m.ValidatorIndex()] = m
+	default:
+		// Others are recoveries and we don't currently use them.
+		// Theoretically messages could be extracted.
 	}
 }

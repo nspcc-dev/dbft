@@ -1,4 +1,5 @@
 /vendor
+.golangci.yml
 
 # TLC Model Checker files
 formal-models/*/*.toolbox/

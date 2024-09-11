@@ -698,9 +698,9 @@ func (d *DBFT[H]) changeTimer(delay time.Duration) {
 	d.Timer.Reset(d.BlockIndex, d.ViewNumber, delay)
 }
 
-func (d *DBFT[H]) extendTimer(count time.Duration) {
+func (d *DBFT[H]) extendTimer(count int) {
 	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && !d.ViewChanging() {
-		d.Timer.Extend(count * d.SecondsPerBlock / time.Duration(d.M()))
+		d.Timer.Extend(time.Duration(count) * d.SecondsPerBlock / time.Duration(d.M()))
 	}
 }
 

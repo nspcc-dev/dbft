@@ -13,17 +13,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
+    uses: nspcc-dev/.github/.github/workflows/go-linter.yml@master
 
   test:
     name: Test

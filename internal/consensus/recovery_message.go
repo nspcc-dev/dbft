@@ -65,6 +65,8 @@ func (m *recoveryMessage) AddPayload(p dbft.ConsensusPayload[crypto.Uint256]) {
 		}
 		copy(cc.Signature[:], p.GetCommit().Signature())
 		m.commitPayloads = append(m.commitPayloads, cc)
+	default:
+		// Other types (recoveries) can't be packed into recovery.
 	}
 }
 
