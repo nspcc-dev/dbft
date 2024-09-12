@@ -360,7 +360,7 @@ func (c *Context[H]) CreatePreBlock() PreBlock[H] {
 // isAntiMEVExtensionEnabled returns whether Anti-MEV dBFT extension is enabled
 // at the currently processing block height.
 func (c *Context[H]) isAntiMEVExtensionEnabled() bool {
-	return c.Config.AntiMEVExtensionEnablingHeight >= 0 && uint32(c.Config.AntiMEVExtensionEnablingHeight) < c.BlockIndex
+	return c.Config.AntiMEVExtensionEnablingHeight >= 0 && uint32(c.Config.AntiMEVExtensionEnablingHeight) <= c.BlockIndex
 }
 
 // MakeHeader returns half-filled block for the current epoch.
