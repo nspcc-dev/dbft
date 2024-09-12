@@ -15,6 +15,7 @@ Improvements:
 Bugs fixed:
  * context-bound PreBlock and PreHeader are not reset properly (#127)   
  * PreHeader is constructed instead of PreBlock to create PreCommit message (#128)
+ * enable anti-MEV extension with respect to the current block index (#132)
 
 ## [0.3.0] (01 August 2024)
 
