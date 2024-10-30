@@ -8,6 +8,7 @@ New features:
 
 Behaviour changes:
  * adjust behaviour of ProcessPreBlock callback (#129)
+ * (*DBFT).Header() and (*DBFT).PreHeader() are moved to (*Context) receiver (#133)
 
 Improvements:
  * minimum required Go version is 1.22 (#122, #126)

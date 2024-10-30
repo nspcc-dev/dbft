@@ -703,15 +703,3 @@ func (d *DBFT[H]) extendTimer(count int) {
 		d.Timer.Extend(time.Duration(count) * d.SecondsPerBlock / time.Duration(d.M()))
 	}
 }
-
-// Header returns current header from context. May be nil in case if no
-// header is constructed yet. Do not change the resulting header.
-func (d *DBFT[H]) Header() Block[H] {
-	return d.header
-}
-
-// PreHeader returns current preHeader from context. May be nil in case if no
-// preHeader is constructed yet. Do not change the resulting preHeader.
-func (d *DBFT[H]) PreHeader() PreBlock[H] {
-	return d.preHeader
-}
