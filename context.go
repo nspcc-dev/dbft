@@ -214,8 +214,23 @@ func (c *Context[H]) MoreThanFNodesCommittedOrLost() bool {
 	return c.CountCommitted()+c.CountFailed() > c.F()
 }
 
+// Header returns current header from context. May be nil in case if no
+// header is constructed yet. Do not change the resulting header.
+func (c *Context[H]) Header() Block[H] {
+	return c.header
+}
+
+// PreHeader returns current preHeader from context. May be nil in case if no
+// preHeader is constructed yet. Do not change the resulting preHeader.
+func (c *Context[H]) PreHeader() PreBlock[H] {
+	return c.preHeader
+}
+
+// PreBlock returns current PreBlock from context. May be nil in case if no
+// PreBlock is constructed yet (even if PreHeader is already constructed).
+// External changes in the PreBlock will be seen by dBFT.
 func (c *Context[H]) PreBlock() PreBlock[H] {
-	return c.preHeader // without transactions
+	return c.preBlock
 }
 
 func (c *Context[H]) reset(view byte, ts uint64) {
