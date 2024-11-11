@@ -51,7 +51,7 @@ type Config[H Hash] struct {
 	// ProcessBlock is called every time new preBlock is accepted.
 	ProcessPreBlock func(b PreBlock[H]) error
 	// ProcessBlock is called every time new block is accepted.
-	ProcessBlock func(b Block[H])
+	ProcessBlock func(b Block[H]) error
 	// GetBlock should return block with hash.
 	GetBlock func(h H) Block[H]
 	// WatchOnly tells if a node should only watch.
@@ -108,7 +108,7 @@ func defaultConfig[H Hash]() *Config[H] {
 		GetVerified:        func() []Transaction[H] { return make([]Transaction[H], 0) },
 		VerifyBlock:        func(Block[H]) bool { return true },
 		Broadcast:          func(ConsensusPayload[H]) {},
-		ProcessBlock:       func(Block[H]) {},
+		ProcessBlock:       func(Block[H]) error { return nil },
 		GetBlock:           func(H) Block[H] { return nil },
 		WatchOnly:          func() bool { return false },
 		CurrentHeight:      nil,
@@ -275,8 +275,9 @@ func WithBroadcast[H Hash](f func(m ConsensusPayload[H])) func(config *Config[H]
 	}
 }
 
-// WithProcessBlock sets ProcessBlock.
-func WithProcessBlock[H Hash](f func(b Block[H])) func(config *Config[H]) {
+// WithProcessBlock sets ProcessBlock callback. Note that for anti-MEV extension
+// disabled non-nil error return is a no-op.
+func WithProcessBlock[H Hash](f func(b Block[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.ProcessBlock = f
 	}

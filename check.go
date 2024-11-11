@@ -112,8 +112,6 @@ func (d *DBFT[H]) checkCommit() {
 		return
 	}
 
-	d.lastBlockIndex = d.BlockIndex
-	d.lastBlockTime = d.Timer.Now()
 	d.block = d.CreateBlock()
 	hash := d.block.Hash()
 
@@ -124,8 +122,20 @@ func (d *DBFT[H]) checkCommit() {
 		zap.Stringer("merkle", d.block.MerkleRoot()),
 		zap.Stringer("prev", d.block.PrevHash()))
 
+	err := d.ProcessBlock(d.block)
+	if err != nil {
+		if d.isAntiMEVExtensionEnabled() {
+			d.Logger.Info("can't process Block, waiting for more Commits to be collected",
+				zap.Error(err),
+				zap.Int("count", count))
+			return
+		}
+		d.Logger.Fatal("block processing failed", zap.Error(err))
+	}
+
+	d.lastBlockIndex = d.BlockIndex
+	d.lastBlockTime = d.Timer.Now()
 	d.blockProcessed = true
-	d.ProcessBlock(d.block)
 
 	// Do not initialize consensus process immediately. It's the caller's duty to
 	// start the new block acceptance process and call Reset at the
