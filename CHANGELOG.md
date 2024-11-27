@@ -14,6 +14,7 @@ Behaviour changes:
 
 Improvements:
  * minimum required Go version is 1.22 (#122, #126)
+ * log Commit signature verification error (#134)
 
 Bugs fixed:
  * context-bound PreBlock and PreHeader are not reset properly (#127)   

@@ -591,12 +591,13 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 		header := d.MakeHeader()
 		if header != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
-			if header.Verify(pub, msg.GetCommit().Signature()) == nil {
+			if err := header.Verify(pub, msg.GetCommit().Signature()); err == nil {
 				d.checkCommit()
 			} else {
 				d.CommitPayloads[msg.ValidatorIndex()] = nil
 				d.Logger.Warn("invalid commit signature",
 					zap.Uint("validator", uint(msg.ValidatorIndex())),
+					zap.Error(err),
 				)
 			}
 		}
