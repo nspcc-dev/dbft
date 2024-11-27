@@ -21,6 +21,7 @@ Bugs fixed:
  * enable anti-MEV extension with respect to the current block index (#132)
  * (*Context).PreBlock() method returns PreHeader instead of PreBlock (#133)
  * WatchOnly node may send RecoveryMessage on RecoveryRequest (#135)
+ * invalid PreCommit message is not removed from cache (#134)
 
 ## [0.3.0] (01 August 2024)
 

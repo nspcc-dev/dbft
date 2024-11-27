@@ -537,6 +537,7 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 	d.PreCommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
 		if err := d.VerifyPreCommit(msg); err != nil {
+			d.PreCommitPayloads[msg.ValidatorIndex()] = nil
 			d.Logger.Warn("invalid PreCommit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
 			return
 		}
