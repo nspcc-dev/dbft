@@ -89,6 +89,10 @@ type Config[H Hash] struct {
 	// Note that PreBlock-dependent PreCommit verification should be performed inside PreBlock.Verify
 	// callback.
 	VerifyPreCommit func(p ConsensusPayload[H]) error
+	// VerifyCommit performs external Commit verification and returns nil if it's successful.
+	// Note that Block-dependent Commit verification should be performed inside Block.Verify
+	// callback.
+	VerifyCommit func(p ConsensusPayload[H]) error
 }
 
 const defaultSecondsPerBlock = time.Second * 15
@@ -117,6 +121,7 @@ func defaultConfig[H Hash]() *Config[H] {
 
 		VerifyPrepareRequest:  func(ConsensusPayload[H]) error { return nil },
 		VerifyPrepareResponse: func(ConsensusPayload[H]) error { return nil },
+		VerifyCommit:          func(ConsensusPayload[H]) error { return nil },
 
 		AntiMEVExtensionEnablingHeight: -1,
 		VerifyPreBlock:                 func(PreBlock[H]) bool { return true },
@@ -399,5 +404,12 @@ func WithVerifyPrepareResponse[H Hash](f func(prepareResp ConsensusPayload[H]) e
 func WithVerifyPreCommit[H Hash](f func(preCommit ConsensusPayload[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.VerifyPreCommit = f
+	}
+}
+
+// WithVerifyCommit sets VerifyCommit.
+func WithVerifyCommit[H Hash](f func(commit ConsensusPayload[H]) error) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.VerifyCommit = f
 	}
 }

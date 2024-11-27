@@ -40,6 +40,7 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 		dbft.WithGetValidators[crypto.Uint256](getValidators),
 		dbft.WithVerifyPrepareRequest[crypto.Uint256](verifyPayload),
 		dbft.WithVerifyPrepareResponse[crypto.Uint256](verifyPayload),
+		dbft.WithVerifyCommit[crypto.Uint256](verifyPayload),
 
 		dbft.WithNewBlockFromContext[crypto.Uint256](newBlockFromContext),
 		dbft.WithNewConsensusPayload[crypto.Uint256](defaultNewConsensusPayload),

@@ -1150,6 +1150,7 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 		dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
 			return consensus.NewRecoveryMessage(nil)
 		}),
+		dbft.WithVerifyCommit[crypto.Uint256](func(p dbft.ConsensusPayload[crypto.Uint256]) error { return nil }),
 	}
 
 	verify := s.verify

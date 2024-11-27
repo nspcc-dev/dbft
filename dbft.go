@@ -586,6 +586,12 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 	}
 	d.CommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
+		if err := d.VerifyCommit(msg); err != nil {
+			d.CommitPayloads[msg.ValidatorIndex()] = nil
+			d.Logger.Warn("invalid Commit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+			return
+		}
+
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 		header := d.MakeHeader()
