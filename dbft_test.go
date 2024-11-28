@@ -1131,7 +1131,7 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 		}),
 		dbft.WithBroadcast[crypto.Uint256](func(p Payload) { s.ch = append(s.ch, p) }),
 		dbft.WithGetTx[crypto.Uint256](s.pool.Get),
-		dbft.WithProcessBlock[crypto.Uint256](func(b dbft.Block[crypto.Uint256]) { s.blocks = append(s.blocks, b) }),
+		dbft.WithProcessBlock[crypto.Uint256](func(b dbft.Block[crypto.Uint256]) error { s.blocks = append(s.blocks, b); return nil }),
 		dbft.WithWatchOnly[crypto.Uint256](func() bool { return false }),
 		dbft.WithGetBlock[crypto.Uint256](func(crypto.Uint256) dbft.Block[crypto.Uint256] { return nil }),
 		dbft.WithTimer[crypto.Uint256](timer.New()),
@@ -1150,6 +1150,7 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 		dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
 			return consensus.NewRecoveryMessage(nil)
 		}),
+		dbft.WithVerifyCommit[crypto.Uint256](func(p dbft.ConsensusPayload[crypto.Uint256]) error { return nil }),
 	}
 
 	verify := s.verify

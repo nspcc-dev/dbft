@@ -537,6 +537,7 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 	d.PreCommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
 		if err := d.VerifyPreCommit(msg); err != nil {
+			d.PreCommitPayloads[msg.ValidatorIndex()] = nil
 			d.Logger.Warn("invalid PreCommit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
 			return
 		}
@@ -585,17 +586,24 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 	}
 	d.CommitPayloads[msg.ValidatorIndex()] = msg
 	if d.ViewNumber == msg.ViewNumber() {
+		if err := d.VerifyCommit(msg); err != nil {
+			d.CommitPayloads[msg.ValidatorIndex()] = nil
+			d.Logger.Warn("invalid Commit", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+			return
+		}
+
 		d.Logger.Info("received Commit", zap.Uint("validator", uint(msg.ValidatorIndex())))
 		d.extendTimer(4)
 		header := d.MakeHeader()
 		if header != nil {
 			pub := d.Validators[msg.ValidatorIndex()]
-			if header.Verify(pub, msg.GetCommit().Signature()) == nil {
+			if err := header.Verify(pub, msg.GetCommit().Signature()); err == nil {
 				d.checkCommit()
 			} else {
 				d.CommitPayloads[msg.ValidatorIndex()] = nil
 				d.Logger.Warn("invalid commit signature",
 					zap.Uint("validator", uint(msg.ValidatorIndex())),
+					zap.Error(err),
 				)
 			}
 		}

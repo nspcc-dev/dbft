@@ -9,9 +9,13 @@ New features:
 Behaviour changes:
  * adjust behaviour of ProcessPreBlock callback (#129)
  * (*DBFT).Header() and (*DBFT).PreHeader() are moved to (*Context) receiver (#133)
+ * support error handling for ProcessBlock callback if anti-MEV extension is enabled
+   (#134)
 
 Improvements:
  * minimum required Go version is 1.22 (#122, #126)
+ * log Commit signature verification error (#134)
+ * add Commit message verification callback (#134)
 
 Bugs fixed:
  * context-bound PreBlock and PreHeader are not reset properly (#127)   
@@ -19,6 +23,7 @@ Bugs fixed:
  * enable anti-MEV extension with respect to the current block index (#132)
  * (*Context).PreBlock() method returns PreHeader instead of PreBlock (#133)
  * WatchOnly node may send RecoveryMessage on RecoveryRequest (#135)
+ * invalid PreCommit message is not removed from cache (#134)
 
 ## [0.3.0] (01 August 2024)
 

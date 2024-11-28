@@ -179,7 +179,7 @@ func (n *simNode) GetValidators(...dbft.Transaction[crypto.Uint256]) []dbft.Publ
 	return n.validators
 }
 
-func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256]) {
+func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256]) error {
 	n.d.Logger.Debug("received block", zap.Uint32("height", b.Index()))
 
 	for _, tx := range b.Transactions() {
@@ -188,6 +188,7 @@ func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256]) {
 
 	n.height = b.Index()
 	n.lastHash = b.Hash()
+	return nil
 }
 
 // VerifyPayload verifies that payload was received from a good validator.
