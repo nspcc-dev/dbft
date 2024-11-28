@@ -610,6 +610,11 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 }
 
 func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
+	// Only validators are allowed to send consensus messages.
+	if d.Context.WatchOnly() {
+		return
+	}
+
 	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		// Ignore the message if our index is not in F+1 range of the
 		// next (%N) ones from the sender. This limits recovery
