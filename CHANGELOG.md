@@ -7,6 +7,25 @@ This document outlines major changes between releases.
 New features:
 
 Behaviour changes:
+
+Improvements:
+
+Bugs fixed:
+
+## [0.3.1] (29 November 2024)
+
+This patch version mostly includes a set of library API extensions made to fit the
+needs of developing MEV-resistant blockchain node. Also, this release bumps minimum
+required Go version up to 1.22 and contains a set of bug fixes critical for the
+library functioning.
+
+Minor user-side code adjustments are required to adapt new ProcessBlock callback
+signature, whereas the rest of APIs stay compatible with the old implementation.
+This version also includes a simplification of PrivateKey interface which may be
+adopted by removing extra wrappers around PrivateKey implementation on the user code
+side.
+
+Behaviour changes:
  * adjust behaviour of ProcessPreBlock callback (#129)
  * (*DBFT).Header() and (*DBFT).PreHeader() are moved to (*Context) receiver (#133)
  * support error handling for ProcessBlock callback if anti-MEV extension is enabled
@@ -76,7 +95,8 @@ Improvements:
 
 Stable dbft 2.0 implementation.
 
-[Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.3.0...master
+[Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.3.1...master
+[0.3.1]: https://github.com/nspcc-dev/dbft/releases/v0.3.1
 [0.3.0]: https://github.com/nspcc-dev/dbft/releases/v0.3.0
 [0.2.0]: https://github.com/nspcc-dev/dbft/releases/v0.2.0
 [0.1.0]: https://github.com/nspcc-dev/dbft/releases/v0.1.0
