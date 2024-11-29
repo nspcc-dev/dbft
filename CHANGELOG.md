@@ -11,6 +11,7 @@ Behaviour changes:
  * (*DBFT).Header() and (*DBFT).PreHeader() are moved to (*Context) receiver (#133)
  * support error handling for ProcessBlock callback if anti-MEV extension is enabled
    (#134)
+ * remove Sign method from PrivateKey interface (#137)
 
 Improvements:
  * minimum required Go version is 1.22 (#122, #126)

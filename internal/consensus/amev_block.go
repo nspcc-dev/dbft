@@ -19,6 +19,8 @@ type amevBlock struct {
 	hash         *crypto.Uint256
 }
 
+var _ dbft.Block[crypto.Uint256] = new(amevBlock)
+
 // NewAMEVBlock returns new block based on PreBlock and additional Commit-level data
 // collected from M consensus nodes.
 func NewAMEVBlock(pre dbft.PreBlock[crypto.Uint256], cnData [][]byte, m int) dbft.Block[crypto.Uint256] {
@@ -95,7 +97,7 @@ func (b *amevBlock) GetHashData() []byte {
 func (b *amevBlock) Sign(key dbft.PrivateKey) error {
 	data := b.GetHashData()
 
-	sign, err := key.Sign(data)
+	sign, err := key.(*crypto.ECDSAPriv).Sign(data)
 	if err != nil {
 		return err
 	}

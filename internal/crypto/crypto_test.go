@@ -15,7 +15,7 @@ func TestVerifySignature(t *testing.T) {
 	_, err := rand.Reader.Read(data)
 	require.NoError(t, err)
 
-	sign, err := priv.Sign(data)
+	sign, err := priv.(*ECDSAPriv).Sign(data)
 	require.NoError(t, err)
 	require.Equal(t, 64, len(sign))
 

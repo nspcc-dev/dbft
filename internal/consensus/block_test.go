@@ -64,6 +64,8 @@ func TestNeoBlock_Setters(t *testing.T) {
 
 type testKey struct{}
 
+var _ signable = testKey{}
+
 func (t testKey) MarshalBinary() ([]byte, error) { return []byte{}, nil }
 func (t testKey) UnmarshalBinary([]byte) error   { return nil }
 func (t testKey) Sign([]byte) ([]byte, error) {
