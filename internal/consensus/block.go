@@ -29,7 +29,16 @@ type (
 		signature    []byte
 		hash         *crypto.Uint256
 	}
+
+	// signable is an interface used within consensus package to abstract private key
+	// functionality. This interface is used instead of direct structure usage to be
+	// able to mock private key implementation in unit tests.
+	signable interface {
+		Sign([]byte) ([]byte, error)
+	}
 )
+
+var _ dbft.Block[crypto.Uint256] = new(neoBlock)
 
 // PrevHash implements Block interface.
 func (b *neoBlock) PrevHash() crypto.Uint256 {
@@ -101,7 +110,7 @@ func (b *neoBlock) GetHashData() []byte {
 func (b *neoBlock) Sign(key dbft.PrivateKey) error {
 	data := b.GetHashData()
 
-	sign, err := key.Sign(data)
+	sign, err := key.(signable).Sign(data)
 	if err != nil {
 		return err
 	}
