@@ -79,15 +79,20 @@ func (d *DBFT[H]) checkPreCommit() {
 		d.preBlockProcessed = true
 	}
 
-	// Require PreCommit sent by self for reliability. This condition may be removed
-	// in the future.
+	// Require PreCommit sent by self for reliability. This condition must not be
+	// removed because:
+	// 1) we need to filter out WatchOnly nodes;
+	// 2) CNs that have not sent PreCommit must not skip this stage (although it's OK
+	//    from the DKG/TPKE side to build final Block based only on other CN's data).
 	if d.PreCommitSent() {
 		d.verifyCommitPayloadsAgainstHeader()
 		d.sendCommit()
 		d.changeTimer(d.SecondsPerBlock)
 		d.checkCommit()
 	} else {
-		d.Logger.Debug("can't send commit since self preCommit not yet sent")
+		if !d.Context.WatchOnly() {
+			d.Logger.Debug("can't send commit since self preCommit not yet sent")
+		}
 	}
 }
 

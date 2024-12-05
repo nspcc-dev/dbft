@@ -11,6 +11,8 @@ Behaviour changes:
 Improvements:
 
 Bugs fixed:
+ * inappropriate log on attempt to construct Commit for anti-MEV enabled WatchOnly
+   (#139)
 
 ## [0.3.1] (29 November 2024)
 
