@@ -27,6 +27,8 @@ func (d *DBFT[H]) sendPrepareRequest() {
 	d.PreparationPayloads[d.MyIndex] = msg
 	d.broadcast(msg)
 
+	d.prepareSentTime = d.Timer.Now()
+
 	delay := d.SecondsPerBlock << (d.ViewNumber + 1)
 	if d.ViewNumber == 0 {
 		delay -= d.SecondsPerBlock
