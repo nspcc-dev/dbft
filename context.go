@@ -91,6 +91,9 @@ type Context[H Hash] struct {
 	lastBlockTime      time.Time // Wall clock time of when we started (as in PrepareRequest) creating the last block (used for timer adjustments).
 	lastBlockIndex     uint32
 	lastBlockView      byte
+
+	prepareSentTime time.Time
+	rttEstimates    rtt
 }
 
 // N returns total number of validators.
@@ -236,6 +239,7 @@ func (c *Context[H]) PreBlock() PreBlock[H] {
 
 func (c *Context[H]) reset(view byte, ts uint64) {
 	c.MyIndex = -1
+	c.prepareSentTime = time.Time{}
 	c.lastBlockTimestamp = ts
 
 	if view == 0 {

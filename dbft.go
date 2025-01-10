@@ -153,6 +153,7 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 		var ts = d.Timer.Now()
 		var diff = ts.Sub(d.lastBlockTime)
 		timeout -= diff
+		timeout -= d.rttEstimates.avg / 2
 		timeout = max(0, timeout)
 	}
 	d.changeTimer(timeout)
@@ -480,6 +481,10 @@ func (d *DBFT[H]) onPrepareResponse(msg ConsensusPayload[H]) {
 
 			return
 		}
+	}
+
+	if d.IsPrimary() && !d.prepareSentTime.IsZero() && !d.recovering {
+		d.rttEstimates.addTime(time.Since(d.prepareSentTime))
 	}
 
 	d.extendTimer(2)
