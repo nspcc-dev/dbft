@@ -67,21 +67,9 @@ func (e *ECDSAPub) Equals(other dbft.PublicKey) bool {
 	return e.Equal(other.(*ECDSAPub).PublicKey)
 }
 
-// MarshalBinary implements encoding.BinaryMarshaler interface.
-func (e ECDSAPub) MarshalBinary() ([]byte, error) {
-	return elliptic.MarshalCompressed(e.PublicKey.Curve, e.PublicKey.X, e.PublicKey.Y), nil
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler interface.
-func (e *ECDSAPub) UnmarshalBinary(data []byte) error {
-	e.PublicKey = new(ecdsa.PublicKey)
-	e.PublicKey.Curve = elliptic.P256()
-	e.PublicKey.X, e.PublicKey.Y = elliptic.UnmarshalCompressed(e.PublicKey.Curve, data)
-	if e.PublicKey.X == nil {
-		return errors.New("can't unmarshal ECDSA public key")
-	}
-
-	return nil
+// Compare does three-way comparison of ECDSAPub.
+func (e *ECDSAPub) Compare(p *ECDSAPub) int {
+	return e.X.Cmp(p.X)
 }
 
 // Verify verifies signature using P-256 curve.
