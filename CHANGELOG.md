@@ -9,6 +9,8 @@ New features:
 Behaviour changes:
 
 Improvements:
+ * timer adjustment for most of the consensus time, more accurate block
+   intervals (#55)
 
 Bugs fixed:
  * inappropriate log on attempt to construct Commit for anti-MEV enabled WatchOnly

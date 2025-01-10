@@ -5,6 +5,13 @@ import (
 )
 
 func (d *DBFT[H]) checkPrepare() {
+	if d.lastBlockIndex != d.BlockIndex || d.lastBlockView != d.ViewNumber {
+		// Notice that lastBlockTimestamp is left unchanged because
+		// this must be the value from the last header.
+		d.lastBlockTime = d.Timer.Now()
+		d.lastBlockIndex = d.BlockIndex
+		d.lastBlockView = d.ViewNumber
+	}
 	if !d.hasAllTransactions() {
 		d.Logger.Debug("check prepare: some transactions are missing", zap.Any("hashes", d.MissingTransactions))
 		return
@@ -138,8 +145,6 @@ func (d *DBFT[H]) checkCommit() {
 		d.Logger.Fatal("block processing failed", zap.Error(err))
 	}
 
-	d.lastBlockIndex = d.BlockIndex
-	d.lastBlockTime = d.Timer.Now()
 	d.blockProcessed = true
 
 	// Do not initialize consensus process immediately. It's the caller's duty to
