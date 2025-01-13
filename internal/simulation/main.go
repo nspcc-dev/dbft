@@ -17,7 +17,6 @@ import (
 	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/internal/consensus"
 	"github.com/nspcc-dev/dbft/internal/crypto"
-	"github.com/twmb/murmur3"
 	"go.uber.org/zap"
 )
 
@@ -153,9 +152,9 @@ func updatePublicKeys(nodes []*simNode, n int) {
 
 func sortValidators(pubs []dbft.PublicKey) {
 	slices.SortFunc(pubs, func(a, b dbft.PublicKey) int {
-		p1, _ := a.(*crypto.ECDSAPub).MarshalBinary()
-		p2, _ := b.(*crypto.ECDSAPub).MarshalBinary()
-		return int(murmur3.Sum64(p2)) - int(murmur3.Sum64(p1))
+		x := a.(*crypto.ECDSAPub)
+		y := b.(*crypto.ECDSAPub)
+		return x.Compare(y)
 	})
 }
 
