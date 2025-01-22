@@ -1,6 +1,8 @@
 package dbft
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 )
 
@@ -101,53 +103,65 @@ func (d *DBFT[H]) sendPrepareResponse() {
 	d.broadcast(msg)
 }
 
-func (c *Context[H]) makePreCommit() ConsensusPayload[H] {
+func (c *Context[H]) makePreCommit() (ConsensusPayload[H], error) {
 	if msg := c.PreCommitPayloads[c.MyIndex]; msg != nil {
-		return msg
+		return msg, nil
 	}
 
 	if preB := c.CreatePreBlock(); preB != nil {
 		var preData []byte
 		if err := preB.SetData(c.Priv); err == nil {
 			preData = preB.Data()
+		} else {
+			return nil, fmt.Errorf("PreCommit data construction failed: %w", err)
 		}
 
 		preCommit := c.Config.NewPreCommit(preData)
 
-		return c.Config.NewConsensusPayload(c, PreCommitType, preCommit)
+		return c.Config.NewConsensusPayload(c, PreCommitType, preCommit), nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("failed to construct PreBlock")
 }
 
-func (c *Context[H]) makeCommit() ConsensusPayload[H] {
+func (c *Context[H]) makeCommit() (ConsensusPayload[H], error) {
 	if msg := c.CommitPayloads[c.MyIndex]; msg != nil {
-		return msg
+		return msg, nil
 	}
 
 	if b := c.MakeHeader(); b != nil {
 		var sign []byte
 		if err := b.Sign(c.Priv); err == nil {
 			sign = b.Signature()
+		} else {
+			return nil, fmt.Errorf("header signing failed: %w", err)
 		}
 
 		commit := c.Config.NewCommit(sign)
 
-		return c.Config.NewConsensusPayload(c, CommitType, commit)
+		return c.Config.NewConsensusPayload(c, CommitType, commit), nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("failed to construct Header")
 }
 
 func (d *DBFT[H]) sendPreCommit() {
-	msg := d.makePreCommit()
+	msg, err := d.makePreCommit()
+	if err != nil {
+		d.Logger.Error("failed to construct PreCommit", zap.Error(err))
+		return
+	}
 	d.PreCommitPayloads[d.MyIndex] = msg
 	d.Logger.Info("sending PreCommit", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
 	d.broadcast(msg)
 }
 
 func (d *DBFT[H]) sendCommit() {
-	msg := d.makeCommit()
+	msg, err := d.makeCommit()
+	if err != nil {
+		d.Logger.Error("failed to construct Commit", zap.Error(err))
+		return
+	}
 	d.CommitPayloads[d.MyIndex] = msg
 	d.Logger.Info("sending Commit", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
 	d.broadcast(msg)
