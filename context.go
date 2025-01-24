@@ -130,7 +130,7 @@ func (c *Context[H]) WatchOnly() bool { return c.MyIndex < 0 || c.Config.WatchOn
 // extension) messages not only for the current epoch but also for any other epoch.
 func (c *Context[H]) CountCommitted() (count int) {
 	for i := range c.CommitPayloads {
-		// Consider both Commit and PreCommit payloads since node both Commit and PreCommit
+		// Consider both Commit and PreCommit payloads since both Commit and PreCommit
 		// phases are one-directional (do not impose view change).
 		if c.CommitPayloads[i] != nil || c.PreCommitPayloads[i] != nil {
 			count++

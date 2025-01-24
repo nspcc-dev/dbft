@@ -16,6 +16,7 @@ Improvements:
 Bugs fixed:
  * inappropriate log on attempt to construct Commit for anti-MEV enabled WatchOnly
    (#139)
+ * empty PreCommit/Commit can be relayed (#142)
 
 ## [0.3.1] (29 November 2024)
 
