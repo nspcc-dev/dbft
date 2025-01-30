@@ -56,7 +56,7 @@ Close corresponding X.Y.Z GitHub milestone.
 ## Announcements
 
 Copy the GitHub release page link to:
- * Riot channel
+ * Element channel
 
 ## Dependant projects update
 

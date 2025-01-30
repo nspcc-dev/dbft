@@ -9,8 +9,21 @@ New features:
 Behaviour changes:
 
 Improvements:
+
+Bugs fixed:
+
+## [0.3.2] (30 January 2025)
+
+Important dBFT timer adjustments are included into this patch-release. The first one
+is the reference time point for dBFT timer which is moved to the moment of
+PrepareRequest receiving. Another one is evaluated network roundtrip time which is now
+taken into account every time on dBFT timer reset. These adjustments lead to the fact
+that actual block producing time is extremely close to the configuration value. Other
+than that, a couple of minor bug fixes are included.
+
+Improvements:
  * timer adjustment for most of the consensus time, more accurate block
-   intervals (#55)
+   intervals (#56)
  * timer adjustment for network roundtrip time (#140)
 
 Bugs fixed:
@@ -101,7 +114,8 @@ Improvements:
 
 Stable dbft 2.0 implementation.
 
-[Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.3.1...master
+[Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.3.2...master
+[0.3.2]: https://github.com/nspcc-dev/dbft/releases/v0.3.2
 [0.3.1]: https://github.com/nspcc-dev/dbft/releases/v0.3.1
 [0.3.0]: https://github.com/nspcc-dev/dbft/releases/v0.3.0
 [0.2.0]: https://github.com/nspcc-dev/dbft/releases/v0.2.0
