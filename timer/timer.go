@@ -81,11 +81,6 @@ func (t *Timer) stop() {
 	}
 }
 
-// Sleep implements Timer interface.
-func (t *Timer) Sleep(d time.Duration) {
-	time.Sleep(d)
-}
-
 // Extend implements Timer interface.
 func (t *Timer) Extend(d time.Duration) {
 	t.d += d
