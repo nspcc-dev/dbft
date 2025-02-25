@@ -15,8 +15,6 @@ type Timer interface {
 	Sleep(d time.Duration)
 	// Extend extends current timer with duration d.
 	Extend(d time.Duration)
-	// Stop stops timer.
-	Stop()
 	// Height returns current height set for the timer.
 	Height() uint32
 	// View returns current view set for the timer.

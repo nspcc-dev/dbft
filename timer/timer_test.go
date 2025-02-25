@@ -33,11 +33,6 @@ func TestTimer_Reset(t *testing.T) {
 
 	tt.Sleep(time.Millisecond * 300)
 	shouldReceive(t, tt, 3, 1, "no value in timer after extend")
-
-	tt.Reset(1, 1, time.Millisecond*100)
-	tt.Stop()
-	tt.Sleep(time.Millisecond * 200)
-	shouldNotReceive(t, tt, "timer was not stopped")
 }
 
 func shouldReceive(t *testing.T, tt *Timer, height uint32, view byte, msg string) {

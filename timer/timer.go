@@ -50,7 +50,7 @@ func (t *Timer) View() byte {
 
 // Reset implements Timer interface.
 func (t *Timer) Reset(height uint32, view byte, d time.Duration) {
-	t.Stop()
+	t.stop()
 
 	t.s = t.Now()
 	t.d = d
@@ -73,8 +73,8 @@ func drain(ch <-chan time.Time) {
 	}
 }
 
-// Stop implements Timer interface.
-func (t *Timer) Stop() {
+// stop stops the Timer.
+func (t *Timer) stop() {
 	if t.tt != nil {
 		t.tt.Stop()
 		t.tt = nil
@@ -91,7 +91,7 @@ func (t *Timer) Extend(d time.Duration) {
 	t.d += d
 
 	if elapsed := time.Since(t.s); t.d > elapsed {
-		t.Stop()
+		t.stop()
 		t.tt = time.NewTimer(t.d - elapsed)
 	}
 }
