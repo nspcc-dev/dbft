@@ -9,6 +9,7 @@ New features:
 Behaviour changes:
 
 Improvements:
+ * minimum required Go version is 1.23 now (#145)
 
 Bugs fixed:
 
