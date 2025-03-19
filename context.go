@@ -91,6 +91,7 @@ type Context[H Hash] struct {
 	lastBlockTime      time.Time // Wall clock time of when we started (as in PrepareRequest) creating the last block (used for timer adjustments).
 	lastBlockIndex     uint32
 	lastBlockView      byte
+	timePerBlock       time.Duration // amount of time that need to pass before the pending block will be accepted.
 
 	prepareSentTime time.Time
 	rttEstimates    rtt
@@ -246,6 +247,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 		c.PrevHash = c.Config.CurrentBlockHash()
 		c.BlockIndex = c.Config.CurrentHeight() + 1
 		c.Validators = c.Config.GetValidators()
+		c.timePerBlock = c.Config.TimePerBlock()
 
 		n := len(c.Validators)
 		c.LastChangeViewPayloads = emptyReusableSlice(c.LastChangeViewPayloads, n)

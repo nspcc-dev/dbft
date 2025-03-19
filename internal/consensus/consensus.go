@@ -21,7 +21,9 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 	return dbft.New[crypto.Uint256](
 		dbft.WithTimer[crypto.Uint256](timer.New()),
 		dbft.WithLogger[crypto.Uint256](logger),
-		dbft.WithSecondsPerBlock[crypto.Uint256](time.Second*5),
+		dbft.WithTimePerBlock[crypto.Uint256](func() time.Duration {
+			return time.Second * 5
+		}),
 		dbft.WithGetKeyPair[crypto.Uint256](func(pubs []dbft.PublicKey) (int, dbft.PrivateKey, dbft.PublicKey) {
 			for i := range pubs {
 				if pub.(*crypto.ECDSAPub).Equals(pubs[i]) {

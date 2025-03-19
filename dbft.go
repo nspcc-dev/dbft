@@ -144,10 +144,10 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 		// In both cases we should wait full timeout value.
 		// Having non-zero view means we have to start immediately.
 		if view == 0 {
-			timeout = d.SecondsPerBlock
+			timeout = d.timePerBlock
 		}
 	} else {
-		timeout = d.SecondsPerBlock << (d.ViewNumber + 1)
+		timeout = d.timePerBlock << (d.ViewNumber + 1)
 	}
 	if d.lastBlockIndex+1 == d.BlockIndex {
 		var ts = d.Timer.Now()
@@ -210,7 +210,7 @@ func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
 		if d.CommitSent() || d.PreCommitSent() {
 			d.Logger.Debug("send recovery to resend commit")
 			d.sendRecoveryMessage()
-			d.changeTimer(d.SecondsPerBlock << 1)
+			d.changeTimer(d.timePerBlock << 1)
 		} else {
 			d.sendChangeView(CVTimeout)
 		}
@@ -718,6 +718,6 @@ func (d *DBFT[H]) changeTimer(delay time.Duration) {
 
 func (d *DBFT[H]) extendTimer(count int) {
 	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && !d.ViewChanging() {
-		d.Timer.Extend(time.Duration(count) * d.SecondsPerBlock / time.Duration(d.M()))
+		d.Timer.Extend(time.Duration(count) * d.timePerBlock / time.Duration(d.M()))
 	}
 }

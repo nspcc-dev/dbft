@@ -31,9 +31,9 @@ func (d *DBFT[H]) sendPrepareRequest() {
 
 	d.prepareSentTime = d.Timer.Now()
 
-	delay := d.SecondsPerBlock << (d.ViewNumber + 1)
+	delay := d.timePerBlock << (d.ViewNumber + 1)
 	if d.ViewNumber == 0 {
-		delay -= d.SecondsPerBlock
+		delay -= d.timePerBlock
 	}
 
 	d.Logger.Info("sending PrepareRequest", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
@@ -56,7 +56,7 @@ func (d *DBFT[H]) sendChangeView(reason ChangeViewReason) {
 	}
 
 	newView := d.ViewNumber + 1
-	d.changeTimer(d.SecondsPerBlock << (newView + 1))
+	d.changeTimer(d.timePerBlock << (newView + 1))
 
 	nc := d.CountCommitted()
 	nf := d.CountFailed()

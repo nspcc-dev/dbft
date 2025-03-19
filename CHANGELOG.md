@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 New features:
 
 Behaviour changes:
+ * `SecondsPerBlock` config parameter is replaced with `TimePerBlock` function (#147)
 
 Improvements:
 
