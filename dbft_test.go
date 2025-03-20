@@ -1137,7 +1137,9 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 		dbft.WithTimer[crypto.Uint256](timer.New()),
 		dbft.WithLogger[crypto.Uint256](zap.NewNop()),
 		dbft.WithNewBlockFromContext[crypto.Uint256](newBlockFromContext),
-		dbft.WithSecondsPerBlock[crypto.Uint256](time.Second * 10),
+		dbft.WithTimePerBlock[crypto.Uint256](func() time.Duration {
+			return time.Second * 10
+		}),
 		dbft.WithRequestTx[crypto.Uint256](func(...crypto.Uint256) {}),
 		dbft.WithGetVerified[crypto.Uint256](func() []dbft.Transaction[crypto.Uint256] { return []dbft.Transaction[crypto.Uint256]{} }),
 

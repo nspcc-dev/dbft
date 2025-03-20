@@ -39,11 +39,11 @@ func (d *DBFT[H]) checkPrepare() {
 	if hasRequest && count >= d.M() {
 		if d.isAntiMEVExtensionEnabled() {
 			d.sendPreCommit()
-			d.changeTimer(d.SecondsPerBlock)
+			d.changeTimer(d.timePerBlock)
 			d.checkPreCommit()
 		} else {
 			d.sendCommit()
-			d.changeTimer(d.SecondsPerBlock)
+			d.changeTimer(d.timePerBlock)
 			d.checkCommit()
 		}
 	}
@@ -94,7 +94,7 @@ func (d *DBFT[H]) checkPreCommit() {
 	if d.PreCommitSent() {
 		d.verifyCommitPayloadsAgainstHeader()
 		d.sendCommit()
-		d.changeTimer(d.SecondsPerBlock)
+		d.changeTimer(d.timePerBlock)
 		d.checkCommit()
 	} else {
 		if !d.Context.WatchOnly() {

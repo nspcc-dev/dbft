@@ -13,9 +13,9 @@ type Config[H Hash] struct {
 	Logger *zap.Logger
 	// Timer
 	Timer Timer
-	// SecondsPerBlock is the number of seconds that
-	// need to pass before another block will be accepted.
-	SecondsPerBlock time.Duration
+	// TimePerBlock is the time that need to pass before another block will
+	// be accepted. This value may be updated every block.
+	TimePerBlock func() time.Duration
 	// TimestampIncrement increment is the amount of units to add to timestamp
 	// if current time is less than that of previous context.
 	// By default use millisecond precision.
@@ -103,7 +103,7 @@ func defaultConfig[H Hash]() *Config[H] {
 	// fields which are set to nil must be provided from client
 	return &Config[H]{
 		Logger:             zap.NewNop(),
-		SecondsPerBlock:    defaultSecondsPerBlock,
+		TimePerBlock:       func() time.Duration { return defaultSecondsPerBlock },
 		TimestampIncrement: defaultTimestampIncrement,
 		GetKeyPair:         nil,
 		RequestTx:          func(...H) {},
@@ -196,10 +196,10 @@ func WithTimer[H Hash](t Timer) func(config *Config[H]) {
 	}
 }
 
-// WithSecondsPerBlock sets SecondsPerBlock.
-func WithSecondsPerBlock[H Hash](d time.Duration) func(config *Config[H]) {
+// WithTimePerBlock sets TimePerBlock.
+func WithTimePerBlock[H Hash](f func() time.Duration) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
-		cfg.SecondsPerBlock = d
+		cfg.TimePerBlock = f
 	}
 }
 
