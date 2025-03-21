@@ -61,7 +61,15 @@ func (t *Timer) Reset(height uint32, view byte, d time.Duration) {
 		t.tt = time.NewTimer(t.d)
 	} else {
 		t.tt = nil
+		drain(t.ch)
 		t.ch <- t.s
+	}
+}
+
+func drain(ch <-chan time.Time) {
+	select {
+	case <-ch:
+	default:
 	}
 }
 
