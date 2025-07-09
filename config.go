@@ -13,9 +13,18 @@ type Config[H Hash] struct {
 	Logger *zap.Logger
 	// Timer
 	Timer Timer
-	// TimePerBlock is the time that need to pass before another block will
-	// be accepted. This value may be updated every block.
+	// TimePerBlock is the minimum time that needs to pass before another block
+	// will be accepted even if there are pending transactions in the node's
+	// mempool. This value may be updated every block.
 	TimePerBlock func() time.Duration
+	// MaxTimePerBlock is the maximum time that may pass before another block is
+	// accepted if there are no pending transactions in the node's mempool. This
+	// value may be updated every block. If set, enables dynamic block time
+	// extension: blocks are accepted with interval from TimePerBlock to
+	// MaxTimePerBlock (in CV-less scenario) depending on the presence of
+	// transactions in the node's pool, ref.
+	// https://github.com/neo-project/neo/issues/4018.
+	MaxTimePerBlock func() time.Duration
 	// TimestampIncrement increment is the amount of units to add to timestamp
 	// if current time is less than that of previous context.
 	// By default use millisecond precision.
@@ -34,6 +43,11 @@ type Config[H Hash] struct {
 	// in current block can't be found in memory pool. The slice received by
 	// this callback MUST NOT be changed.
 	RequestTx func(h ...H)
+	// SubscribeForTxs is a callback which is called when dBFT needs to track incoming
+	// mempool transactions. Subscription is supposed to be single-use, no unsubscription
+	// is initiated by dBFT, hence it's the user's duty to manage and release resources.
+	// This callback is active iff MaxTimePerBlock is set.
+	SubscribeForTxs func()
 	// StopTxFlow is a callback which is called when the process no longer needs
 	// any transactions.
 	StopTxFlow func()
@@ -190,6 +204,9 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 			return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
 		}
 	}
+	if (cfg.MaxTimePerBlock == nil) != (cfg.SubscribeForTxs == nil) {
+		return errors.New("MaxTimePerBlock and SubscribeForTxs should be specified/not specified at the same time")
+	}
 
 	return nil
 }
@@ -219,6 +236,13 @@ func WithTimer[H Hash](t Timer) func(config *Config[H]) {
 func WithTimePerBlock[H Hash](f func() time.Duration) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.TimePerBlock = f
+	}
+}
+
+// WithMaxTimePerBlock sets MaxTimePerBlock.
+func WithMaxTimePerBlock[H Hash](f func() time.Duration) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.MaxTimePerBlock = f
 	}
 }
 
@@ -254,6 +278,13 @@ func WithNewBlockFromContext[H Hash](f func(ctx *Context[H]) Block[H]) func(conf
 func WithRequestTx[H Hash](f func(h ...H)) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.RequestTx = f
+	}
+}
+
+// WithSubscribeForTxs sets SubscribeForTxs.
+func WithSubscribeForTxs[H Hash](f func()) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.SubscribeForTxs = f
 	}
 }
 

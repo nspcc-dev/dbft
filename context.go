@@ -91,7 +91,9 @@ type Context[H Hash] struct {
 	lastBlockTime      time.Time // Wall clock time of when we started (as in PrepareRequest) creating the last block (used for timer adjustments).
 	lastBlockIndex     uint32
 	lastBlockView      byte
-	timePerBlock       time.Duration // amount of time that need to pass before the pending block will be accepted.
+	timePerBlock       time.Duration // minimum amount of time that need to pass before the pending block will be accepted if there are some transactions in the proposal.
+	maxTimePerBlock    time.Duration // maximum amount of time that allowed to pass before the pending block will be accepted even if there's no transactions in the proposal.
+	txSubscriptionOn   bool
 
 	prepareSentTime time.Time
 	rttEstimates    rtt
@@ -242,12 +244,16 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	c.MyIndex = -1
 	c.prepareSentTime = time.Time{}
 	c.lastBlockTimestamp = ts
+	c.unsubscribeFromTransactions()
 
 	if view == 0 {
 		c.PrevHash = c.Config.CurrentBlockHash()
 		c.BlockIndex = c.Config.CurrentHeight() + 1
 		c.Validators = c.Config.GetValidators()
 		c.timePerBlock = c.Config.TimePerBlock()
+		if c.Config.MaxTimePerBlock != nil {
+			c.maxTimePerBlock = c.Config.MaxTimePerBlock()
+		}
 
 		n := len(c.Validators)
 		c.LastChangeViewPayloads = emptyReusableSlice(c.LastChangeViewPayloads, n)
@@ -306,15 +312,21 @@ func emptyReusableSlice[E any](s []E, n int) []E {
 	return make([]E, n)
 }
 
-// Fill initializes consensus when node is a speaker.
-func (c *Context[H]) Fill() {
+// Fill initializes consensus when node is a speaker. It doesn't perform any
+// context modifications if MaxTimePerBlock extension is enabled and there are
+// no transactions in the memory pool and force is not set.
+func (c *Context[H]) Fill(force bool) bool {
+	txx := c.Config.GetVerified()
+	if c.Config.MaxTimePerBlock != nil && !force && len(txx) == 0 {
+		return false
+	}
+
 	b := make([]byte, 8)
 	_, err := rand.Read(b)
 	if err != nil {
 		panic(err)
 	}
 
-	txx := c.Config.GetVerified()
 	c.Nonce = binary.LittleEndian.Uint64(b)
 	c.TransactionHashes = make([]H, len(txx))
 
@@ -328,6 +340,7 @@ func (c *Context[H]) Fill() {
 	if now := c.getTimestamp(); now > c.Timestamp {
 		c.Timestamp = now
 	}
+	return true
 }
 
 // getTimestamp returns nanoseconds-precision timestamp using
@@ -423,4 +436,13 @@ func (c *Context[H]) MakePreHeader() PreBlock[H] {
 // for the proposed block.
 func (c *Context[H]) hasAllTransactions() bool {
 	return len(c.TransactionHashes) == len(c.Transactions)
+}
+
+func (c *Context[H]) subscribeForTransactions() {
+	c.txSubscriptionOn = true
+	c.Config.SubscribeForTxs()
+}
+
+func (c *Context[H]) unsubscribeFromTransactions() {
+	c.txSubscriptionOn = false
 }
