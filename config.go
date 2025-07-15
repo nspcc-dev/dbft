@@ -132,44 +132,63 @@ func defaultConfig[H Hash]() *Config[H] {
 func checkConfig[H Hash](cfg *Config[H]) error {
 	if cfg.GetKeyPair == nil {
 		return errors.New("private key is nil")
-	} else if cfg.Timer == nil {
+	}
+	if cfg.Timer == nil {
 		return errors.New("Timer is nil")
-	} else if cfg.CurrentHeight == nil {
+	}
+	if cfg.CurrentHeight == nil {
 		return errors.New("CurrentHeight is nil")
-	} else if cfg.CurrentBlockHash == nil {
+	}
+	if cfg.CurrentBlockHash == nil {
 		return errors.New("CurrentBlockHash is nil")
-	} else if cfg.GetValidators == nil {
+	}
+	if cfg.GetValidators == nil {
 		return errors.New("GetValidators is nil")
-	} else if cfg.NewBlockFromContext == nil {
+	}
+	if cfg.NewBlockFromContext == nil {
 		return errors.New("NewBlockFromContext is nil")
-	} else if cfg.NewConsensusPayload == nil {
+	}
+	if cfg.NewConsensusPayload == nil {
 		return errors.New("NewConsensusPayload is nil")
-	} else if cfg.NewPrepareRequest == nil {
+	}
+	if cfg.NewPrepareRequest == nil {
 		return errors.New("NewPrepareRequest is nil")
-	} else if cfg.NewPrepareResponse == nil {
+	}
+	if cfg.NewPrepareResponse == nil {
 		return errors.New("NewPrepareResponse is nil")
-	} else if cfg.NewChangeView == nil {
+	}
+	if cfg.NewChangeView == nil {
 		return errors.New("NewChangeView is nil")
-	} else if cfg.NewCommit == nil {
+	}
+	if cfg.NewCommit == nil {
 		return errors.New("NewCommit is nil")
-	} else if cfg.NewRecoveryRequest == nil {
+	}
+	if cfg.NewRecoveryRequest == nil {
 		return errors.New("NewRecoveryRequest is nil")
-	} else if cfg.NewRecoveryMessage == nil {
+	}
+	if cfg.NewRecoveryMessage == nil {
 		return errors.New("NewRecoveryMessage is nil")
-	} else if cfg.AntiMEVExtensionEnablingHeight >= 0 {
+	}
+	if cfg.AntiMEVExtensionEnablingHeight >= 0 {
 		if cfg.NewPreBlockFromContext == nil {
 			return errors.New("NewPreBlockFromContext is nil")
-		} else if cfg.ProcessPreBlock == nil {
+		}
+		if cfg.ProcessPreBlock == nil {
 			return errors.New("ProcessPreBlock is nil")
-		} else if cfg.NewPreCommit == nil {
+		}
+		if cfg.NewPreCommit == nil {
 			return errors.New("NewPreCommit is nil")
 		}
-	} else if cfg.NewPreBlockFromContext != nil {
-		return errors.New("NewPreBlockFromContext is set, but AntiMEVExtensionEnablingHeight is not specified")
-	} else if cfg.ProcessPreBlock != nil {
-		return errors.New("ProcessPreBlock is set, but AntiMEVExtensionEnablingHeight is not specified")
-	} else if cfg.NewPreCommit != nil {
-		return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
+	} else {
+		if cfg.NewPreBlockFromContext != nil {
+			return errors.New("NewPreBlockFromContext is set, but AntiMEVExtensionEnablingHeight is not specified")
+		}
+		if cfg.ProcessPreBlock != nil {
+			return errors.New("ProcessPreBlock is set, but AntiMEVExtensionEnablingHeight is not specified")
+		}
+		if cfg.NewPreCommit != nil {
+			return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
+		}
 	}
 
 	return nil
