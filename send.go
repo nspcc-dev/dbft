@@ -16,16 +16,32 @@ func (d *DBFT[H]) broadcast(msg ConsensusPayload[H]) {
 	d.Broadcast(msg)
 }
 
-func (c *Context[H]) makePrepareRequest() ConsensusPayload[H] {
-	c.Fill()
+func (c *Context[H]) makePrepareRequest(force bool) ConsensusPayload[H] {
+	if !c.Fill(force) {
+		return nil
+	}
 
 	req := c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.TransactionHashes)
 
 	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }
 
-func (d *DBFT[H]) sendPrepareRequest() {
-	msg := d.makePrepareRequest()
+func (d *DBFT[H]) sendPrepareRequest(force bool) {
+	msg := d.makePrepareRequest(force)
+	if msg == ConsensusPayload[H](nil) {
+		d.subscribeForTransactions()
+
+		// Try one more time since there's a tiny race between an attempt to
+		// construct prepare request and transactions subscription.
+		msg = d.makePrepareRequest(force)
+		if msg == ConsensusPayload[H](nil) {
+			delay := d.maxTimePerBlock - d.timePerBlock
+			d.changeTimer(delay)
+			return
+		}
+	}
+	d.unsubscribeFromTransactions()
+
 	d.PreparationPayloads[d.MyIndex] = msg
 	d.broadcast(msg)
 

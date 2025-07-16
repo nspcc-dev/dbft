@@ -577,7 +577,15 @@ func TestDBFT_Invalid(t *testing.T) {
 
 	opts = append(opts, dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
 		return nil
+	}), dbft.WithMaxTimePerBlock[crypto.Uint256](func() time.Duration {
+		return 0
 	}))
+	t.Run("MaxTimePerBlock without SubscribeForTxs", func(t *testing.T) {
+		_, err := dbft.New(opts...)
+		require.ErrorContains(t, err, "MaxTimePerBlock and SubscribeForTxs should be specified/not specified at the same time")
+	})
+
+	opts = append(opts, dbft.WithSubscribeForTxs[crypto.Uint256](func() {}))
 	t.Run("with all defaults", func(t *testing.T) {
 		d, err := dbft.New(opts...)
 		require.NoError(t, err)

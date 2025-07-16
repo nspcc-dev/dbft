@@ -5,6 +5,8 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 New features:
+ * `MaxTimePerBlock` and `SubscribeForTxs` configuration parameters are added
+   to support dynamic block time extension (#150)
 
 Behaviour changes:
  * `SecondsPerBlock` config parameter is replaced with `TimePerBlock` function (#147)

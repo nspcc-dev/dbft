@@ -76,7 +76,7 @@ func (d *DBFT[H]) Start(ts uint64) {
 	d.cache = newCache[H]()
 	d.initializeConsensus(0, ts)
 	if d.IsPrimary() {
-		d.sendPrepareRequest()
+		d.sendPrepareRequest(true)
 	}
 }
 
@@ -188,6 +188,19 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 
 // OnTimeout advances state machine as if timeout was fired.
 func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
+	d.onTimeout(height, view, false)
+}
+
+// OnNewTransaction advances state machine if transactions subscription is active
+// and there's a new transaction added to the node pool.
+func (d *DBFT[H]) OnNewTransaction() {
+	if !d.txSubscriptionOn {
+		return
+	}
+	d.onTimeout(d.Timer.Height(), d.Timer.View(), true)
+}
+
+func (d *DBFT[H]) onTimeout(height uint32, view byte, force bool) {
 	if d.Context.WatchOnly() || d.BlockSent() {
 		return
 	}
@@ -205,13 +218,27 @@ func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
 		zap.Uint("view", uint(view)))
 
 	if d.IsPrimary() && !d.RequestSentOrReceived() {
-		d.sendPrepareRequest()
+		d.sendPrepareRequest(d.ViewNumber != 0 || d.txSubscriptionOn || force)
 	} else if (d.IsPrimary() && d.RequestSentOrReceived()) || d.IsBackup() {
 		if d.CommitSent() || d.PreCommitSent() {
 			d.Logger.Debug("send recovery to resend commit")
 			d.sendRecoveryMessage()
 			d.changeTimer(d.timePerBlock << 1)
 		} else {
+			if d.ViewNumber == 0 && d.MaxTimePerBlock != nil && d.IsBackup() {
+				if force {
+					delay := d.timePerBlock << 1
+					d.changeTimer(delay)
+					d.unsubscribeFromTransactions()
+					return
+				}
+				if !d.txSubscriptionOn && len(d.Config.GetVerified()) == 0 {
+					d.subscribeForTransactions()
+					delay := d.maxTimePerBlock<<1 - d.timePerBlock<<1
+					d.changeTimer(delay)
+					return
+				}
+			}
 			d.sendChangeView(CVTimeout)
 		}
 	}

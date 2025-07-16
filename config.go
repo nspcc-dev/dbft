@@ -13,9 +13,18 @@ type Config[H Hash] struct {
 	Logger *zap.Logger
 	// Timer
 	Timer Timer
-	// TimePerBlock is the time that need to pass before another block will
-	// be accepted. This value may be updated every block.
+	// TimePerBlock is the minimum time that needs to pass before another block
+	// will be accepted even if there are pending transactions in the node's
+	// mempool. This value may be updated every block.
 	TimePerBlock func() time.Duration
+	// MaxTimePerBlock is the maximum time that may pass before another block is
+	// accepted if there are no pending transactions in the node's mempool. This
+	// value may be updated every block. If set, enables dynamic block time
+	// extension: blocks are accepted with interval from TimePerBlock to
+	// MaxTimePerBlock (in CV-less scenario) depending on the presence of
+	// transactions in the node's pool, ref.
+	// https://github.com/neo-project/neo/issues/4018.
+	MaxTimePerBlock func() time.Duration
 	// TimestampIncrement increment is the amount of units to add to timestamp
 	// if current time is less than that of previous context.
 	// By default use millisecond precision.
@@ -34,6 +43,11 @@ type Config[H Hash] struct {
 	// in current block can't be found in memory pool. The slice received by
 	// this callback MUST NOT be changed.
 	RequestTx func(h ...H)
+	// SubscribeForTxs is a callback which is called when dBFT needs to track incoming
+	// mempool transactions. Subscription is supposed to be single-use, no unsubscription
+	// is initiated by dBFT, hence it's the user's duty to manage and release resources.
+	// This callback is active iff MaxTimePerBlock is set.
+	SubscribeForTxs func()
 	// StopTxFlow is a callback which is called when the process no longer needs
 	// any transactions.
 	StopTxFlow func()
@@ -132,44 +146,66 @@ func defaultConfig[H Hash]() *Config[H] {
 func checkConfig[H Hash](cfg *Config[H]) error {
 	if cfg.GetKeyPair == nil {
 		return errors.New("private key is nil")
-	} else if cfg.Timer == nil {
+	}
+	if cfg.Timer == nil {
 		return errors.New("Timer is nil")
-	} else if cfg.CurrentHeight == nil {
+	}
+	if cfg.CurrentHeight == nil {
 		return errors.New("CurrentHeight is nil")
-	} else if cfg.CurrentBlockHash == nil {
+	}
+	if cfg.CurrentBlockHash == nil {
 		return errors.New("CurrentBlockHash is nil")
-	} else if cfg.GetValidators == nil {
+	}
+	if cfg.GetValidators == nil {
 		return errors.New("GetValidators is nil")
-	} else if cfg.NewBlockFromContext == nil {
+	}
+	if cfg.NewBlockFromContext == nil {
 		return errors.New("NewBlockFromContext is nil")
-	} else if cfg.NewConsensusPayload == nil {
+	}
+	if cfg.NewConsensusPayload == nil {
 		return errors.New("NewConsensusPayload is nil")
-	} else if cfg.NewPrepareRequest == nil {
+	}
+	if cfg.NewPrepareRequest == nil {
 		return errors.New("NewPrepareRequest is nil")
-	} else if cfg.NewPrepareResponse == nil {
+	}
+	if cfg.NewPrepareResponse == nil {
 		return errors.New("NewPrepareResponse is nil")
-	} else if cfg.NewChangeView == nil {
+	}
+	if cfg.NewChangeView == nil {
 		return errors.New("NewChangeView is nil")
-	} else if cfg.NewCommit == nil {
+	}
+	if cfg.NewCommit == nil {
 		return errors.New("NewCommit is nil")
-	} else if cfg.NewRecoveryRequest == nil {
+	}
+	if cfg.NewRecoveryRequest == nil {
 		return errors.New("NewRecoveryRequest is nil")
-	} else if cfg.NewRecoveryMessage == nil {
+	}
+	if cfg.NewRecoveryMessage == nil {
 		return errors.New("NewRecoveryMessage is nil")
-	} else if cfg.AntiMEVExtensionEnablingHeight >= 0 {
+	}
+	if cfg.AntiMEVExtensionEnablingHeight >= 0 {
 		if cfg.NewPreBlockFromContext == nil {
 			return errors.New("NewPreBlockFromContext is nil")
-		} else if cfg.ProcessPreBlock == nil {
+		}
+		if cfg.ProcessPreBlock == nil {
 			return errors.New("ProcessPreBlock is nil")
-		} else if cfg.NewPreCommit == nil {
+		}
+		if cfg.NewPreCommit == nil {
 			return errors.New("NewPreCommit is nil")
 		}
-	} else if cfg.NewPreBlockFromContext != nil {
-		return errors.New("NewPreBlockFromContext is set, but AntiMEVExtensionEnablingHeight is not specified")
-	} else if cfg.ProcessPreBlock != nil {
-		return errors.New("ProcessPreBlock is set, but AntiMEVExtensionEnablingHeight is not specified")
-	} else if cfg.NewPreCommit != nil {
-		return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
+	} else {
+		if cfg.NewPreBlockFromContext != nil {
+			return errors.New("NewPreBlockFromContext is set, but AntiMEVExtensionEnablingHeight is not specified")
+		}
+		if cfg.ProcessPreBlock != nil {
+			return errors.New("ProcessPreBlock is set, but AntiMEVExtensionEnablingHeight is not specified")
+		}
+		if cfg.NewPreCommit != nil {
+			return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
+		}
+	}
+	if (cfg.MaxTimePerBlock == nil) != (cfg.SubscribeForTxs == nil) {
+		return errors.New("MaxTimePerBlock and SubscribeForTxs should be specified/not specified at the same time")
 	}
 
 	return nil
@@ -200,6 +236,13 @@ func WithTimer[H Hash](t Timer) func(config *Config[H]) {
 func WithTimePerBlock[H Hash](f func() time.Duration) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.TimePerBlock = f
+	}
+}
+
+// WithMaxTimePerBlock sets MaxTimePerBlock.
+func WithMaxTimePerBlock[H Hash](f func() time.Duration) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.MaxTimePerBlock = f
 	}
 }
 
@@ -235,6 +278,13 @@ func WithNewBlockFromContext[H Hash](f func(ctx *Context[H]) Block[H]) func(conf
 func WithRequestTx[H Hash](f func(h ...H)) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.RequestTx = f
+	}
+}
+
+// WithSubscribeForTxs sets SubscribeForTxs.
+func WithSubscribeForTxs[H Hash](f func()) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.SubscribeForTxs = f
 	}
 }
 
