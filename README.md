@@ -38,11 +38,15 @@ for more details.
 
 ## Usage
 A client of the library must implement its own event loop.
-The library provides 5 callbacks that change the state of the consensus
+The library provides 6 callbacks that change the state of the consensus
 process:
 - `Start()` which initializes internal dBFT structures
 - `Reset()` which reinitializes the consensus process
-- `OnTransaction()` which must be called everytime new transaction appears
+- `OnTransaction()` which must be called everytime new transaction from the list
+  of proposed transactions appears
+- `OnNewTransaction()` which is an extension supplying dynamic block time
+  functionality and must be called everytime new transaction comes to the node's
+  memory pool if dynamic block time extension is enabled
 - `OnReceive()` which must be called everytime new payload is received
 - `OnTimer()` which must be called everytime timer fires
 

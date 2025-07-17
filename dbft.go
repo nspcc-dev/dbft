@@ -159,7 +159,8 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 	d.changeTimer(timeout)
 }
 
-// OnTransaction notifies service about receiving new transaction.
+// OnTransaction notifies service about receiving new transaction from the
+// proposed list of transactions.
 func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 	// d.Logger.Debug("OnTransaction",
 	// 	zap.Bool("backup", d.IsBackup()),
