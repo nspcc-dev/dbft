@@ -5,6 +5,27 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 New features:
+
+Behaviour changes:
+
+Improvements:
+
+Bugs fixed:
+
+## [0.4.0] (17 July 2025)
+
+This release contains two major changes. First one introduces an ability to
+change block generation time every block. This change is triggered by the
+transfer of `TimePerBlock` setting to native Policy contract on N3 protocol
+which makes this value variable throughout the network lifetime. The second
+change allows to vary block generation time from `TimePerBlock` (when there are
+some transactions in the network and hence, it's beneficial to accept block as
+soon as possible) to `MaxTimePerBlock` (when there are no transactions, but
+consensus still needs to take care of the network heartbeat). This change is
+beneficial for custom networks with small `TimePerBlock` values to prevent the
+chain size explosion. Also, this release contains Go version upgrade to 1.23.
+
+New features:
  * `MaxTimePerBlock` and `SubscribeForTxs` configuration parameters are added
    to support dynamic block time extension (#150)
 
@@ -13,8 +34,6 @@ Behaviour changes:
 
 Improvements:
  * minimum required Go version is 1.23 now (#145)
-
-Bugs fixed:
 
 ## [0.3.2] (30 January 2025)
 
@@ -119,6 +138,7 @@ Improvements:
 Stable dbft 2.0 implementation.
 
 [Unreleased]: https://github.com/nspcc-dev/dbft/compare/v0.3.2...master
+[0.4.0]: https://github.com/nspcc-dev/dbft/releases/v0.4.0
 [0.3.2]: https://github.com/nspcc-dev/dbft/releases/v0.3.2
 [0.3.1]: https://github.com/nspcc-dev/dbft/releases/v0.3.1
 [0.3.0]: https://github.com/nspcc-dev/dbft/releases/v0.3.0
