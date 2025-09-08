@@ -322,10 +322,7 @@ func (c *Context[H]) Fill(force bool) bool {
 	}
 
 	b := make([]byte, 8)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
+	_, _ = rand.Read(b)
 
 	c.Nonce = binary.LittleEndian.Uint64(b)
 	c.TransactionHashes = make([]H, len(txx))
