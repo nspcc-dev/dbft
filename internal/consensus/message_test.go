@@ -202,6 +202,5 @@ func testMarshalUnmarshal(t *testing.T, expected, actual *Payload) {
 }
 
 func fillRandom(t *testing.T, arr []byte) {
-	_, err := rand.Read(arr)
-	require.NoError(t, err)
+	_, _ = rand.Read(arr)
 }
