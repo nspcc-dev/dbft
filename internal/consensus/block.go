@@ -68,18 +68,18 @@ func (b *neoBlock) SetTransactions(txx []dbft.Transaction[crypto.Uint256]) {
 // NewBlock returns new block.
 func NewBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txHashes []crypto.Uint256) dbft.Block[crypto.Uint256] {
 	block := new(neoBlock)
-	block.base.Timestamp = uint32(timestamp / 1000000000)
+	block.Timestamp = uint32(timestamp / 1000000000)
 	block.base.Index = index
 
 	// NextConsensus and Version information is not provided by dBFT context,
 	// these are implementation-specific fields, and thus, should be managed outside the
 	// dBFT library. For simulation simplicity, let's assume that these fields are filled
 	// by every CN separately and is not verified.
-	block.base.NextConsensus = crypto.Uint160{1, 2, 3}
-	block.base.Version = 0
+	block.NextConsensus = crypto.Uint160{1, 2, 3}
+	block.Version = 0
 
 	block.base.PrevHash = prevHash
-	block.base.ConsensusData = nonce
+	block.ConsensusData = nonce
 
 	if len(txHashes) != 0 {
 		mt := merkle.NewMerkleTree(txHashes...)

@@ -190,7 +190,7 @@ func (d *DBFT[H]) sendRecoveryRequest() {
 		d.processMissingTx()
 	}
 	req := d.NewRecoveryRequest(uint64(d.Timer.Now().UnixNano()))
-	d.broadcast(d.Config.NewConsensusPayload(&d.Context, RecoveryRequestType, req))
+	d.broadcast(d.NewConsensusPayload(&d.Context, RecoveryRequestType, req))
 }
 
 func (c *Context[H]) makeRecoveryMessage() ConsensusPayload[H] {

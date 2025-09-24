@@ -24,25 +24,25 @@ var _ dbft.PreBlock[crypto.Uint256] = new(preBlock)
 // NewPreBlock returns new preBlock.
 func NewPreBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txHashes []crypto.Uint256) dbft.PreBlock[crypto.Uint256] {
 	pre := new(preBlock)
-	pre.base.Timestamp = uint32(timestamp / 1000000000)
-	pre.base.Index = index
+	pre.Timestamp = uint32(timestamp / 1000000000)
+	pre.Index = index
 
 	// NextConsensus and Version information is not provided by dBFT context,
 	// these are implementation-specific fields, and thus, should be managed outside the
 	// dBFT library. For simulation simplicity, let's assume that these fields are filled
 	// by every CN separately and is not verified.
-	pre.base.NextConsensus = crypto.Uint160{1, 2, 3}
-	pre.base.Version = 0
+	pre.NextConsensus = crypto.Uint160{1, 2, 3}
+	pre.Version = 0
 
-	pre.base.PrevHash = prevHash
-	pre.base.ConsensusData = nonce
+	pre.PrevHash = prevHash
+	pre.ConsensusData = nonce
 
 	// Canary default value.
 	pre.data = 0xff
 
 	if len(txHashes) != 0 {
 		mt := merkle.NewMerkleTree(txHashes...)
-		pre.base.MerkleRoot = mt.Root().Hash
+		pre.MerkleRoot = mt.Root().Hash
 	}
 	return pre
 }
@@ -56,7 +56,7 @@ func (pre *preBlock) Data() []byte {
 func (pre *preBlock) SetData(_ dbft.PrivateKey) error {
 	// Just an artificial rule for data construction, it can be anything, and in Neo X
 	// it will be decrypted transactions fragments.
-	pre.data = pre.base.Index
+	pre.data = pre.Index
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (pre *preBlock) Verify(_ dbft.PublicKey, data []byte) error {
 	if len(data) != 4 {
 		return errors.New("invalid data len")
 	}
-	if binary.BigEndian.Uint32(data) != pre.base.Index { // Just an artificial verification rule, and for NeoX it should be decrypted transactions fragments verification.
+	if binary.BigEndian.Uint32(data) != pre.Index { // Just an artificial verification rule, and for NeoX it should be decrypted transactions fragments verification.
 		return errors.New("invalid data")
 	}
 	return nil
