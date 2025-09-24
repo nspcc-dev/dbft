@@ -233,7 +233,7 @@ func (d *DBFT[H]) onTimeout(height uint32, view byte, force bool) {
 					d.unsubscribeFromTransactions()
 					return
 				}
-				if !d.txSubscriptionOn && len(d.Config.GetVerified()) == 0 {
+				if !d.txSubscriptionOn && len(d.GetVerified()) == 0 {
 					d.subscribeForTransactions()
 					delay := d.maxTimePerBlock<<1 - d.timePerBlock<<1
 					d.changeTimer(delay)
@@ -319,7 +319,7 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 	// ignore prepareRequest if we had already received it or
 	// are in process of changing view
-	if d.RequestSentOrReceived() { //|| (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
+	if d.RequestSentOrReceived() { // || (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
 		d.Logger.Debug("ignoring PrepareRequest",
 			zap.Bool("sor", d.RequestSentOrReceived()),
 			zap.Bool("viewChanging", d.ViewChanging()),
@@ -390,13 +390,13 @@ func (d *DBFT[H]) processMissingTx() {
 func (d *DBFT[H]) createAndCheckBlock() bool {
 	var blockOK bool
 	if d.isAntiMEVExtensionEnabled() {
-		b := d.Context.CreatePreBlock()
+		b := d.CreatePreBlock()
 		blockOK = d.VerifyPreBlock(b)
 		if !blockOK {
 			d.Logger.Warn("proposed preBlock fails verification")
 		}
 	} else {
-		b := d.Context.CreateBlock()
+		b := d.CreateBlock()
 		blockOK = d.VerifyBlock(b)
 		if !blockOK {
 			d.Logger.Warn("proposed block fails verification")
@@ -705,7 +705,7 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 		}
 	}
 
-	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
+	if msg.ViewNumber() == d.ViewNumber && (!d.ViewChanging() || d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		if !d.RequestSentOrReceived() {
 			prepReq := recovery.GetPrepareRequest(msg, d.Validators, uint16(d.PrimaryIndex))
 			if prepReq != nil {
