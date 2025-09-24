@@ -319,7 +319,7 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 	// ignore prepareRequest if we had already received it or
 	// are in process of changing view
-	if d.RequestSentOrReceived() { //|| (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
+	if d.RequestSentOrReceived() { // || (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
 		d.Logger.Debug("ignoring PrepareRequest",
 			zap.Bool("sor", d.RequestSentOrReceived()),
 			zap.Bool("viewChanging", d.ViewChanging()),
