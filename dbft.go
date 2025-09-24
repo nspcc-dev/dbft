@@ -705,7 +705,7 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 		}
 	}
 
-	if msg.ViewNumber() == d.ViewNumber && !(d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
+	if msg.ViewNumber() == d.ViewNumber && (!d.ViewChanging() || d.MoreThanFNodesCommittedOrLost()) && !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) {
 		if !d.RequestSentOrReceived() {
 			prepReq := recovery.GetPrepareRequest(msg, d.Validators, uint16(d.PrimaryIndex))
 			if prepReq != nil {
