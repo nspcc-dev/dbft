@@ -21,12 +21,12 @@ jobs:
     strategy:
       matrix:
         go: [ '1.24', '1.25']
-        os: [ubuntu-latest, windows-2022, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         exclude:
           # Only latest Go version for Windows and MacOS.
-          - os: windows-2022
+          - os: windows-latest
             go: '1.24'
-          - os: macos-14
+          - os: macos-latest
             go: '1.24'
           # Exclude latest Go version for Ubuntu as Coverage uses it.
           - os: ubuntu-latest
@@ -71,7 +71,7 @@ jobs:
 
   codeql:
     name: CodeQL
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
 
     strategy:
       fail-fast: false
@@ -81,6 +81,10 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
