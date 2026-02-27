@@ -9,7 +9,7 @@ New features:
 Behaviour changes:
 
 Improvements:
- * minimum required Go version is 1.24 (#144)
+ * minimum required Go version is 1.25 (#144, #156)
 
 Bugs fixed:
 
