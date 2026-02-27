@@ -68,14 +68,10 @@ func main() {
 	defer cancel()
 
 	wg := new(sync.WaitGroup)
-	wg.Add(len(nodes))
-
 	for i := range nodes {
-		go func(i int) {
-			defer wg.Done()
-
+		wg.Go(func() {
 			nodes[i].Run(ctx)
-		}(i)
+		})
 	}
 
 	wg.Wait()
