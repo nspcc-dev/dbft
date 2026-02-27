@@ -42,7 +42,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 
 	t.Run("Commit", func(t *testing.T) {
 		var cc commit
-		fillRandom(t, cc.signature[:])
+		fillRandom(cc.signature[:])
 		m := generateMessage(dbft.CommitType, &cc)
 
 		testEncodeDecode(t, m, new(Payload))
@@ -146,7 +146,7 @@ func TestCompact_EncodeDecode(t *testing.T) {
 			ValidatorIndex: 10,
 			ViewNumber:     77,
 		}
-		fillRandom(t, p.Signature[:])
+		fillRandom(p.Signature[:])
 
 		testEncodeDecode(t, p, new(commitCompact))
 	})
@@ -201,6 +201,6 @@ func testMarshalUnmarshal(t *testing.T, expected, actual *Payload) {
 	require.Equal(t, expected.Hash(), actual.Hash())
 }
 
-func fillRandom(t *testing.T, arr []byte) {
+func fillRandom(arr []byte) {
 	_, _ = rand.Read(arr)
 }
