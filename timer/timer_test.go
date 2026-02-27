@@ -2,37 +2,47 @@ package timer
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestTimer_Reset(t *testing.T) {
-	tt := New()
+	synctest.Test(t, func(t *testing.T) {
+		tt := New()
 
-	tt.Reset(1, 2, time.Millisecond*100)
-	time.Sleep(time.Millisecond * 200)
-	shouldReceive(t, tt, 1, 2, "no value in timer")
+		tt.Reset(1, 2, time.Millisecond*100)
+		time.Sleep(time.Millisecond * 200)
+		synctest.Wait()
+		shouldReceive(t, tt, 1, 2, "no value in timer")
 
-	tt.Reset(1, 2, time.Second)
-	tt.Reset(2, 3, 0)
-	shouldReceive(t, tt, 2, 3, "no value in timer after reset(0)")
+		tt.Reset(1, 2, time.Second)
+		tt.Reset(2, 3, 0)
+		synctest.Wait()
+		shouldReceive(t, tt, 2, 3, "no value in timer after reset(0)")
 
-	tt.Reset(1, 2, time.Millisecond*100)
-	time.Sleep(time.Millisecond * 200)
-	tt.Reset(1, 3, time.Millisecond*100)
-	time.Sleep(time.Millisecond * 200)
-	shouldReceive(t, tt, 1, 3, "invalid value after reset")
+		tt.Reset(1, 2, time.Millisecond*100)
+		time.Sleep(time.Millisecond * 200)
+		synctest.Wait()
+		tt.Reset(1, 3, time.Millisecond*100)
+		time.Sleep(time.Millisecond * 200)
+		synctest.Wait()
+		shouldReceive(t, tt, 1, 3, "invalid value after reset")
 
-	tt.Reset(3, 1, time.Millisecond*100)
-	shouldNotReceive(t, tt, "value arrived too early")
+		tt.Reset(3, 1, time.Millisecond*100)
+		synctest.Wait()
+		shouldNotReceive(t, tt, "value arrived too early")
 
-	tt.Extend(time.Millisecond * 300)
-	time.Sleep(time.Millisecond * 200)
-	shouldNotReceive(t, tt, "value arrived too early after extend")
+		tt.Extend(time.Millisecond * 300)
+		time.Sleep(time.Millisecond * 200)
+		synctest.Wait()
+		shouldNotReceive(t, tt, "value arrived too early after extend")
 
-	time.Sleep(time.Millisecond * 300)
-	shouldReceive(t, tt, 3, 1, "no value in timer after extend")
+		time.Sleep(time.Millisecond * 300)
+		synctest.Wait()
+		shouldReceive(t, tt, 3, 1, "no value in timer after extend")
+	})
 }
 
 func shouldReceive(t *testing.T, tt *Timer, height uint32, view byte, msg string) {
