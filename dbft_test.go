@@ -28,7 +28,7 @@ type testState struct {
 	pool       *testPool
 	preBlocks  []dbft.PreBlock[crypto.Uint256]
 	blocks     []dbft.Block[crypto.Uint256]
-	verify     func(b dbft.Block[crypto.Uint256]) bool
+	verify     func(b dbft.Block[crypto.Uint256]) (bool, crypto.Uint256)
 }
 
 type (
@@ -136,14 +136,14 @@ func TestDBFT_SingleNode(t *testing.T) {
 
 func TestDBFT_OnReceiveRequestSendResponse(t *testing.T) {
 	s := newTestState(2, 7)
-	s.verify = func(b dbft.Block[crypto.Uint256]) bool {
+	s.verify = func(b dbft.Block[crypto.Uint256]) (bool, crypto.Uint256) {
 		for _, tx := range b.Transactions() {
 			if tx.(testTx)%10 == 0 {
-				return false
+				return false, crypto.Uint256{}
 			}
 		}
 
-		return true
+		return true, crypto.Uint256{}
 	}
 
 	t.Run("receive request from primary", func(t *testing.T) {
@@ -551,7 +551,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256](func(byte, dbft.ChangeViewReason, uint64) dbft.ChangeView {
+	opts = append(opts, dbft.WithNewChangeView[crypto.Uint256](func(byte, dbft.ChangeViewReason, uint64, ...crypto.Uint256) dbft.ChangeView {
 		return nil
 	}))
 	t.Run("without NewCommit", func(t *testing.T) {
@@ -1165,7 +1165,7 @@ func (s *testState) getOptions() []func(*dbft.Config[crypto.Uint256]) {
 
 	verify := s.verify
 	if verify == nil {
-		verify = func(dbft.Block[crypto.Uint256]) bool { return true }
+		verify = func(dbft.Block[crypto.Uint256]) (bool, crypto.Uint256) { return true, crypto.Uint256{} }
 	}
 
 	opts = append(opts, dbft.WithVerifyBlock(verify))

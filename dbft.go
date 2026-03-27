@@ -388,7 +388,10 @@ func (d *DBFT[H]) processMissingTx() {
 // with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
 func (d *DBFT[H]) createAndCheckBlock() bool {
-	var blockOK bool
+	var (
+		blockOK  bool
+		invalidH H
+	)
 	if d.isAntiMEVExtensionEnabled() {
 		b := d.CreatePreBlock()
 		blockOK = d.VerifyPreBlock(b)
@@ -397,13 +400,13 @@ func (d *DBFT[H]) createAndCheckBlock() bool {
 		}
 	} else {
 		b := d.CreateBlock()
-		blockOK = d.VerifyBlock(b)
+		blockOK, invalidH = d.VerifyBlock(b)
 		if !blockOK {
 			d.Logger.Warn("proposed block fails verification")
 		}
 	}
 	if !blockOK {
-		d.sendChangeView(CVTxInvalid)
+		d.sendChangeView(CVTxInvalid, invalidH)
 		return false
 	}
 	return true

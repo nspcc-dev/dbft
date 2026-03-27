@@ -58,8 +58,8 @@ type Config[H Hash] struct {
 	GetVerified func() []Transaction[H]
 	// VerifyPreBlock verifies if preBlock is valid.
 	VerifyPreBlock func(b PreBlock[H]) bool
-	// VerifyBlock verifies if block is valid.
-	VerifyBlock func(b Block[H]) bool
+	// VerifyBlock verifies if block is valid and optionally returns the hash of invalid transaction.
+	VerifyBlock func(b Block[H]) (bool, H)
 	// Broadcast should broadcast payload m to the consensus nodes.
 	Broadcast func(m ConsensusPayload[H])
 	// ProcessBlock is called every time new preBlock is accepted.
@@ -86,7 +86,7 @@ type Config[H Hash] struct {
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
 	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
-	NewChangeView func(newViewNumber byte, reason ChangeViewReason, timestamp uint64) ChangeView
+	NewChangeView func(newViewNumber byte, reason ChangeViewReason, timestamp uint64, rejectedHash ...H) ChangeView
 	// NewPreCommit is a constructor for payload.PreCommit.
 	NewPreCommit func(data []byte) PreCommit
 	// NewCommit is a constructor for payload.Commit.
@@ -124,7 +124,7 @@ func defaultConfig[H Hash]() *Config[H] {
 		StopTxFlow:         func() {},
 		GetTx:              func(H) Transaction[H] { return nil },
 		GetVerified:        func() []Transaction[H] { return make([]Transaction[H], 0) },
-		VerifyBlock:        func(Block[H]) bool { return true },
+		VerifyBlock:        func(Block[H]) (bool, H) { return true, *new(H) },
 		Broadcast:          func(ConsensusPayload[H]) {},
 		ProcessBlock:       func(Block[H]) error { return nil },
 		GetBlock:           func(H) Block[H] { return nil },
@@ -317,7 +317,7 @@ func WithVerifyPreBlock[H Hash](f func(b PreBlock[H]) bool) func(config *Config[
 }
 
 // WithVerifyBlock sets VerifyBlock.
-func WithVerifyBlock[H Hash](f func(b Block[H]) bool) func(config *Config[H]) {
+func WithVerifyBlock[H Hash](f func(b Block[H]) (bool, H)) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.VerifyBlock = f
 	}
@@ -402,7 +402,7 @@ func WithNewPrepareResponse[H Hash](f func(preparationHash H) PrepareResponse[H]
 }
 
 // WithNewChangeView sets NewChangeView.
-func WithNewChangeView[H Hash](f func(newViewNumber byte, reason ChangeViewReason, ts uint64) ChangeView) func(config *Config[H]) {
+func WithNewChangeView[H Hash](f func(newViewNumber byte, reason ChangeViewReason, ts uint64, rejectedHash ...H) ChangeView) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewChangeView = f
 	}

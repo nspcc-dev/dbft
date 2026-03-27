@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 New features:
 
 Behaviour changes:
+ * specify rejected hashes on ChangeView construction (#158)
 
 Improvements:
  * minimum required Go version is 1.25 (#144, #156)

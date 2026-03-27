@@ -57,8 +57,8 @@ func (d *DBFT[H]) sendPrepareRequest(force bool) {
 	d.checkPrepare()
 }
 
-func (c *Context[H]) makeChangeView(ts uint64, reason ChangeViewReason) ConsensusPayload[H] {
-	cv := c.Config.NewChangeView(c.ViewNumber+1, reason, ts)
+func (c *Context[H]) makeChangeView(ts uint64, reason ChangeViewReason, invalidH ...H) ConsensusPayload[H] {
+	cv := c.Config.NewChangeView(c.ViewNumber+1, reason, ts, invalidH...)
 
 	msg := c.Config.NewConsensusPayload(c, ChangeViewType, cv)
 	c.ChangeViewPayloads[c.MyIndex] = msg
@@ -66,7 +66,7 @@ func (c *Context[H]) makeChangeView(ts uint64, reason ChangeViewReason) Consensu
 	return msg
 }
 
-func (d *DBFT[H]) sendChangeView(reason ChangeViewReason) {
+func (d *DBFT[H]) sendChangeView(reason ChangeViewReason, invalidH ...H) {
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -97,7 +97,7 @@ func (d *DBFT[H]) sendChangeView(reason ChangeViewReason) {
 		zap.Int("nc", nc),
 		zap.Int("nf", nf))
 
-	msg := d.makeChangeView(uint64(d.Timer.Now().UnixNano()), reason)
+	msg := d.makeChangeView(uint64(d.Timer.Now().UnixNano()), reason, invalidH...)
 	d.StopTxFlow()
 	d.broadcast(msg)
 	d.checkChangeView(newView)
