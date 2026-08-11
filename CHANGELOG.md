@@ -5,6 +5,9 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 New features:
+ * `PrepareRequestExtensionEnablingHeight` configuration parameter and
+   `NewPrepareRequestExtended` callback to attach full transaction list to
+   `PrepareRequest` instead of hashes starting from the given height (#160)
 
 Behaviour changes:
 

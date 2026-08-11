@@ -18,12 +18,17 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	}
 
 	t.Run("PrepareRequest", func(t *testing.T) {
+		tx1, tx2 := Tx64(1), Tx64(2)
 		m := generateMessage(dbft.PrepareRequestType, &prepareRequest{
 			nonce:     123,
 			timestamp: 345,
 			transactionHashes: []crypto.Uint256{
 				{1, 2, 3},
 				{5, 6, 7},
+			},
+			transactions: []dbft.Transaction[crypto.Uint256]{
+				&tx1,
+				&tx2,
 			},
 		})
 
@@ -60,6 +65,7 @@ func TestPayload_EncodeDecode(t *testing.T) {
 	})
 
 	t.Run("RecoveryMessage", func(t *testing.T) {
+		tx1, tx2 := Tx64(1), Tx64(2)
 		m := generateMessage(dbft.RecoveryMessageType, &recoveryMessage{
 			changeViewPayloads: []changeViewCompact{
 				{
@@ -80,6 +86,10 @@ func TestPayload_EncodeDecode(t *testing.T) {
 				transactionHashes: []crypto.Uint256{
 					{1, 2, 3},
 					{5, 6, 7},
+				},
+				transactions: []dbft.Transaction[crypto.Uint256]{
+					&tx1,
+					&tx2,
 				},
 			},
 		})

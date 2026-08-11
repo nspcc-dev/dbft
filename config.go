@@ -32,6 +32,9 @@ type Config[H Hash] struct {
 	// AntiMEVExtensionEnablingHeight denotes the height starting from which dBFT
 	// Anti-MEV extensions should be enabled. -1 means no extension is enabled.
 	AntiMEVExtensionEnablingHeight int64
+	// PrepareRequestExtensionEnablingHeight denotes the height starting from which
+	// an extended PrepareRequest format should be enabled. -1 means no extension is enabled.
+	PrepareRequestExtensionEnablingHeight int64
 	// GetKeyPair returns an index of the node in the list of validators
 	// together with it's key pair.
 	GetKeyPair func([]PublicKey) (int, PrivateKey, PublicKey)
@@ -81,8 +84,12 @@ type Config[H Hash] struct {
 	GetValidators func(...Transaction[H]) []PublicKey
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
 	NewConsensusPayload func(*Context[H], MessageType, any) ConsensusPayload[H]
-	// NewPrepareRequest is a constructor for payload.PrepareRequest.
+	// NewPrepareRequest is a constructor for payload.PrepareRequest that
+	// builds a request carrying transaction hashes only.
 	NewPrepareRequest func(ts uint64, nonce uint64, transactionHashes []H) PrepareRequest[H]
+	// NewPrepareRequestExtended is a constructor for payload.PrepareRequest that
+	// builds a request carrying full transaction list.
+	NewPrepareRequestExtended func(ts uint64, nonce uint64, transactions []Transaction[H]) PrepareRequest[H]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
 	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
@@ -137,9 +144,10 @@ func defaultConfig[H Hash]() *Config[H] {
 		VerifyPrepareResponse: func(ConsensusPayload[H]) error { return nil },
 		VerifyCommit:          func(ConsensusPayload[H]) error { return nil },
 
-		AntiMEVExtensionEnablingHeight: -1,
-		VerifyPreBlock:                 func(PreBlock[H]) bool { return true },
-		VerifyPreCommit:                func(ConsensusPayload[H]) error { return nil },
+		AntiMEVExtensionEnablingHeight:        -1,
+		PrepareRequestExtensionEnablingHeight: -1,
+		VerifyPreBlock:                        func(PreBlock[H]) bool { return true },
+		VerifyPreCommit:                       func(ConsensusPayload[H]) error { return nil },
 	}
 }
 
@@ -204,6 +212,15 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 			return errors.New("NewPreCommit is set, but AntiMEVExtensionEnablingHeight is not specified")
 		}
 	}
+	if cfg.PrepareRequestExtensionEnablingHeight >= 0 {
+		if cfg.NewPrepareRequestExtended == nil {
+			return errors.New("NewPrepareRequestExtended is nil")
+		}
+	} else {
+		if cfg.NewPrepareRequestExtended != nil {
+			return errors.New("NewPrepareRequestExtended is set, but PrepareRequestExtensionEnablingHeight is not specified")
+		}
+	}
 	if (cfg.MaxTimePerBlock == nil) != (cfg.SubscribeForTxs == nil) {
 		return errors.New("MaxTimePerBlock and SubscribeForTxs should be specified/not specified at the same time")
 	}
@@ -250,6 +267,13 @@ func WithMaxTimePerBlock[H Hash](f func() time.Duration) func(config *Config[H])
 func WithAntiMEVExtensionEnablingHeight[H Hash](h int64) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.AntiMEVExtensionEnablingHeight = h
+	}
+}
+
+// WithPrepareRequestExtensionEnablingHeight sets PrepareRequestExtensionEnablingHeight.
+func WithPrepareRequestExtensionEnablingHeight[H Hash](h int64) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.PrepareRequestExtensionEnablingHeight = h
 	}
 }
 
@@ -391,6 +415,13 @@ func WithNewConsensusPayload[H Hash](f func(ctx *Context[H], typ MessageType, ms
 func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionHashes []H) PrepareRequest[H]) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewPrepareRequest = f
+	}
+}
+
+// WithNewPrepareRequestExtended sets NewPrepareRequestExtended.
+func WithNewPrepareRequestExtended[H Hash](f func(ts uint64, nonce uint64, transactions []Transaction[H]) PrepareRequest[H]) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.NewPrepareRequestExtended = f
 	}
 }
 
