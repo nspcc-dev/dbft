@@ -21,7 +21,7 @@ func (c *Context[H]) makePrepareRequest(force bool) ConsensusPayload[H] {
 		return nil
 	}
 
-	req := c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.TransactionHashes)
+	req := c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.TransactionsOrdered)
 
 	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }

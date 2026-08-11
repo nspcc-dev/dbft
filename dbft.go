@@ -51,22 +51,7 @@ func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 }
 
 func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
-	d.Transactions[tx.Hash()] = tx
-	if d.hasAllTransactions() {
-		if d.IsPrimary() || d.Context.WatchOnly() {
-			return
-		}
-
-		if !d.createAndCheckBlock() {
-			return
-		}
-
-		d.verifyPreCommitPayloadsAgainstPreBlock()
-
-		d.extendTimer(2)
-		d.sendPrepareResponse()
-		d.checkPrepare()
-	}
+	panic("dbft: addTransaction must not be called, PrepareRequest transactions are always attached in full")
 }
 
 // Start initializes dBFT instance and starts the protocol if node is primary.
@@ -349,10 +334,16 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 
 	d.Timestamp = p.Timestamp()
 	d.Nonce = p.Nonce()
-	d.TransactionHashes = p.TransactionHashes()
 
-	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.TransactionHashes)))
-	d.processMissingTx()
+	txx, err := d.UnpackTransactions(p)
+	if err != nil {
+		d.Logger.Warn("can't unpack PrepareRequest transactions", zap.Uint16("from", msg.ValidatorIndex()), zap.String("error", err.Error()))
+		d.sendChangeView(CVBlockRejectedByPolicy)
+		return
+	}
+	d.TransactionsOrdered = txx
+
+	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.TransactionsOrdered)))
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
@@ -365,22 +356,7 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 }
 
 func (d *DBFT[H]) processMissingTx() {
-	for _, h := range d.TransactionHashes {
-		if _, ok := d.Transactions[h]; ok {
-			continue
-		}
-		if tx := d.GetTx(h); tx == nil {
-			d.MissingTransactions = append(d.MissingTransactions, h)
-		} else {
-			d.Transactions[h] = tx
-		}
-	}
-
-	if len(d.MissingTransactions) != 0 {
-		d.Logger.Info("missing tx",
-			zap.Int("count", len(d.MissingTransactions)))
-		d.RequestTx(d.MissingTransactions...)
-	}
+	panic("dbft: processMissingTx must not be called, PrepareRequest transactions are always attached in full")
 }
 
 // createAndCheckBlock is a prepareRequest-level helper that creates and checks
