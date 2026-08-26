@@ -195,8 +195,7 @@ func (n *simNode) VerifyPayload(p dbft.ConsensusPayload[crypto.Uint256]) error {
 
 func (n *simNode) addTx(count int) {
 	for i := range count {
-		tx := consensus.Tx64(uint64(i))
-		n.pool.Add(&tx)
+		n.pool.Add(new(consensus.Tx64(uint64(i))))
 	}
 }
 

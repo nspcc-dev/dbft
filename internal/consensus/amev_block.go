@@ -35,8 +35,7 @@ func NewAMEVBlock(pre dbft.PreBlock[crypto.Uint256], cnData [][]byte, m int) dbf
 	for i := range m {
 		sum += binary.BigEndian.Uint32(cnData[i])
 	}
-	tx := Tx64(math.MaxInt64 - int64(sum))
-	res.transactions = append(preB.initialTransactions, &tx)
+	res.transactions = append(preB.initialTransactions, new(Tx64(math.MaxInt64-int64(sum))))
 
 	// Rebuild Merkle root for the new set of transactions.
 	txHashes := make([]crypto.Uint256, len(res.transactions))
