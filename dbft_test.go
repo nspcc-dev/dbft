@@ -1,7 +1,6 @@
 package dbft_test
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"testing"
@@ -481,7 +480,7 @@ func TestDBFT_Invalid(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	priv, pub := crypto.Generate(rand.Reader)
+	priv, pub := crypto.Generate()
 	require.NotNil(t, priv)
 	require.NotNil(t, pub)
 
@@ -1236,7 +1235,7 @@ func newConsensusPayload(c *dbft.Context[crypto.Uint256], t dbft.MessageType, ms
 
 func getTestValidators(n int) (privs []dbft.PrivateKey, pubs []dbft.PublicKey) {
 	for range n {
-		priv, pub := crypto.Generate(rand.Reader)
+		priv, pub := crypto.Generate()
 		privs = append(privs, priv)
 		pubs = append(pubs, pub)
 	}

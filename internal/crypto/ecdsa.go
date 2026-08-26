@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
-	"io"
 	"math/big"
 
 	"github.com/nspcc-dev/dbft"
@@ -24,8 +23,13 @@ type (
 	}
 )
 
-func generateECDSA(r io.Reader) (dbft.PrivateKey, dbft.PublicKey) {
-	key, err := ecdsa.GenerateKey(elliptic.P256(), r)
+// Generate generates new ECDSA key pair.
+func Generate() (dbft.PrivateKey, dbft.PublicKey) {
+	return generateECDSA()
+}
+
+func generateECDSA() (dbft.PrivateKey, dbft.PublicKey) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil
 	}

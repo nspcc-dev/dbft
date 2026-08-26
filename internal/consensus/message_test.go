@@ -102,7 +102,7 @@ func TestRecoveryMessage_NoPayloads(t *testing.T) {
 	m := NewConsensusPayload(dbft.RecoveryRequestType, 77, 0, 3, &recoveryMessage{}).(*Payload)
 
 	validators := make([]dbft.PublicKey, 1)
-	_, validators[0] = crypto.Generate(rand.Reader)
+	_, validators[0] = crypto.Generate()
 
 	rec := m.GetRecoveryMessage()
 	require.NotNil(t, rec)

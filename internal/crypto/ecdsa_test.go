@@ -1,20 +1,24 @@
 package crypto
 
 import (
-	"errors"
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-// Do not generate keys with not enough entropy.
-func TestECDSA_Generate(t *testing.T) {
-	rd := &errorReader{}
-	priv, pub := GenerateWith(SuiteECDSA, rd)
-	require.Nil(t, priv)
-	require.Nil(t, pub)
+func TestVerifySignature(t *testing.T) {
+	const dataSize = 1000
+
+	priv, pub := Generate()
+	data := make([]byte, dataSize)
+	_, err := rand.Reader.Read(data)
+	require.NoError(t, err)
+
+	sign, err := priv.(*ECDSAPriv).Sign(data)
+	require.NoError(t, err)
+	require.Equal(t, 64, len(sign))
+
+	err = pub.(*ECDSAPub).Verify(data, sign)
+	require.NoError(t, err)
 }
-
-type errorReader struct{}
-
-func (r *errorReader) Read(_ []byte) (int, error) { return 0, errors.New("error on read") }

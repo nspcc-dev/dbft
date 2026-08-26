@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"flag"
 	"fmt"
 	"net/http"
@@ -103,7 +102,7 @@ func initNodes(nodes []*simNode, log *zap.Logger) {
 }
 
 func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
-	key, pub := crypto.Generate(rand.Reader)
+	key, pub := crypto.Generate()
 	nodes[i] = &simNode{
 		id:       i,
 		messages: make(chan dbft.ConsensusPayload[crypto.Uint256], defaultChanSize),
