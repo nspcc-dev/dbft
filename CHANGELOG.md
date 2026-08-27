@@ -9,7 +9,7 @@ New features:
 Behaviour changes:
 
 Improvements:
- * minimum required Go version is 1.25 (#144, #156)
+ * minimum required Go version is 1.26 (#144, #156, #162)
  * `go.uber.org/zap` dependency upgrade from v1.27.0 to v1.27.1 (#156) 
 
 Bugs fixed:

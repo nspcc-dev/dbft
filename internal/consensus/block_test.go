@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/gob"
 	"errors"
@@ -46,7 +45,7 @@ func TestNeoBlock_Setters(t *testing.T) {
 	})
 
 	t.Run("hash does not change after signature", func(t *testing.T) {
-		priv, pub := crypto.Generate(rand.Reader)
+		priv, pub := crypto.Generate()
 		require.NotNil(t, priv)
 		require.NotNil(t, pub)
 

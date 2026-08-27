@@ -39,8 +39,7 @@ func (m *recoveryMessage) AddPayload(p dbft.ConsensusPayload[crypto.Uint256]) {
 	switch p.Type() {
 	case dbft.PrepareRequestType:
 		m.prepareRequest = p.GetPrepareRequest()
-		prepHash := p.Hash()
-		m.preparationHash = &prepHash
+		m.preparationHash = new(p.Hash())
 	case dbft.PrepareResponseType:
 		m.preparationPayloads = append(m.preparationPayloads, preparationCompact{
 			ValidatorIndex: p.ValidatorIndex(),
