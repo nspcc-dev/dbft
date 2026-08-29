@@ -82,7 +82,7 @@ type Config[H Hash] struct {
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
 	NewConsensusPayload func(*Context[H], MessageType, any) ConsensusPayload[H]
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
-	NewPrepareRequest func(ts uint64, nonce uint64, transactionHashes []H) PrepareRequest[H]
+	NewPrepareRequest func(ts uint64, nonce uint64, transactions []Transaction[H]) PrepareRequest[H]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
 	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
@@ -97,6 +97,9 @@ type Config[H Hash] struct {
 	NewRecoveryMessage func() RecoveryMessage[H]
 	// VerifyPrepareRequest can perform external payload verification and returns true iff it was successful.
 	VerifyPrepareRequest func(p ConsensusPayload[H]) error
+	// UnpackTransactions resolves and returns the full ordered list of
+	// transactions proposed in a PrepareRequest.
+	UnpackTransactions func(p PrepareRequest[H]) ([]Transaction[H], error)
 	// VerifyPrepareResponse performs external PrepareResponse verification and returns nil if it's successful.
 	VerifyPrepareResponse func(p ConsensusPayload[H]) error
 	// VerifyPreCommit performs external PreCommit verification and returns nil if it's successful.
@@ -182,6 +185,9 @@ func checkConfig[H Hash](cfg *Config[H]) error {
 	}
 	if cfg.NewRecoveryMessage == nil {
 		return errors.New("NewRecoveryMessage is nil")
+	}
+	if cfg.UnpackTransactions == nil {
+		return errors.New("UnpackTransactions is nil")
 	}
 	if cfg.AntiMEVExtensionEnablingHeight >= 0 {
 		if cfg.NewPreBlockFromContext == nil {
@@ -388,7 +394,7 @@ func WithNewConsensusPayload[H Hash](f func(ctx *Context[H], typ MessageType, ms
 }
 
 // WithNewPrepareRequest sets NewPrepareRequest.
-func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionsHashes []H) PrepareRequest[H]) func(config *Config[H]) {
+func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactions []Transaction[H]) PrepareRequest[H]) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewPrepareRequest = f
 	}
@@ -440,6 +446,13 @@ func WithNewRecoveryMessage[H Hash](f func() RecoveryMessage[H]) func(config *Co
 func WithVerifyPrepareRequest[H Hash](f func(prepareReq ConsensusPayload[H]) error) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.VerifyPrepareRequest = f
+	}
+}
+
+// WithUnpackTransactions sets UnpackTransactions.
+func WithUnpackTransactions[H Hash](f func(p PrepareRequest[H]) ([]Transaction[H], error)) func(config *Config[H]) {
+	return func(cfg *Config[H]) {
+		cfg.UnpackTransactions = f
 	}
 }
 

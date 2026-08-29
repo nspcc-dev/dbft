@@ -41,6 +41,7 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 		dbft.WithCurrentBlockHash[crypto.Uint256](currentBlockHash),
 		dbft.WithGetValidators[crypto.Uint256](getValidators),
 		dbft.WithVerifyPrepareRequest[crypto.Uint256](verifyPayload),
+		dbft.WithUnpackTransactions[crypto.Uint256](UnpackTransactions),
 		dbft.WithVerifyPrepareResponse[crypto.Uint256](verifyPayload),
 		dbft.WithVerifyCommit[crypto.Uint256](verifyPayload),
 
@@ -58,10 +59,14 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 }
 
 func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
-	if ctx.TransactionHashes == nil {
+	if ctx.TransactionsOrdered == nil {
 		return nil
 	}
-	block := NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	txHashes := make([]crypto.Uint256, len(ctx.TransactionsOrdered))
+	for i, tx := range ctx.TransactionsOrdered {
+		txHashes[i] = tx.Hash()
+	}
+	block := NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, txHashes)
 	return block
 }
 
