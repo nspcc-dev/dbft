@@ -51,6 +51,9 @@ func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 }
 
 func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
+	if d.PrepareRequestExtensionEnabled {
+		panic("bug: addTransaction must not be called with PrepareRequestExtension active")
+	}
 	d.Transactions[tx.Hash()] = tx
 	if d.hasAllTransactions() {
 		if d.IsPrimary() || d.Context.WatchOnly() {
@@ -349,10 +352,19 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 
 	d.Timestamp = p.Timestamp()
 	d.Nonce = p.Nonce()
-	d.TransactionHashes = p.TransactionHashes()
+	var txCount int
+	if d.PrepareRequestExtensionEnabled {
+		d.TransactionList = p.Transactions()
+		txCount = len(d.TransactionList)
+	} else {
+		d.TransactionHashes = p.TransactionHashes()
+		txCount = len(d.TransactionHashes)
+	}
 
-	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.TransactionHashes)))
-	d.processMissingTx()
+	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", txCount))
+	if !d.PrepareRequestExtensionEnabled {
+		d.processMissingTx()
+	}
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 

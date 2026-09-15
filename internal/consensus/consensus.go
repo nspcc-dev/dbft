@@ -58,10 +58,22 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 }
 
 func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
-	if ctx.TransactionHashes == nil {
-		return nil
+	var txHashes []crypto.Uint256
+	if ctx.PrepareRequestExtensionEnabled {
+		if ctx.TransactionList == nil {
+			return nil
+		}
+		txHashes = make([]crypto.Uint256, len(ctx.TransactionList))
+		for i, tx := range ctx.TransactionList {
+			txHashes[i] = tx.Hash()
+		}
+	} else {
+		if ctx.TransactionHashes == nil {
+			return nil
+		}
+		txHashes = ctx.TransactionHashes
 	}
-	block := NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	block := NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, txHashes)
 	return block
 }
 

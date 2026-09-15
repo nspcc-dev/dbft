@@ -90,7 +90,8 @@ func (m *recoveryMessage) GetPrepareRequest(p dbft.ConsensusPayload[crypto.Uint2
 		// prepareRequest.Timestamp() here returns nanoseconds-precision value, so convert it to seconds again
 		timestamp:         nanoSecToSec(m.prepareRequest.Timestamp()),
 		nonce:             m.prepareRequest.Nonce(),
-		transactionHashes: m.prepareRequest.TransactionHashes(),
+		transactionHashes: m.prepareRequest.(*prepareRequest).transactionHashes,
+		transactions:      m.prepareRequest.(*prepareRequest).transactions,
 	})
 	req.SetValidatorIndex(ind)
 

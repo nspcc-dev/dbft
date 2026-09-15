@@ -3,6 +3,7 @@ package dbft_test
 import (
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -576,7 +577,22 @@ func TestDBFT_Invalid(t *testing.T) {
 
 	opts = append(opts, dbft.WithNewRecoveryMessage[crypto.Uint256](func() dbft.RecoveryMessage[crypto.Uint256] {
 		return nil
-	}), dbft.WithMaxTimePerBlock[crypto.Uint256](func() time.Duration {
+	}))
+	t.Run("NewPrepareRequestExtended without PrepareRequestExtensionEnablingHeight", func(t *testing.T) {
+		invalidOpts := append(slices.Clone(opts), dbft.WithNewPrepareRequestExtended[crypto.Uint256](func(uint64, uint64, []dbft.Transaction[crypto.Uint256]) dbft.PrepareRequest[crypto.Uint256] {
+			return nil
+		}))
+		_, err := dbft.New(invalidOpts...)
+		require.ErrorContains(t, err, "NewPrepareRequestExtended is set, but PrepareRequestExtensionEnablingHeight is not specified")
+	})
+
+	t.Run("PrepareRequestExtensionEnablingHeight without NewPrepareRequestExtended", func(t *testing.T) {
+		invalidOpts := append(slices.Clone(opts), dbft.WithPrepareRequestExtensionEnablingHeight[crypto.Uint256](0))
+		_, err := dbft.New(invalidOpts...)
+		require.ErrorContains(t, err, "NewPrepareRequestExtended is nil")
+	})
+
+	opts = append(opts, dbft.WithMaxTimePerBlock[crypto.Uint256](func() time.Duration {
 		return 0
 	}))
 	t.Run("MaxTimePerBlock without SubscribeForTxs", func(t *testing.T) {
@@ -1022,6 +1038,52 @@ func TestDBFT_CachedMessages(t *testing.T) {
 	}
 }
 
+func TestDBFT_PrepareRequestExtensionEnabledSwitch(t *testing.T) {
+	s := newTestState(0, 1)
+
+	opts := s.getOptions()
+	opts = append(opts,
+		dbft.WithPrepareRequestExtensionEnablingHeight[crypto.Uint256](2),
+		dbft.WithNewPrepareRequestExtended[crypto.Uint256](consensus.NewPrepareRequestExtended))
+
+	service, err := dbft.New[crypto.Uint256](opts...)
+	require.NoError(t, err)
+
+	service.Start(0)
+	require.False(t, service.PrepareRequestExtensionEnabled)
+
+	p := s.tryRecv()
+	require.NotNil(t, p)
+	require.Equal(t, dbft.PrepareRequestType, p.Type())
+	require.EqualValues(t, s.currHeight+1, p.Height())
+
+	cm := s.tryRecv()
+	require.NotNil(t, cm)
+	require.Equal(t, dbft.CommitType, cm.Type())
+
+	b := s.nextBlock()
+	require.NotNil(t, b)
+	require.Equal(t, s.currHeight+1, b.Index())
+
+	s.currHeight++
+	service.Reset(0)
+	require.True(t, service.PrepareRequestExtensionEnabled)
+	service.OnTimeout(s.currHeight+1, 0)
+
+	p = s.tryRecv()
+	require.NotNil(t, p)
+	require.Equal(t, dbft.PrepareRequestType, p.Type())
+	require.EqualValues(t, s.currHeight+1, p.Height())
+
+	cm = s.tryRecv()
+	require.NotNil(t, cm)
+	require.Equal(t, dbft.CommitType, cm.Type())
+
+	b = s.nextBlock()
+	require.NotNil(t, b)
+	require.Equal(t, s.currHeight+1, b.Index())
+}
+
 func (s testState) getChangeView(from uint16, view byte) Payload {
 	cv := consensus.NewChangeView(view, 0, 0)
 
@@ -1196,24 +1258,47 @@ func (s *testState) getAMEVOptions() []func(*dbft.Config[crypto.Uint256]) {
 	return opts
 }
 
-func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
+func txHashesFromList(ctx *dbft.Context[crypto.Uint256]) []crypto.Uint256 {
+	txHashes := make([]crypto.Uint256, len(ctx.TransactionList))
+	for i, tx := range ctx.TransactionList {
+		txHashes[i] = tx.Hash()
+	}
+	return txHashes
+}
+
+func blockTxHashes(ctx *dbft.Context[crypto.Uint256]) ([]crypto.Uint256, bool) {
+	if ctx.PrepareRequestExtensionEnabled {
+		if ctx.TransactionList == nil {
+			return nil, false
+		}
+		return txHashesFromList(ctx), true
+	}
 	if ctx.TransactionHashes == nil {
+		return nil, false
+	}
+	return ctx.TransactionHashes, true
+}
+
+func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
+	txHashes, ok := blockTxHashes(ctx)
+	if !ok {
 		return nil
 	}
-	block := consensus.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	block := consensus.NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, txHashes)
 	return block
 }
 
 func newPreBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.PreBlock[crypto.Uint256] {
-	if ctx.TransactionHashes == nil {
+	txHashes, ok := blockTxHashes(ctx)
+	if !ok {
 		return nil
 	}
-	pre := consensus.NewPreBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	pre := consensus.NewPreBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, txHashes)
 	return pre
 }
 
 func newAMEVBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
-	if ctx.TransactionHashes == nil {
+	if _, ok := blockTxHashes(ctx); !ok {
 		return nil
 	}
 	var data [][]byte
