@@ -58,8 +58,10 @@ type Context[H Hash] struct {
 	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
 	// It's used when PrepareRequestExtensionEnabled is false.
 	TransactionHashes []H
-	// MissingTransactions is a slice of hashes containing missing transactions for the current block.
-	// It's used when PrepareRequestExtensionEnabled is false.
+	// MissingTransactions is a slice of hashes containing missing transactions (in case of
+	// disabled PrepareRequestExtension) or hashes of those transactions that require
+	// additional data to be fetched prior to the proposal verification (in case of enabled
+	// PrepareRequestExtension).
 	MissingTransactions []H
 	// Transactions is a map containing actual transactions for the current block.
 	// It's used when PrepareRequestExtensionEnabled is false.

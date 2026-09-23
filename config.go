@@ -56,6 +56,8 @@ type Config[H Hash] struct {
 	StopTxFlow func()
 	// GetTx returns a transaction from memory pool.
 	GetTx func(h H) Transaction[H]
+	// GetTxData returns arbitrary verified data associated with the transaction.
+	GetTxData func(h H) any
 	// GetVerified returns a slice of verified transactions
 	// to be proposed in a new block.
 	GetVerified func() []Transaction[H]

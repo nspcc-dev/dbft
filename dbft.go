@@ -50,11 +50,14 @@ func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 	return d, nil
 }
 
+// addTransaction adds a missing transaction to the context (in case of disabled
+// PrepareRequestExtension) and advances the state machine if all transactions
+// (or dependent data in case of enabled PrepareRequestExtension) are collected
+// and it's possible to build a valid block.
 func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
-	if d.PrepareRequestExtensionEnabled {
-		panic("bug: addTransaction must not be called with PrepareRequestExtension active")
+	if !d.PrepareRequestExtensionEnabled {
+		d.Transactions[tx.Hash()] = tx
 	}
-	d.Transactions[tx.Hash()] = tx
 	if d.hasAllTransactions() {
 		if d.IsPrimary() || d.Context.WatchOnly() {
 			return
@@ -162,8 +165,9 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 	d.changeTimer(timeout)
 }
 
-// OnTransaction notifies service about receiving new transaction from the
-// proposed list of transactions.
+// OnTransaction notifies service about receiving new transaction (in case of
+// disabled PrepareRequestExtension) or transaction data (in case of enabled
+// PrepareRequestExtension) from the proposed list of transactions.
 func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 	// d.Logger.Debug("OnTransaction",
 	// 	zap.Bool("backup", d.IsBackup()),
@@ -357,9 +361,7 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 	}
 
 	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", txCount))
-	if !d.PrepareRequestExtensionEnabled {
-		d.processMissingTx()
-	}
+	d.processMissingTx()
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
@@ -372,6 +374,19 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 }
 
 func (d *DBFT[H]) processMissingTx() {
+	if d.PrepareRequestExtensionEnabled {
+		for _, tx := range d.TransactionList {
+			if tx.HasData() {
+				continue
+			}
+			h := tx.Hash()
+			if data := d.GetTxData(tx.Hash()); data == nil {
+				d.MissingTransactions = append(d.MissingTransactions, h)
+			}
+		}
+
+		return
+	}
 	for _, h := range d.TransactionHashes {
 		if _, ok := d.Transactions[h]; ok {
 			continue
