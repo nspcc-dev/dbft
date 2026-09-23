@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"encoding/binary"
+	"slices"
 
 	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/internal/crypto"
@@ -21,11 +22,27 @@ func NewConsensusPayload(t dbft.MessageType, height uint32, validatorIndex uint1
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
-func NewPrepareRequest(ts uint64, nonce uint64, transactionHashes []crypto.Uint256) dbft.PrepareRequest[crypto.Uint256] {
+func NewPrepareRequest(ts uint64, nonce uint64, txs []dbft.Transaction[crypto.Uint256]) dbft.PrepareRequest[crypto.Uint256] {
+	return NewPrepareRequestWithMissing(ts, nonce, txs)
+}
+
+// NewPrepareRequestWithMissing returns prepareRequest implementation with the
+// specified transactions marked as missing.
+func NewPrepareRequestWithMissing(ts uint64, nonce uint64, txs []dbft.Transaction[crypto.Uint256], missing ...int) dbft.PrepareRequest[crypto.Uint256] {
+	reqTxs := make([]*Tx64, len(txs))
+	missingTxs := make(map[crypto.Uint256]int)
+	for i, tx := range txs {
+		tx64 := tx.(*Tx64)
+		reqTxs[i] = tx64
+		if slices.Contains(missing, i) {
+			missingTxs[tx64.Hash()] = i
+		}
+	}
 	return &prepareRequest{
-		transactionHashes: transactionHashes,
-		nonce:             nonce,
-		timestamp:         nanoSecToSec(ts),
+		txs:       reqTxs,
+		nonce:     nonce,
+		timestamp: nanoSecToSec(ts),
+		missing:   missingTxs,
 	}
 }
 

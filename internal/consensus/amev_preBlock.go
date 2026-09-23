@@ -22,7 +22,7 @@ type preBlock struct {
 var _ dbft.PreBlock[crypto.Uint256] = new(preBlock)
 
 // NewPreBlock returns new preBlock.
-func NewPreBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txHashes []crypto.Uint256) dbft.PreBlock[crypto.Uint256] {
+func NewPreBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txs []dbft.Transaction[crypto.Uint256]) dbft.PreBlock[crypto.Uint256] {
 	pre := new(preBlock)
 	pre.Timestamp = uint32(timestamp / 1000000000)
 	pre.Index = index
@@ -40,7 +40,11 @@ func NewPreBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce 
 	// Canary default value.
 	pre.data = 0xff
 
-	if len(txHashes) != 0 {
+	if len(txs) != 0 {
+		txHashes := make([]crypto.Uint256, len(txs))
+		for i := range txs {
+			txHashes[i] = txs[i].Hash()
+		}
 		mt := merkle.NewMerkleTree(txHashes...)
 		pre.MerkleRoot = mt.Root().Hash
 	}

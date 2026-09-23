@@ -114,7 +114,7 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 	}
 
 	var err error
-	nodes[i].d, err = consensus.New(nodes[i].log, key, pub, nodes[i].pool.Get,
+	nodes[i].d, err = consensus.New(nodes[i].log, key, pub,
 		nodes[i].pool.GetVerified,
 		nodes[i].Broadcast,
 		nodes[i].ProcessBlock,

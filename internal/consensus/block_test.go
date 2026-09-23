@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/gob"
 	"errors"
 	"testing"
@@ -18,7 +17,7 @@ func TestNeoBlock_Setters(t *testing.T) {
 
 	require.Equal(t, crypto.Uint256{}, b.Hash())
 
-	txs := []dbft.Transaction[crypto.Uint256]{testTx(1), testTx(2)}
+	txs := []dbft.Transaction[crypto.Uint256]{new(Tx64(1)), new(Tx64(2))}
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 
@@ -69,11 +68,4 @@ func (t testKey) MarshalBinary() ([]byte, error) { return []byte{}, nil }
 func (t testKey) UnmarshalBinary([]byte) error   { return nil }
 func (t testKey) Sign([]byte) ([]byte, error) {
 	return nil, errors.New("can't sign")
-}
-
-type testTx uint64
-
-func (tx testTx) Hash() (h crypto.Uint256) {
-	binary.LittleEndian.PutUint64(h[:], uint64(tx))
-	return
 }

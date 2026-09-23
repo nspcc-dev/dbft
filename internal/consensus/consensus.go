@@ -10,7 +10,6 @@ import (
 )
 
 func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
-	getTx func(uint256 crypto.Uint256) dbft.Transaction[crypto.Uint256],
 	getVerified func() []dbft.Transaction[crypto.Uint256],
 	broadcast func(dbft.ConsensusPayload[crypto.Uint256]),
 	processBlock func(dbft.Block[crypto.Uint256]) error,
@@ -33,7 +32,6 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 
 			return -1, nil, nil
 		}),
-		dbft.WithGetTx[crypto.Uint256](getTx),
 		dbft.WithGetVerified[crypto.Uint256](getVerified),
 		dbft.WithBroadcast[crypto.Uint256](broadcast),
 		dbft.WithProcessBlock[crypto.Uint256](processBlock),
@@ -58,10 +56,10 @@ func New(logger *zap.Logger, key dbft.PrivateKey, pub dbft.PublicKey,
 }
 
 func newBlockFromContext(ctx *dbft.Context[crypto.Uint256]) dbft.Block[crypto.Uint256] {
-	if ctx.TransactionHashes == nil {
+	if ctx.Transactions == nil {
 		return nil
 	}
-	block := NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.TransactionHashes)
+	block := NewBlock(ctx.Timestamp, ctx.BlockIndex, ctx.PrevHash, ctx.Nonce, ctx.Transactions)
 	return block
 }
 

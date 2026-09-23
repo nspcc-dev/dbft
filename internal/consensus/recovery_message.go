@@ -86,11 +86,16 @@ func (m *recoveryMessage) GetPrepareRequest(p dbft.ConsensusPayload[crypto.Uint2
 		return nil
 	}
 
+	txs, _ := m.prepareRequest.Transactions()
+	reqTxs := make([]*Tx64, len(txs))
+	for i, tx := range txs {
+		reqTxs[i] = tx.(*Tx64)
+	}
 	req := fromPayload(dbft.PrepareRequestType, p, &prepareRequest{
 		// prepareRequest.Timestamp() here returns nanoseconds-precision value, so convert it to seconds again
-		timestamp:         nanoSecToSec(m.prepareRequest.Timestamp()),
-		nonce:             m.prepareRequest.Nonce(),
-		transactionHashes: m.prepareRequest.TransactionHashes(),
+		timestamp: nanoSecToSec(m.prepareRequest.Timestamp()),
+		nonce:     m.prepareRequest.Nonce(),
+		txs:       reqTxs,
 	})
 	req.SetValidatorIndex(ind)
 

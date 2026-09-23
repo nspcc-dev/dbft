@@ -21,9 +21,9 @@ func TestPayload_EncodeDecode(t *testing.T) {
 		m := generateMessage(dbft.PrepareRequestType, &prepareRequest{
 			nonce:     123,
 			timestamp: 345,
-			transactionHashes: []crypto.Uint256{
-				{1, 2, 3},
-				{5, 6, 7},
+			txs: []*Tx64{
+				new(Tx64(1)),
+				new(Tx64(2)),
 			},
 		})
 
@@ -77,9 +77,9 @@ func TestPayload_EncodeDecode(t *testing.T) {
 			prepareRequest: &prepareRequest{
 				nonce:     123,
 				timestamp: 345,
-				transactionHashes: []crypto.Uint256{
-					{1, 2, 3},
-					{5, 6, 7},
+				txs: []*Tx64{
+					new(Tx64(1)),
+					new(Tx64(2)),
 				},
 			},
 		})
