@@ -181,13 +181,8 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 	if i < 0 {
 		return
 	}
-	d.addTransaction(tx)
-	// `addTransaction` checks for responses and commits. If this was the last transaction
-	// Context could be initialized on a new height, clearing this field.
-	if len(d.MissingTransactions) == 0 {
-		return
-	}
 	d.MissingTransactions = slices.Delete(d.MissingTransactions, i, i+1)
+	d.addTransaction(tx)
 }
 
 // OnTimeout advances state machine as if timeout was fired.

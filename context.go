@@ -456,7 +456,7 @@ func (c *Context[H]) MakePreHeader() PreBlock[H] {
 // hasAllTransactions returns true iff all transactions were received
 // for the proposed block.
 func (c *Context[H]) hasAllTransactions() bool {
-	return c.PrepareRequestExtensionEnabled || len(c.TransactionHashes) == len(c.Transactions)
+	return len(c.MissingTransactions) == 0
 }
 
 func (c *Context[H]) subscribeForTransactions() {
