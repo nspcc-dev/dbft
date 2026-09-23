@@ -55,12 +55,10 @@ type Context[H Hash] struct {
 	// Timestamp is a nanosecond-precision timestamp
 	Timestamp uint64
 	Nonce     uint64
-	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
-	TransactionHashes []H
 	// MissingTransactions is a slice of hashes containing missing transactions for the current block.
-	MissingTransactions []H
+	MissingTransactions map[H]int
 	// Transactions is a map containing actual transactions for the current block.
-	Transactions map[H]Transaction[H]
+	Transactions []Transaction[H]
 
 	// PreparationPayloads stores consensus Prepare* payloads for the current epoch.
 	PreparationPayloads []ConsensusPayload[H]
@@ -287,14 +285,11 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	}
 	c.PreparationPayloads = emptyReusableSlice(c.PreparationPayloads, n)
 
-	if c.Transactions == nil { // Init.
-		c.Transactions = make(map[H]Transaction[H])
+	clear(c.Transactions)
+	if c.MissingTransactions == nil { // Init.
+		c.MissingTransactions = make(map[H]int)
 	} else { // Regular use.
-		clear(c.Transactions)
-	}
-	c.TransactionHashes = nil
-	if c.MissingTransactions != nil {
-		c.MissingTransactions = c.MissingTransactions[:0]
+		clear(c.MissingTransactions)
 	}
 	c.PrimaryIndex = c.GetPrimaryIndex(view)
 	c.ViewNumber = view
@@ -325,13 +320,7 @@ func (c *Context[H]) Fill(force bool) bool {
 	_, _ = rand.Read(b)
 
 	c.Nonce = binary.LittleEndian.Uint64(b)
-	c.TransactionHashes = make([]H, len(txx))
-
-	for i := range txx {
-		h := txx[i].Hash()
-		c.TransactionHashes[i] = h
-		c.Transactions[h] = txx[i]
-	}
+	c.Transactions = txx
 
 	c.Timestamp = c.lastBlockTimestamp + c.Config.TimestampIncrement
 	if now := c.getTimestamp(); now > c.Timestamp {
@@ -353,18 +342,12 @@ func (c *Context[H]) CreateBlock() Block[H] {
 			return nil
 		}
 
-		txx := make([]Transaction[H], len(c.TransactionHashes))
-
-		for i, h := range c.TransactionHashes {
-			txx[i] = c.Transactions[h]
-		}
-
 		// Anti-MEV extension properly sets PreBlock transactions once during PreBlock
 		// construction and then never updates these transactions in the dBFT context.
 		// Thus, user must not reuse txx if anti-MEV extension is enabled. However,
 		// we don't skip a call to Block.SetTransactions since it may be used as a
 		// signal to the user's code to finalize the block.
-		c.block.SetTransactions(txx)
+		c.block.SetTransactions(c.Transactions)
 	}
 
 	return c.block
@@ -377,13 +360,7 @@ func (c *Context[H]) CreatePreBlock() PreBlock[H] {
 			return nil
 		}
 
-		txx := make([]Transaction[H], len(c.TransactionHashes))
-
-		for i, h := range c.TransactionHashes {
-			txx[i] = c.Transactions[h]
-		}
-
-		c.preBlock.SetTransactions(txx)
+		c.preBlock.SetTransactions(c.Transactions)
 	}
 
 	return c.preBlock
@@ -432,7 +409,7 @@ func (c *Context[H]) MakePreHeader() PreBlock[H] {
 // hasAllTransactions returns true iff all transactions were received
 // for the proposed block.
 func (c *Context[H]) hasAllTransactions() bool {
-	return len(c.TransactionHashes) == len(c.Transactions)
+	return len(c.MissingTransactions) == 0
 }
 
 func (c *Context[H]) subscribeForTransactions() {

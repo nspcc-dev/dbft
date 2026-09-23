@@ -2,7 +2,6 @@ package dbft
 
 import (
 	"fmt"
-	"slices"
 	"sync"
 	"time"
 
@@ -51,7 +50,12 @@ func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 }
 
 func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
-	d.Transactions[tx.Hash()] = tx
+	i, ok := d.MissingTransactions[tx.Hash()]
+	if !ok {
+		return
+	}
+	d.Transactions[i] = tx
+	delete(d.MissingTransactions, tx.Hash())
 	if d.hasAllTransactions() {
 		if d.IsPrimary() || d.Context.WatchOnly() {
 			return
@@ -174,17 +178,15 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 		return
 	}
 
-	i := slices.Index(d.MissingTransactions, tx.Hash())
-	if i < 0 {
+	_, ok := d.MissingTransactions[tx.Hash()]
+	if !ok {
 		return
 	}
+	delete(d.MissingTransactions, tx.Hash())
+
+	// addTransaction relies on d.MissingTransactions, hence it should be
+	// up-to-date by the moment of call to addTransaction.
 	d.addTransaction(tx)
-	// `addTransaction` checks for responses and commits. If this was the last transaction
-	// Context could be initialized on a new height, clearing this field.
-	if len(d.MissingTransactions) == 0 {
-		return
-	}
-	d.MissingTransactions = slices.Delete(d.MissingTransactions, i, i+1)
 }
 
 // OnTimeout advances state machine as if timeout was fired.
@@ -349,12 +351,15 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 
 	d.Timestamp = p.Timestamp()
 	d.Nonce = p.Nonce()
-	d.TransactionHashes = p.TransactionHashes()
+	hashes := p.TransactionHashes()
+	for i, h := range hashes {
+		d.MissingTransactions[h] = i
+	}
 
-	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.TransactionHashes)))
-	d.processMissingTx()
+	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(hashes)))
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
+	d.processMissingTx()
 
 	if !d.hasAllTransactions() || !d.createAndCheckBlock() || d.Context.WatchOnly() {
 		return
@@ -364,22 +369,26 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 	d.checkPrepare()
 }
 
+// processMissingTx fills in the map of missing transactions and requests them.
 func (d *DBFT[H]) processMissingTx() {
-	for _, h := range d.TransactionHashes {
-		if _, ok := d.Transactions[h]; ok {
+	hits := d.GetTxes(func(h H) bool {
+		_, ok := d.MissingTransactions[h]
+		return ok
+	})
+
+	for _, tx := range hits {
+		i, ok := d.MissingTransactions[tx.Hash()]
+		if !ok {
 			continue
 		}
-		if tx := d.GetTx(h); tx == nil {
-			d.MissingTransactions = append(d.MissingTransactions, h)
-		} else {
-			d.Transactions[h] = tx
-		}
+		d.Transactions[i] = tx
+		delete(d.MissingTransactions, tx.Hash())
 	}
 
 	if len(d.MissingTransactions) != 0 {
 		d.Logger.Info("missing tx",
 			zap.Int("count", len(d.MissingTransactions)))
-		d.RequestTx(d.MissingTransactions...)
+		d.RequestTx(d.MissingTransactions)
 	}
 }
 
