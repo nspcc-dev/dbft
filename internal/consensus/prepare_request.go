@@ -10,12 +10,14 @@ import (
 type (
 	prepareRequest struct {
 		transactionHashes []crypto.Uint256
+		transactions      []dbft.Transaction[crypto.Uint256]
 		nonce             uint64
 		timestamp         uint32
 	}
 	// prepareRequestAux is an auxiliary structure for prepareRequest encoding.
 	prepareRequestAux struct {
 		TransactionHashes []crypto.Uint256
+		Transactions      []dbft.Transaction[crypto.Uint256]
 		Nonce             uint64
 		Timestamp         uint32
 	}
@@ -27,6 +29,7 @@ var _ dbft.PrepareRequest[crypto.Uint256] = (*prepareRequest)(nil)
 func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {
 	return w.Encode(&prepareRequestAux{
 		TransactionHashes: p.transactionHashes,
+		Transactions:      p.transactions,
 		Nonce:             p.nonce,
 		Timestamp:         p.timestamp,
 	})
@@ -42,6 +45,7 @@ func (p *prepareRequest) DecodeBinary(r *gob.Decoder) error {
 	p.timestamp = aux.Timestamp
 	p.nonce = aux.Nonce
 	p.transactionHashes = aux.TransactionHashes
+	p.transactions = aux.Transactions
 	return nil
 }
 
@@ -58,4 +62,9 @@ func (p prepareRequest) Nonce() uint64 {
 // TransactionHashes implements PrepareRequest interface.
 func (p prepareRequest) TransactionHashes() []crypto.Uint256 {
 	return p.transactionHashes
+}
+
+// Transactions implements PrepareRequest interface.
+func (p prepareRequest) Transactions() []dbft.Transaction[crypto.Uint256] {
+	return p.transactions
 }

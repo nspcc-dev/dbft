@@ -21,7 +21,12 @@ func (c *Context[H]) makePrepareRequest(force bool) ConsensusPayload[H] {
 		return nil
 	}
 
-	req := c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.TransactionHashes)
+	var req PrepareRequest[H]
+	if c.PrepareRequestExtensionEnabled {
+		req = c.Config.NewPrepareRequestExtended(c.Timestamp, c.Nonce, c.TransactionList)
+	} else {
+		req = c.Config.NewPrepareRequest(c.Timestamp, c.Nonce, c.TransactionHashes)
+	}
 
 	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }

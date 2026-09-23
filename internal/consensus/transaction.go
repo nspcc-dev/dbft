@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"encoding/binary"
+	"encoding/gob"
 	"errors"
 
 	"github.com/nspcc-dev/dbft"
@@ -15,6 +16,10 @@ import (
 type Tx64 uint64
 
 var _ dbft.Transaction[crypto.Uint256] = (*Tx64)(nil)
+
+func init() {
+	gob.Register(new(Tx64))
+}
 
 func (t *Tx64) Hash() (h crypto.Uint256) {
 	binary.LittleEndian.PutUint64(h[:], uint64(*t))

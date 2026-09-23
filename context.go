@@ -56,11 +56,23 @@ type Context[H Hash] struct {
 	Timestamp uint64
 	Nonce     uint64
 	// TransactionHashes is a slice of hashes of proposed transactions in the current block.
+	// It's used when PrepareRequestExtensionEnabled is false.
 	TransactionHashes []H
-	// MissingTransactions is a slice of hashes containing missing transactions for the current block.
+	// MissingTransactions is a slice of hashes containing missing transactions (in case of
+	// disabled PrepareRequestExtension) or hashes of those transactions that require
+	// additional data to be fetched prior to the proposal verification (in case of enabled
+	// PrepareRequestExtension).
 	MissingTransactions []H
 	// Transactions is a map containing actual transactions for the current block.
+	// It's used when PrepareRequestExtensionEnabled is false.
 	Transactions map[H]Transaction[H]
+
+	// TransactionList is a full ordered list of transactions proposed in the current block.
+	// It's used when PrepareRequestExtensionEnabled is true.
+	TransactionList []Transaction[H]
+	// PrepareRequestExtensionEnabled tells whether full transaction list is used for the
+	// PrepareRequest construction. Refreshed once per dBFT reset.
+	PrepareRequestExtensionEnabled bool
 
 	// PreparationPayloads stores consensus Prepare* payloads for the current epoch.
 	PreparationPayloads []ConsensusPayload[H]
@@ -287,6 +299,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	}
 	c.PreparationPayloads = emptyReusableSlice(c.PreparationPayloads, n)
 
+	c.TransactionList = nil
 	if c.Transactions == nil { // Init.
 		c.Transactions = make(map[H]Transaction[H])
 	} else { // Regular use.
@@ -302,6 +315,7 @@ func (c *Context[H]) reset(view byte, ts uint64) {
 	if c.MyIndex >= 0 {
 		c.LastSeenMessage[c.MyIndex] = &HeightView{c.BlockIndex, c.ViewNumber}
 	}
+	c.PrepareRequestExtensionEnabled = c.isPrepareRequestExtensionEnabled()
 }
 
 func emptyReusableSlice[E any](s []E, n int) []E {
@@ -325,12 +339,15 @@ func (c *Context[H]) Fill(force bool) bool {
 	_, _ = rand.Read(b)
 
 	c.Nonce = binary.LittleEndian.Uint64(b)
-	c.TransactionHashes = make([]H, len(txx))
-
-	for i := range txx {
-		h := txx[i].Hash()
-		c.TransactionHashes[i] = h
-		c.Transactions[h] = txx[i]
+	if c.PrepareRequestExtensionEnabled {
+		c.TransactionList = txx
+	} else {
+		c.TransactionHashes = make([]H, len(txx))
+		for i := range txx {
+			h := txx[i].Hash()
+			c.TransactionHashes[i] = h
+			c.Transactions[h] = txx[i]
+		}
 	}
 
 	c.Timestamp = c.lastBlockTimestamp + c.Config.TimestampIncrement
@@ -353,18 +370,12 @@ func (c *Context[H]) CreateBlock() Block[H] {
 			return nil
 		}
 
-		txx := make([]Transaction[H], len(c.TransactionHashes))
-
-		for i, h := range c.TransactionHashes {
-			txx[i] = c.Transactions[h]
-		}
-
 		// Anti-MEV extension properly sets PreBlock transactions once during PreBlock
 		// construction and then never updates these transactions in the dBFT context.
 		// Thus, user must not reuse txx if anti-MEV extension is enabled. However,
 		// we don't skip a call to Block.SetTransactions since it may be used as a
 		// signal to the user's code to finalize the block.
-		c.block.SetTransactions(txx)
+		c.block.SetTransactions(c.collectTransactions())
 	}
 
 	return c.block
@@ -377,22 +388,37 @@ func (c *Context[H]) CreatePreBlock() PreBlock[H] {
 			return nil
 		}
 
-		txx := make([]Transaction[H], len(c.TransactionHashes))
-
-		for i, h := range c.TransactionHashes {
-			txx[i] = c.Transactions[h]
-		}
-
-		c.preBlock.SetTransactions(txx)
+		c.preBlock.SetTransactions(c.collectTransactions())
 	}
 
 	return c.preBlock
+}
+
+// collectTransactions returns the ordered list of transactions to be proposed in
+// the resulting block. If PrepareRequestExtension is enabled, they are taken
+// directly from TransactionList; otherwise they are reconstructed, preserving
+// TransactionHashes order, from the already-collected Transactions map.
+func (c *Context[H]) collectTransactions() []Transaction[H] {
+	if c.PrepareRequestExtensionEnabled {
+		return c.TransactionList
+	}
+	txx := make([]Transaction[H], len(c.TransactionHashes))
+	for i, h := range c.TransactionHashes {
+		txx[i] = c.Transactions[h]
+	}
+	return txx
 }
 
 // isAntiMEVExtensionEnabled returns whether Anti-MEV dBFT extension is enabled
 // at the currently processing block height.
 func (c *Context[H]) isAntiMEVExtensionEnabled() bool {
 	return c.Config.AntiMEVExtensionEnablingHeight >= 0 && uint32(c.Config.AntiMEVExtensionEnablingHeight) <= c.BlockIndex
+}
+
+// isPrepareRequestExtensionEnabled returns whether PrepareRequest dBFT extension is enabled
+// at the currently processing block height.
+func (c *Context[H]) isPrepareRequestExtensionEnabled() bool {
+	return c.Config.PrepareRequestExtensionEnablingHeight >= 0 && uint32(c.Config.PrepareRequestExtensionEnablingHeight) <= c.BlockIndex
 }
 
 // MakeHeader returns half-filled block for the current epoch.
@@ -432,7 +458,7 @@ func (c *Context[H]) MakePreHeader() PreBlock[H] {
 // hasAllTransactions returns true iff all transactions were received
 // for the proposed block.
 func (c *Context[H]) hasAllTransactions() bool {
-	return len(c.TransactionHashes) == len(c.Transactions)
+	return len(c.MissingTransactions) == 0
 }
 
 func (c *Context[H]) subscribeForTransactions() {
