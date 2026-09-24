@@ -21,11 +21,15 @@ func NewConsensusPayload(t dbft.MessageType, height uint32, validatorIndex uint1
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
-func NewPrepareRequest(ts uint64, nonce uint64, transactionsHashes []crypto.Uint256) dbft.PrepareRequest[crypto.Uint256] {
+func NewPrepareRequest(ts uint64, nonce uint64, txs []dbft.Transaction[crypto.Uint256]) dbft.PrepareRequest[crypto.Uint256] {
+	reqTxs := make([]*Tx64, len(txs))
+	for i, tx := range txs {
+		reqTxs[i] = tx.(*Tx64)
+	}
 	return &prepareRequest{
-		transactionHashes: transactionsHashes,
-		nonce:             nonce,
-		timestamp:         nanoSecToSec(ts),
+		txs:       reqTxs,
+		nonce:     nonce,
+		timestamp: nanoSecToSec(ts),
 	}
 }
 

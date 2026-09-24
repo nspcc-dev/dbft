@@ -2,6 +2,7 @@ package dbft
 
 import (
 	"errors"
+	"iter"
 	"time"
 
 	"go.uber.org/zap"
@@ -42,7 +43,7 @@ type Config[H Hash] struct {
 	// RequestTx is a callback which is called when transaction contained
 	// in current block can't be found in memory pool. The slice received by
 	// this callback MUST NOT be changed.
-	RequestTx func(h map[H]int)
+	RequestTx func(h iter.Seq[H])
 	// SubscribeForTxs is a callback which is called when dBFT needs to track incoming
 	// mempool transactions. Subscription is supposed to be single-use, no unsubscription
 	// is initiated by dBFT, hence it's the user's duty to manage and release resources.
@@ -51,9 +52,6 @@ type Config[H Hash] struct {
 	// StopTxFlow is a callback which is called when the process no longer needs
 	// any transactions.
 	StopTxFlow func()
-	// GetTxes returns the list of transactions from the node's memory pool that are
-	// currently missing in the dBFT context.
-	GetTxes func(isMissing func(h H) bool) []Transaction[H]
 	// GetVerified returns a slice of verified transactions
 	// to be proposed in a new block.
 	GetVerified func() []Transaction[H]
@@ -121,9 +119,8 @@ func defaultConfig[H Hash]() *Config[H] {
 		TimePerBlock:       func() time.Duration { return defaultSecondsPerBlock },
 		TimestampIncrement: defaultTimestampIncrement,
 		GetKeyPair:         nil,
-		RequestTx:          func(map[H]int) {},
+		RequestTx:          func(iter.Seq[H]) {},
 		StopTxFlow:         func() {},
-		GetTxes:            func(func(H) bool) []Transaction[H] { return nil },
 		GetVerified:        func() []Transaction[H] { return make([]Transaction[H], 0) },
 		VerifyBlock:        func(Block[H]) bool { return true },
 		Broadcast:          func(ConsensusPayload[H]) {},
@@ -276,7 +273,7 @@ func WithNewBlockFromContext[H Hash](f func(ctx *Context[H]) Block[H]) func(conf
 }
 
 // WithRequestTx sets RequestTx.
-func WithRequestTx[H Hash](f func(h map[H]int)) func(config *Config[H]) {
+func WithRequestTx[H Hash](f func(hs iter.Seq[H])) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.RequestTx = f
 	}
@@ -293,13 +290,6 @@ func WithSubscribeForTxs[H Hash](f func()) func(config *Config[H]) {
 func WithStopTxFlow[H Hash](f func()) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.StopTxFlow = f
-	}
-}
-
-// WithGetTxs sets GetTxs.
-func WithGetTxs[H Hash](f func(hasTx func(h H) bool) []Transaction[H]) func(config *Config[H]) {
-	return func(cfg *Config[H]) {
-		cfg.GetTxes = f
 	}
 }
 

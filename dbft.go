@@ -2,6 +2,7 @@ package dbft
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -351,12 +352,9 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 
 	d.Timestamp = p.Timestamp()
 	d.Nonce = p.Nonce()
-	hashes := p.TransactionHashes()
-	for i, h := range hashes {
-		d.MissingTransactions[h] = i
-	}
+	d.Transactions, d.MissingTransactions = p.Transactions()
 
-	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(hashes)))
+	d.Logger.Info("received PrepareRequest", zap.Uint16("validator", msg.ValidatorIndex()), zap.Int("tx", len(d.Transactions)))
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 	d.processMissingTx()
@@ -371,24 +369,10 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 
 // processMissingTx fills in the map of missing transactions and requests them.
 func (d *DBFT[H]) processMissingTx() {
-	hits := d.GetTxes(func(h H) bool {
-		_, ok := d.MissingTransactions[h]
-		return ok
-	})
-
-	for _, tx := range hits {
-		i, ok := d.MissingTransactions[tx.Hash()]
-		if !ok {
-			continue
-		}
-		d.Transactions[i] = tx
-		delete(d.MissingTransactions, tx.Hash())
-	}
-
 	if len(d.MissingTransactions) != 0 {
 		d.Logger.Info("missing tx",
 			zap.Int("count", len(d.MissingTransactions)))
-		d.RequestTx(d.MissingTransactions)
+		d.RequestTx(maps.Keys(d.MissingTransactions))
 	}
 }
 
