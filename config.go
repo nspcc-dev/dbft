@@ -2,6 +2,7 @@ package dbft
 
 import (
 	"errors"
+	"iter"
 	"time"
 
 	"go.uber.org/zap"
@@ -42,7 +43,7 @@ type Config[H Hash] struct {
 	// RequestTx is a callback which is called when transaction contained
 	// in current block can't be found in memory pool. The slice received by
 	// this callback MUST NOT be changed.
-	RequestTx func(h ...H)
+	RequestTx func(h iter.Seq[H])
 	// SubscribeForTxs is a callback which is called when dBFT needs to track incoming
 	// mempool transactions. Subscription is supposed to be single-use, no unsubscription
 	// is initiated by dBFT, hence it's the user's duty to manage and release resources.
@@ -51,8 +52,6 @@ type Config[H Hash] struct {
 	// StopTxFlow is a callback which is called when the process no longer needs
 	// any transactions.
 	StopTxFlow func()
-	// GetTx returns a transaction from memory pool.
-	GetTx func(h H) Transaction[H]
 	// GetVerified returns a slice of verified transactions
 	// to be proposed in a new block.
 	GetVerified func() []Transaction[H]
@@ -82,7 +81,7 @@ type Config[H Hash] struct {
 	// NewConsensusPayload is a constructor for payload.ConsensusPayload.
 	NewConsensusPayload func(*Context[H], MessageType, any) ConsensusPayload[H]
 	// NewPrepareRequest is a constructor for payload.PrepareRequest.
-	NewPrepareRequest func(ts uint64, nonce uint64, transactionHashes []H) PrepareRequest[H]
+	NewPrepareRequest func(ts uint64, nonce uint64, txes []Transaction[H]) PrepareRequest[H]
 	// NewPrepareResponse is a constructor for payload.PrepareResponse.
 	NewPrepareResponse func(preparationHash H) PrepareResponse[H]
 	// NewChangeView is a constructor for payload.ChangeView.
@@ -120,9 +119,8 @@ func defaultConfig[H Hash]() *Config[H] {
 		TimePerBlock:       func() time.Duration { return defaultSecondsPerBlock },
 		TimestampIncrement: defaultTimestampIncrement,
 		GetKeyPair:         nil,
-		RequestTx:          func(...H) {},
+		RequestTx:          func(iter.Seq[H]) {},
 		StopTxFlow:         func() {},
-		GetTx:              func(H) Transaction[H] { return nil },
 		GetVerified:        func() []Transaction[H] { return make([]Transaction[H], 0) },
 		VerifyBlock:        func(Block[H]) bool { return true },
 		Broadcast:          func(ConsensusPayload[H]) {},
@@ -275,7 +273,7 @@ func WithNewBlockFromContext[H Hash](f func(ctx *Context[H]) Block[H]) func(conf
 }
 
 // WithRequestTx sets RequestTx.
-func WithRequestTx[H Hash](f func(h ...H)) func(config *Config[H]) {
+func WithRequestTx[H Hash](f func(hs iter.Seq[H])) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.RequestTx = f
 	}
@@ -292,13 +290,6 @@ func WithSubscribeForTxs[H Hash](f func()) func(config *Config[H]) {
 func WithStopTxFlow[H Hash](f func()) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.StopTxFlow = f
-	}
-}
-
-// WithGetTx sets GetTx.
-func WithGetTx[H Hash](f func(h H) Transaction[H]) func(config *Config[H]) {
-	return func(cfg *Config[H]) {
-		cfg.GetTx = f
 	}
 }
 
@@ -388,7 +379,7 @@ func WithNewConsensusPayload[H Hash](f func(ctx *Context[H], typ MessageType, ms
 }
 
 // WithNewPrepareRequest sets NewPrepareRequest.
-func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionsHashes []H) PrepareRequest[H]) func(config *Config[H]) {
+func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionsHashes []Transaction[H]) PrepareRequest[H]) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewPrepareRequest = f
 	}
