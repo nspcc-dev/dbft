@@ -25,7 +25,7 @@ type (
 	neoBlock struct {
 		base
 
-		transactions []dbft.Transaction[crypto.Uint256]
+		transactions []*Tx64
 		signature    []byte
 		hash         *crypto.Uint256
 	}
@@ -38,7 +38,7 @@ type (
 	}
 )
 
-var _ dbft.Block[crypto.Uint256] = new(neoBlock)
+var _ dbft.Block[crypto.Uint256, *Tx64] = new(neoBlock)
 
 // PrevHash implements Block interface.
 func (b *neoBlock) PrevHash() crypto.Uint256 {
@@ -56,17 +56,17 @@ func (b *neoBlock) MerkleRoot() crypto.Uint256 {
 }
 
 // Transactions implements Block interface.
-func (b *neoBlock) Transactions() []dbft.Transaction[crypto.Uint256] {
+func (b *neoBlock) Transactions() []*Tx64 {
 	return b.transactions
 }
 
 // SetTransactions implements Block interface.
-func (b *neoBlock) SetTransactions(txx []dbft.Transaction[crypto.Uint256]) {
+func (b *neoBlock) SetTransactions(txx []*Tx64) {
 	b.transactions = txx
 }
 
 // NewBlock returns new block.
-func NewBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txs []dbft.Transaction[crypto.Uint256]) dbft.Block[crypto.Uint256] {
+func NewBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txs []*Tx64) dbft.Block[crypto.Uint256, *Tx64] {
 	block := new(neoBlock)
 	block.Timestamp = uint32(timestamp / 1000000000)
 	block.base.Index = index

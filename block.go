@@ -1,7 +1,7 @@
 package dbft
 
 // Block is a generic interface for a block used by dbft.
-type Block[H Hash] interface {
+type Block[H Hash, Tx Transaction[H]] interface {
 	// Hash returns block hash.
 	Hash() H
 	// PrevHash returns previous block hash.
@@ -19,12 +19,12 @@ type Block[H Hash] interface {
 	Verify(key PublicKey, sign []byte) error
 
 	// Transactions returns block's transaction list.
-	Transactions() []Transaction[H]
+	Transactions() []Tx
 	// SetTransactions sets block's transaction list. For anti-MEV extension
 	// transactions provided via this call are taken directly from PreBlock level
 	// and thus, may be out-of-date. Thus, with anti-MEV extension enabled it's
 	// suggested to use this method as a Block finalizer since it will be called
 	// right before the block approval. Do not rely on this with anti-MEV extension
 	// disabled.
-	SetTransactions([]Transaction[H])
+	SetTransactions([]Tx)
 }

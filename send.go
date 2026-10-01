@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *DBFT[H]) broadcast(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) broadcast(msg ConsensusPayload[H, Tx]) {
 	d.Logger.Debug("broadcasting message",
 		zap.Stringer("type", msg.Type()),
 		zap.Uint32("height", d.BlockIndex),
@@ -16,7 +16,7 @@ func (d *DBFT[H]) broadcast(msg ConsensusPayload[H]) {
 	d.Broadcast(msg)
 }
 
-func (c *Context[H]) makePrepareRequest(force bool) ConsensusPayload[H] {
+func (c *Context[H, Tx]) makePrepareRequest(force bool) ConsensusPayload[H, Tx] {
 	if !c.Fill(force) {
 		return nil
 	}
@@ -26,15 +26,15 @@ func (c *Context[H]) makePrepareRequest(force bool) ConsensusPayload[H] {
 	return c.Config.NewConsensusPayload(c, PrepareRequestType, req)
 }
 
-func (d *DBFT[H]) sendPrepareRequest(force bool) {
+func (d *DBFT[H, Tx]) sendPrepareRequest(force bool) {
 	msg := d.makePrepareRequest(force)
-	if msg == ConsensusPayload[H](nil) {
+	if msg == ConsensusPayload[H, Tx](nil) {
 		d.subscribeForTransactions()
 
 		// Try one more time since there's a tiny race between an attempt to
 		// construct prepare request and transactions subscription.
 		msg = d.makePrepareRequest(force)
-		if msg == ConsensusPayload[H](nil) {
+		if msg == ConsensusPayload[H, Tx](nil) {
 			delay := d.maxTimePerBlock - d.timePerBlock
 			d.changeTimer(delay)
 			return
@@ -57,7 +57,7 @@ func (d *DBFT[H]) sendPrepareRequest(force bool) {
 	d.checkPrepare()
 }
 
-func (c *Context[H]) makeChangeView(ts uint64, reason ChangeViewReason) ConsensusPayload[H] {
+func (c *Context[H, Tx]) makeChangeView(ts uint64, reason ChangeViewReason) ConsensusPayload[H, Tx] {
 	cv := c.Config.NewChangeView(c.ViewNumber+1, reason, ts)
 
 	msg := c.Config.NewConsensusPayload(c, ChangeViewType, cv)
@@ -66,7 +66,7 @@ func (c *Context[H]) makeChangeView(ts uint64, reason ChangeViewReason) Consensu
 	return msg
 }
 
-func (d *DBFT[H]) sendChangeView(reason ChangeViewReason) {
+func (d *DBFT[H, Tx]) sendChangeView(reason ChangeViewReason) {
 	if d.Context.WatchOnly() {
 		return
 	}
@@ -103,7 +103,7 @@ func (d *DBFT[H]) sendChangeView(reason ChangeViewReason) {
 	d.checkChangeView(newView)
 }
 
-func (c *Context[H]) makePrepareResponse() ConsensusPayload[H] {
+func (c *Context[H, Tx]) makePrepareResponse() ConsensusPayload[H, Tx] {
 	resp := c.Config.NewPrepareResponse(c.PreparationPayloads[c.PrimaryIndex].Hash())
 
 	msg := c.Config.NewConsensusPayload(c, PrepareResponseType, resp)
@@ -112,14 +112,14 @@ func (c *Context[H]) makePrepareResponse() ConsensusPayload[H] {
 	return msg
 }
 
-func (d *DBFT[H]) sendPrepareResponse() {
+func (d *DBFT[H, Tx]) sendPrepareResponse() {
 	msg := d.makePrepareResponse()
 	d.Logger.Info("sending PrepareResponse", zap.Uint32("height", d.BlockIndex), zap.Uint("view", uint(d.ViewNumber)))
 	d.StopTxFlow()
 	d.broadcast(msg)
 }
 
-func (c *Context[H]) makePreCommit() (ConsensusPayload[H], error) {
+func (c *Context[H, Tx]) makePreCommit() (ConsensusPayload[H, Tx], error) {
 	if msg := c.PreCommitPayloads[c.MyIndex]; msg != nil {
 		return msg, nil
 	}
@@ -140,7 +140,7 @@ func (c *Context[H]) makePreCommit() (ConsensusPayload[H], error) {
 	return nil, fmt.Errorf("failed to construct PreBlock")
 }
 
-func (c *Context[H]) makeCommit() (ConsensusPayload[H], error) {
+func (c *Context[H, Tx]) makeCommit() (ConsensusPayload[H, Tx], error) {
 	if msg := c.CommitPayloads[c.MyIndex]; msg != nil {
 		return msg, nil
 	}
@@ -161,7 +161,7 @@ func (c *Context[H]) makeCommit() (ConsensusPayload[H], error) {
 	return nil, fmt.Errorf("failed to construct Header")
 }
 
-func (d *DBFT[H]) sendPreCommit() {
+func (d *DBFT[H, Tx]) sendPreCommit() {
 	msg, err := d.makePreCommit()
 	if err != nil {
 		d.Logger.Error("failed to construct PreCommit", zap.Error(err))
@@ -172,7 +172,7 @@ func (d *DBFT[H]) sendPreCommit() {
 	d.broadcast(msg)
 }
 
-func (d *DBFT[H]) sendCommit() {
+func (d *DBFT[H, Tx]) sendCommit() {
 	msg, err := d.makeCommit()
 	if err != nil {
 		d.Logger.Error("failed to construct Commit", zap.Error(err))
@@ -183,7 +183,7 @@ func (d *DBFT[H]) sendCommit() {
 	d.broadcast(msg)
 }
 
-func (d *DBFT[H]) sendRecoveryRequest() {
+func (d *DBFT[H, Tx]) sendRecoveryRequest() {
 	// If we're here, something is wrong, we either missing some messages or
 	// transactions or both, so re-request missing transactions here too.
 	if d.RequestSentOrReceived() && !d.hasAllTransactions() {
@@ -193,7 +193,7 @@ func (d *DBFT[H]) sendRecoveryRequest() {
 	d.broadcast(d.NewConsensusPayload(&d.Context, RecoveryRequestType, req))
 }
 
-func (c *Context[H]) makeRecoveryMessage() ConsensusPayload[H] {
+func (c *Context[H, Tx]) makeRecoveryMessage() ConsensusPayload[H, Tx] {
 	recovery := c.Config.NewRecoveryMessage()
 
 	for _, p := range c.PreparationPayloads {
@@ -231,6 +231,6 @@ func (c *Context[H]) makeRecoveryMessage() ConsensusPayload[H] {
 	return c.Config.NewConsensusPayload(c, RecoveryMessageType, recovery)
 }
 
-func (d *DBFT[H]) sendRecoveryMessage() {
+func (d *DBFT[H, Tx]) sendRecoveryMessage() {
 	d.broadcast(d.makeRecoveryMessage())
 }

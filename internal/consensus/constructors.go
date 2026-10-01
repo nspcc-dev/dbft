@@ -9,7 +9,7 @@ import (
 )
 
 // NewConsensusPayload returns minimal ConsensusPayload implementation.
-func NewConsensusPayload(t dbft.MessageType, height uint32, validatorIndex uint16, viewNumber byte, consensusMessage any) dbft.ConsensusPayload[crypto.Uint256] {
+func NewConsensusPayload(t dbft.MessageType, height uint32, validatorIndex uint16, viewNumber byte, consensusMessage any) dbft.ConsensusPayload[crypto.Uint256, *Tx64] {
 	return &Payload{
 		message: message{
 			cmType:     t,
@@ -22,24 +22,21 @@ func NewConsensusPayload(t dbft.MessageType, height uint32, validatorIndex uint1
 }
 
 // NewPrepareRequest returns minimal prepareRequest implementation.
-func NewPrepareRequest(ts uint64, nonce uint64, txs []dbft.Transaction[crypto.Uint256]) dbft.PrepareRequest[crypto.Uint256] {
+func NewPrepareRequest(ts uint64, nonce uint64, txs []*Tx64) dbft.PrepareRequest[crypto.Uint256, *Tx64] {
 	return NewPrepareRequestWithMissing(ts, nonce, txs)
 }
 
 // NewPrepareRequestWithMissing returns prepareRequest implementation with the
 // specified transactions marked as missing.
-func NewPrepareRequestWithMissing(ts uint64, nonce uint64, txs []dbft.Transaction[crypto.Uint256], missing ...int) dbft.PrepareRequest[crypto.Uint256] {
-	reqTxs := make([]*Tx64, len(txs))
+func NewPrepareRequestWithMissing(ts uint64, nonce uint64, txs []*Tx64, missing ...int) dbft.PrepareRequest[crypto.Uint256, *Tx64] {
 	missingTxs := make(map[crypto.Uint256]int)
 	for i, tx := range txs {
-		tx64 := tx.(*Tx64)
-		reqTxs[i] = tx64
 		if slices.Contains(missing, i) {
-			missingTxs[tx64.Hash()] = i
+			missingTxs[tx.Hash()] = i
 		}
 	}
 	return &prepareRequest{
-		txs:       reqTxs,
+		txs:       txs,
 		nonce:     nonce,
 		timestamp: nanoSecToSec(ts),
 		missing:   missingTxs,
@@ -90,7 +87,7 @@ func NewRecoveryRequest(ts uint64) dbft.RecoveryRequest {
 }
 
 // NewRecoveryMessage returns minimal RecoveryMessage implementation.
-func NewRecoveryMessage(preparationHash *crypto.Uint256) dbft.RecoveryMessage[crypto.Uint256] {
+func NewRecoveryMessage(preparationHash *crypto.Uint256) dbft.RecoveryMessage[crypto.Uint256, *Tx64] {
 	return &recoveryMessage{
 		preparationHash:     preparationHash,
 		preparationPayloads: make([]preparationCompact, 0),

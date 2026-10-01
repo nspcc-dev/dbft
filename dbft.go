@@ -14,12 +14,12 @@ type (
 	// and [Config] (service configuration). Data exposed from these fields
 	// is supposed to be read-only, state is changed via methods of this
 	// structure.
-	DBFT[H Hash] struct {
-		Context[H]
-		Config[H]
+	DBFT[H Hash, Tx Transaction[H]] struct {
+		Context[H, Tx]
+		Config[H, Tx]
 
 		*sync.Mutex
-		cache      cache[H]
+		cache      cache[H, Tx]
 		recovering bool
 	}
 )
@@ -28,8 +28,8 @@ type (
 // using provided options or nil and error if some of the options are missing or invalid.
 // H and A generic parameters are used as hash and address representation for
 // dBFT consensus messages, blocks and transactions.
-func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
-	cfg := defaultConfig[H]()
+func New[H Hash, Tx Transaction[H]](options ...func(config *Config[H, Tx])) (*DBFT[H, Tx], error) {
+	cfg := defaultConfig[H, Tx]()
 
 	for _, option := range options {
 		option(cfg)
@@ -39,10 +39,10 @@ func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	d := &DBFT[H]{
+	d := &DBFT[H, Tx]{
 		Mutex:  new(sync.Mutex),
 		Config: *cfg,
-		Context: Context[H]{
+		Context: Context[H, Tx]{
 			Config: cfg,
 		},
 	}
@@ -50,7 +50,7 @@ func New[H Hash](options ...func(config *Config[H])) (*DBFT[H], error) {
 	return d, nil
 }
 
-func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
+func (d *DBFT[H, Tx]) addTransaction(tx Tx) {
 	i, ok := d.MissingTransactions[tx.Hash()]
 	if !ok {
 		return
@@ -77,8 +77,8 @@ func (d *DBFT[H]) addTransaction(tx Transaction[H]) {
 // Start initializes dBFT instance and starts the protocol if node is primary.
 // It accepts the timestamp of the previous block. It should be called once
 // per DBFT lifetime.
-func (d *DBFT[H]) Start(ts uint64) {
-	d.cache = newCache[H]()
+func (d *DBFT[H, Tx]) Start(ts uint64) {
+	d.cache = newCache[H, Tx]()
 	d.initializeConsensus(0, ts)
 	if d.IsPrimary() {
 		d.sendPrepareRequest(true)
@@ -90,11 +90,11 @@ func (d *DBFT[H]) Start(ts uint64) {
 // after new block is processed by ledger (the block can come from dBFT or be
 // received by other means). The height is to be derived from the configured
 // CurrentHeight callback and view will be set to 0.
-func (d *DBFT[H]) Reset(ts uint64) {
+func (d *DBFT[H, Tx]) Reset(ts uint64) {
 	d.initializeConsensus(0, ts)
 }
 
-func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
+func (d *DBFT[H, Tx]) initializeConsensus(view byte, ts uint64) {
 	d.reset(view, ts)
 
 	var role string
@@ -166,7 +166,7 @@ func (d *DBFT[H]) initializeConsensus(view byte, ts uint64) {
 
 // OnTransaction notifies service about receiving new transaction from the
 // proposed list of transactions.
-func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
+func (d *DBFT[H, Tx]) OnTransaction(tx Tx) {
 	// d.Logger.Debug("OnTransaction",
 	// 	zap.Bool("backup", d.IsBackup()),
 	// 	zap.Bool("not_accepting", d.NotAcceptingPayloadsDueToViewChanging()),
@@ -183,20 +183,20 @@ func (d *DBFT[H]) OnTransaction(tx Transaction[H]) {
 }
 
 // OnTimeout advances state machine as if timeout was fired.
-func (d *DBFT[H]) OnTimeout(height uint32, view byte) {
+func (d *DBFT[H, Tx]) OnTimeout(height uint32, view byte) {
 	d.onTimeout(height, view, false)
 }
 
 // OnNewTransaction advances state machine if transactions subscription is active
 // and there's a new transaction added to the node pool.
-func (d *DBFT[H]) OnNewTransaction() {
+func (d *DBFT[H, Tx]) OnNewTransaction() {
 	if !d.txSubscriptionOn {
 		return
 	}
 	d.onTimeout(d.Timer.Height(), d.Timer.View(), true)
 }
 
-func (d *DBFT[H]) onTimeout(height uint32, view byte, force bool) {
+func (d *DBFT[H, Tx]) onTimeout(height uint32, view byte, force bool) {
 	if d.Context.WatchOnly() || d.BlockSent() {
 		return
 	}
@@ -241,7 +241,7 @@ func (d *DBFT[H]) onTimeout(height uint32, view byte, force bool) {
 }
 
 // OnReceive advances state machine in accordance with msg.
-func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) OnReceive(msg ConsensusPayload[H, Tx]) {
 	if int(msg.ValidatorIndex()) >= len(d.Validators) {
 		d.Logger.Error("too big validator index", zap.Uint16("from", msg.ValidatorIndex()))
 		return
@@ -311,7 +311,7 @@ func (d *DBFT[H]) OnReceive(msg ConsensusPayload[H]) {
 	}
 }
 
-func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onPrepareRequest(msg ConsensusPayload[H, Tx]) {
 	// ignore prepareRequest if we had already received it or
 	// are in process of changing view
 	if d.RequestSentOrReceived() { // || (d.ViewChanging() && !d.MoreThanFNodesCommittedOrLost()) {
@@ -360,7 +360,7 @@ func (d *DBFT[H]) onPrepareRequest(msg ConsensusPayload[H]) {
 }
 
 // processMissingTx fills in the map of missing transactions and requests them.
-func (d *DBFT[H]) processMissingTx() {
+func (d *DBFT[H, Tx]) processMissingTx() {
 	if len(d.MissingTransactions) != 0 {
 		d.Logger.Info("missing tx",
 			zap.Int("count", len(d.MissingTransactions)))
@@ -372,7 +372,7 @@ func (d *DBFT[H]) processMissingTx() {
 // the new proposed block, if it's fine it returns true, if something is wrong
 // with it, it sends a changeView request and returns false. It's only valid to
 // call it when all transactions for this block are already collected.
-func (d *DBFT[H]) createAndCheckBlock() bool {
+func (d *DBFT[H, Tx]) createAndCheckBlock() bool {
 	var blockOK bool
 	if d.isAntiMEVExtensionEnabled() {
 		b := d.CreatePreBlock()
@@ -396,7 +396,7 @@ func (d *DBFT[H]) createAndCheckBlock() bool {
 
 // updateExistingPayloads is called _only_ from onPrepareRequest, it validates
 // payloads we may have received before PrepareRequest.
-func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) updateExistingPayloads(msg ConsensusPayload[H, Tx]) {
 	for i, m := range d.PreparationPayloads {
 		if m != nil && m.Type() == PrepareResponseType {
 			resp := m.GetPrepareResponse()
@@ -416,7 +416,7 @@ func (d *DBFT[H]) updateExistingPayloads(msg ConsensusPayload[H]) {
 
 // verifyPreCommitPayloadsAgainstPreBlock performs verification of PreCommit payloads
 // against generated PreBlock.
-func (d *DBFT[H]) verifyPreCommitPayloadsAgainstPreBlock() {
+func (d *DBFT[H, Tx]) verifyPreCommitPayloadsAgainstPreBlock() {
 	if !d.hasAllTransactions() {
 		return
 	}
@@ -437,7 +437,7 @@ func (d *DBFT[H]) verifyPreCommitPayloadsAgainstPreBlock() {
 
 // verifyCommitPayloadsAgainstHeader performs verification of commit payloads
 // against generated header.
-func (d *DBFT[H]) verifyCommitPayloadsAgainstHeader() {
+func (d *DBFT[H, Tx]) verifyCommitPayloadsAgainstHeader() {
 	for i, m := range d.CommitPayloads {
 		if m != nil && m.ViewNumber() == d.ViewNumber {
 			if header := d.MakeHeader(); header != nil {
@@ -451,7 +451,7 @@ func (d *DBFT[H]) verifyCommitPayloadsAgainstHeader() {
 	}
 }
 
-func (d *DBFT[H]) onPrepareResponse(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onPrepareResponse(msg ConsensusPayload[H, Tx]) {
 	if d.ViewNumber != msg.ViewNumber() {
 		d.Logger.Debug("ignoring wrong view number", zap.Uint("view", uint(msg.ViewNumber())))
 		return
@@ -507,7 +507,7 @@ func (d *DBFT[H]) onPrepareResponse(msg ConsensusPayload[H]) {
 	}
 }
 
-func (d *DBFT[H]) onChangeView(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onChangeView(msg ConsensusPayload[H, Tx]) {
 	p := msg.GetChangeView()
 
 	if p.NewViewNumber() <= d.ViewNumber {
@@ -538,7 +538,7 @@ func (d *DBFT[H]) onChangeView(msg ConsensusPayload[H]) {
 	d.checkChangeView(p.NewViewNumber())
 }
 
-func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onPreCommit(msg ConsensusPayload[H, Tx]) {
 	existing := d.PreCommitPayloads[msg.ValidatorIndex()]
 	if existing != nil {
 		if existing.Hash() != msg.Hash() {
@@ -588,7 +588,7 @@ func (d *DBFT[H]) onPreCommit(msg ConsensusPayload[H]) {
 	)
 }
 
-func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onCommit(msg ConsensusPayload[H, Tx]) {
 	existing := d.CommitPayloads[msg.ValidatorIndex()]
 	if existing != nil {
 		if existing.Hash() != msg.Hash() {
@@ -635,7 +635,7 @@ func (d *DBFT[H]) onCommit(msg ConsensusPayload[H]) {
 	)
 }
 
-func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onRecoveryRequest(msg ConsensusPayload[H, Tx]) {
 	// Only validators are allowed to send consensus messages.
 	if d.Context.WatchOnly() {
 		return
@@ -655,7 +655,7 @@ func (d *DBFT[H]) onRecoveryRequest(msg ConsensusPayload[H]) {
 	d.sendRecoveryMessage()
 }
 
-func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
+func (d *DBFT[H, Tx]) onRecoveryMessage(msg ConsensusPayload[H, Tx]) {
 	d.Logger.Debug("recovery message received", zap.Any("dump", msg))
 
 	var (
@@ -721,7 +721,7 @@ func (d *DBFT[H]) onRecoveryMessage(msg ConsensusPayload[H]) {
 	}
 }
 
-func (d *DBFT[H]) changeTimer(delay time.Duration) {
+func (d *DBFT[H, Tx]) changeTimer(delay time.Duration) {
 	d.Logger.Debug("reset timer",
 		zap.Uint32("h", d.BlockIndex),
 		zap.Int("v", int(d.ViewNumber)),
@@ -729,7 +729,7 @@ func (d *DBFT[H]) changeTimer(delay time.Duration) {
 	d.Timer.Reset(d.BlockIndex, d.ViewNumber, delay)
 }
 
-func (d *DBFT[H]) extendTimer(count int) {
+func (d *DBFT[H, Tx]) extendTimer(count int) {
 	if !d.CommitSent() && (!d.isAntiMEVExtensionEnabled() || !d.PreCommitSent()) && !d.ViewChanging() {
 		d.Timer.Extend(time.Duration(count) * d.timePerBlock / time.Duration(d.M()))
 	}

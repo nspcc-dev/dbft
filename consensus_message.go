@@ -1,7 +1,7 @@
 package dbft
 
 // ConsensusMessage is an interface for generic dBFT message.
-type ConsensusMessage[H Hash] interface {
+type ConsensusMessage[H Hash, Tx Transaction[H]] interface {
 	// ViewNumber returns view number when this message was originated.
 	ViewNumber() byte
 	// Type returns type of this message.
@@ -12,7 +12,7 @@ type ConsensusMessage[H Hash] interface {
 	// GetChangeView returns payload as if it was ChangeView.
 	GetChangeView() ChangeView
 	// GetPrepareRequest returns payload as if it was PrepareRequest.
-	GetPrepareRequest() PrepareRequest[H]
+	GetPrepareRequest() PrepareRequest[H, Tx]
 	// GetPrepareResponse returns payload as if it was PrepareResponse.
 	GetPrepareResponse() PrepareResponse[H]
 	// GetPreCommit returns payload as if it was PreCommit.
@@ -22,5 +22,5 @@ type ConsensusMessage[H Hash] interface {
 	// GetRecoveryRequest returns payload as if it was RecoveryRequest.
 	GetRecoveryRequest() RecoveryRequest
 	// GetRecoveryMessage returns payload as if it was RecoveryMessage.
-	GetRecoveryMessage() RecoveryMessage[H]
+	GetRecoveryMessage() RecoveryMessage[H, Tx]
 }

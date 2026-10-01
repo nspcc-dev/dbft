@@ -6,7 +6,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/nspcc-dev/dbft"
 	"github.com/nspcc-dev/dbft/internal/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ func TestNeoBlock_Setters(t *testing.T) {
 
 	require.Equal(t, crypto.Uint256{}, b.Hash())
 
-	txs := []dbft.Transaction[crypto.Uint256]{new(Tx64(1)), new(Tx64(2))}
+	txs := []*Tx64{new(Tx64(1)), new(Tx64(2))}
 	b.SetTransactions(txs)
 	assert.Equal(t, txs, b.Transactions())
 

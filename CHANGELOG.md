@@ -8,6 +8,8 @@ New features:
 
 Behaviour changes:
  * transactions management refactoring implied library API changes (#164)
+ * add a separate `DBFT` generic parameter for transaction slice type
+   specificatoin (#165)
 
 Improvements:
  * minimum required Go version is 1.26 (#144, #156, #162)
