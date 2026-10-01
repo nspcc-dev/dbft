@@ -388,7 +388,7 @@ func WithNewConsensusPayload[H Hash](f func(ctx *Context[H], typ MessageType, ms
 }
 
 // WithNewPrepareRequest sets NewPrepareRequest.
-func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionsHashes []H) PrepareRequest[H]) func(config *Config[H]) {
+func WithNewPrepareRequest[H Hash](f func(ts uint64, nonce uint64, transactionHashes []H) PrepareRequest[H]) func(config *Config[H]) {
 	return func(cfg *Config[H]) {
 		cfg.NewPrepareRequest = f
 	}
