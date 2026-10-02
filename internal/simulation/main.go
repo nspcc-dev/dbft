@@ -22,8 +22,8 @@ import (
 type (
 	simNode struct {
 		id       int
-		d        *dbft.DBFT[crypto.Uint256]
-		messages chan dbft.ConsensusPayload[crypto.Uint256]
+		d        *dbft.DBFT[crypto.Uint256, *consensus.Tx64]
+		messages chan dbft.ConsensusPayload[crypto.Uint256, *consensus.Tx64]
 		key      dbft.PrivateKey
 		pub      dbft.PublicKey
 		pool     *memPool
@@ -105,7 +105,7 @@ func initSimNode(nodes []*simNode, i int, log *zap.Logger) error {
 	key, pub := crypto.Generate()
 	nodes[i] = &simNode{
 		id:       i,
-		messages: make(chan dbft.ConsensusPayload[crypto.Uint256], defaultChanSize),
+		messages: make(chan dbft.ConsensusPayload[crypto.Uint256, *consensus.Tx64], defaultChanSize),
 		key:      key,
 		pub:      pub,
 		pool:     newMemoryPool(),
@@ -153,7 +153,7 @@ func sortValidators(pubs []dbft.PublicKey) {
 	})
 }
 
-func (n *simNode) Broadcast(m dbft.ConsensusPayload[crypto.Uint256]) {
+func (n *simNode) Broadcast(m dbft.ConsensusPayload[crypto.Uint256, *consensus.Tx64]) {
 	for i, node := range n.cluster {
 		if i != n.id {
 			select {
@@ -169,11 +169,11 @@ func (n *simNode) CurrentHeight() uint32            { return n.height }
 func (n *simNode) CurrentBlockHash() crypto.Uint256 { return n.lastHash }
 
 // GetValidators always returns the same list of validators.
-func (n *simNode) GetValidators(...dbft.Transaction[crypto.Uint256]) []dbft.PublicKey {
+func (n *simNode) GetValidators(...*consensus.Tx64) []dbft.PublicKey {
 	return n.validators
 }
 
-func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256]) error {
+func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256, *consensus.Tx64]) error {
 	n.d.Logger.Debug("received block", zap.Uint32("height", b.Index()))
 
 	for _, tx := range b.Transactions() {
@@ -186,7 +186,7 @@ func (n *simNode) ProcessBlock(b dbft.Block[crypto.Uint256]) error {
 }
 
 // VerifyPayload verifies that payload was received from a good validator.
-func (n *simNode) VerifyPayload(p dbft.ConsensusPayload[crypto.Uint256]) error {
+func (n *simNode) VerifyPayload(p dbft.ConsensusPayload[crypto.Uint256, *consensus.Tx64]) error {
 	if *blocked != -1 && p.ValidatorIndex() == uint16(*blocked) {
 		return fmt.Errorf("message from blocked validator: %d", *blocked)
 	}
@@ -205,17 +205,17 @@ func (n *simNode) addTx(count int) {
 
 type memPool struct {
 	mtx   *sync.RWMutex
-	store map[crypto.Uint256]dbft.Transaction[crypto.Uint256]
+	store map[crypto.Uint256]*consensus.Tx64
 }
 
 func newMemoryPool() *memPool {
 	return &memPool{
 		mtx:   new(sync.RWMutex),
-		store: make(map[crypto.Uint256]dbft.Transaction[crypto.Uint256]),
+		store: make(map[crypto.Uint256]*consensus.Tx64),
 	}
 }
 
-func (p *memPool) Add(tx dbft.Transaction[crypto.Uint256]) {
+func (p *memPool) Add(tx *consensus.Tx64) {
 	p.mtx.Lock()
 
 	h := tx.Hash()
@@ -226,7 +226,7 @@ func (p *memPool) Add(tx dbft.Transaction[crypto.Uint256]) {
 	p.mtx.Unlock()
 }
 
-func (p *memPool) Get(h crypto.Uint256) (tx dbft.Transaction[crypto.Uint256]) {
+func (p *memPool) Get(h crypto.Uint256) (tx *consensus.Tx64) {
 	p.mtx.RLock()
 	tx = p.store[h]
 	p.mtx.RUnlock()
@@ -240,13 +240,13 @@ func (p *memPool) Delete(h crypto.Uint256) {
 	p.mtx.Unlock()
 }
 
-func (p *memPool) GetVerified() (txx []dbft.Transaction[crypto.Uint256]) {
+func (p *memPool) GetVerified() (txx []*consensus.Tx64) {
 	n := *txPerBlock
 	if n == 0 {
 		return
 	}
 
-	txx = make([]dbft.Transaction[crypto.Uint256], 0, n)
+	txx = make([]*consensus.Tx64, 0, n)
 	for _, tx := range p.store {
 		txx = append(txx, tx)
 

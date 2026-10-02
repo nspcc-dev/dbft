@@ -14,16 +14,16 @@ import (
 type amevBlock struct {
 	base
 
-	transactions []dbft.Transaction[crypto.Uint256]
+	transactions []*Tx64
 	signature    []byte
 	hash         *crypto.Uint256
 }
 
-var _ dbft.Block[crypto.Uint256] = new(amevBlock)
+var _ dbft.Block[crypto.Uint256, *Tx64] = new(amevBlock)
 
 // NewAMEVBlock returns new block based on PreBlock and additional Commit-level data
 // collected from M consensus nodes.
-func NewAMEVBlock(pre dbft.PreBlock[crypto.Uint256], cnData [][]byte, m int) dbft.Block[crypto.Uint256] {
+func NewAMEVBlock(pre dbft.PreBlock[crypto.Uint256, *Tx64], cnData [][]byte, m int) dbft.Block[crypto.Uint256, *Tx64] {
 	preB := pre.(*preBlock)
 	res := new(amevBlock)
 	res.base = preB.base
@@ -64,14 +64,14 @@ func (b *amevBlock) MerkleRoot() crypto.Uint256 {
 }
 
 // Transactions implements Block interface.
-func (b *amevBlock) Transactions() []dbft.Transaction[crypto.Uint256] {
+func (b *amevBlock) Transactions() []*Tx64 {
 	return b.transactions
 }
 
 // SetTransactions implements Block interface. This method is special since it's
 // left for dBFT 2.0 compatibility and transactions from this method must not be
 // reused to fill final Block's transactions.
-func (b *amevBlock) SetTransactions(_ []dbft.Transaction[crypto.Uint256]) {
+func (b *amevBlock) SetTransactions(_ []*Tx64) {
 }
 
 // Signature implements Block interface.

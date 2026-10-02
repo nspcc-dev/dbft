@@ -16,13 +16,13 @@ type preBlock struct {
 	// and used to construct the final list of transactions for amevBlock.
 	data uint32
 
-	initialTransactions []dbft.Transaction[crypto.Uint256]
+	initialTransactions []*Tx64
 }
 
-var _ dbft.PreBlock[crypto.Uint256] = new(preBlock)
+var _ dbft.PreBlock[crypto.Uint256, *Tx64] = new(preBlock)
 
 // NewPreBlock returns new preBlock.
-func NewPreBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txs []dbft.Transaction[crypto.Uint256]) dbft.PreBlock[crypto.Uint256] {
+func NewPreBlock(timestamp uint64, index uint32, prevHash crypto.Uint256, nonce uint64, txs []*Tx64) dbft.PreBlock[crypto.Uint256, *Tx64] {
 	pre := new(preBlock)
 	pre.Timestamp = uint32(timestamp / 1000000000)
 	pre.Index = index
@@ -74,10 +74,10 @@ func (pre *preBlock) Verify(_ dbft.PublicKey, data []byte) error {
 	return nil
 }
 
-func (pre *preBlock) Transactions() []dbft.Transaction[crypto.Uint256] {
+func (pre *preBlock) Transactions() []*Tx64 {
 	return pre.initialTransactions
 }
 
-func (pre *preBlock) SetTransactions(txs []dbft.Transaction[crypto.Uint256]) {
+func (pre *preBlock) SetTransactions(txs []*Tx64) {
 	pre.initialTransactions = txs
 }

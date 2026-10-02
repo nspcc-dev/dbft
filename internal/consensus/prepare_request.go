@@ -22,7 +22,7 @@ type (
 	}
 )
 
-var _ dbft.PrepareRequest[crypto.Uint256] = (*prepareRequest)(nil)
+var _ dbft.PrepareRequest[crypto.Uint256, *Tx64] = (*prepareRequest)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p prepareRequest) EncodeBinary(w *gob.Encoder) error {
@@ -57,10 +57,6 @@ func (p prepareRequest) Nonce() uint64 {
 }
 
 // Transactions implements PrepareRequest interface.
-func (p prepareRequest) Transactions() ([]dbft.Transaction[crypto.Uint256], map[crypto.Uint256]int) {
-	txs := make([]dbft.Transaction[crypto.Uint256], len(p.txs))
-	for i, tx := range p.txs {
-		txs[i] = tx
-	}
-	return txs, p.missing
+func (p prepareRequest) Transactions() ([]*Tx64, map[crypto.Uint256]int) {
+	return p.txs, p.missing
 }

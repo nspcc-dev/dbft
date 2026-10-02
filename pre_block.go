@@ -3,7 +3,7 @@ package dbft
 // PreBlock is a generic interface for a PreBlock used by anti-MEV dBFT extension.
 // It holds a "draft" of block that should be converted to a final block with the
 // help of additional data held by PreCommit messages.
-type PreBlock[H Hash] interface {
+type PreBlock[H Hash, Tx Transaction[H]] interface {
 	// Data returns PreBlock's data CNs need to exchange during PreCommit phase.
 	// Data represents additional information not related to a final block signature.
 	Data() []byte
@@ -18,8 +18,8 @@ type PreBlock[H Hash] interface {
 
 	// Transactions returns PreBlock's transaction list. This list may be different
 	// comparing to the final set of Block's transactions.
-	Transactions() []Transaction[H]
+	Transactions() []Tx
 	// SetTransactions sets PreBlock's transaction list. This list may be different
 	// comparing to the final set of Block's transactions.
-	SetTransactions([]Transaction[H])
+	SetTransactions([]Tx)
 }

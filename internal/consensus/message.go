@@ -32,7 +32,7 @@ type (
 	}
 )
 
-var _ dbft.ConsensusPayload[crypto.Uint256] = (*Payload)(nil)
+var _ dbft.ConsensusPayload[crypto.Uint256, *Tx64] = (*Payload)(nil)
 
 // EncodeBinary implements Serializable interface.
 func (p Payload) EncodeBinary(w *gob.Encoder) error {

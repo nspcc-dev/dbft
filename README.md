@@ -16,11 +16,11 @@ in `config.go`.
 2. `dbft` package contains `PrivateKey`/`PublicKey` interfaces which permits usage of one's own
 cryptography for signing blocks on `Commit` stage. Refer to `identity.go` for `PrivateKey`/`PublicKey`
 description. No default implementation is provided.
-3. `dbft` package contains `Hash` interface which permits usage of one's own
-hash implementation without additional overhead on conversions. Instantiate dBFT with
-custom hash implementation that matches requirements specified in the corresponding
-documentation. Refer to `identity.go` for `Hash` description. No default implementation is
-provided.
+3. `dbft` package contains `Hash` and `Transaction` interfaces which permits usage of one's own
+hash and transaction implementation without additional overhead on conversions. Instantiate dBFT with
+custom hash and transaction implementation that matches requirements specified in the corresponding
+documentation. Refer to `identity.go` for `Hash` description. Refer to `transaction.go` for `Transaction`
+description. No default implementation is provided neither for `Hash` nor for `Transaction`.
 4. `dbft` package contains `Block` and `Transaction` abstractions located at the `block.go` and
 `transaction.go` files. Every block must be able to be signed and verified as well as implement getters
 for main fields. `Transaction` is an entity which can be hashed. Two entities having

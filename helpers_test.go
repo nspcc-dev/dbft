@@ -10,6 +10,7 @@ import (
 // dependency.
 type (
 	hash        struct{}
+	tx64        int
 	payloadStub struct {
 		height         uint32
 		typ            MessageType
@@ -19,6 +20,10 @@ type (
 
 func (hash) String() string {
 	return ""
+}
+
+func (*tx64) Hash() hash {
+	return hash{}
 }
 
 func (p payloadStub) ViewNumber() byte {
@@ -42,7 +47,7 @@ func (p payloadStub) SetPayload(any) {
 func (p payloadStub) GetChangeView() ChangeView {
 	panic("TODO")
 }
-func (p payloadStub) GetPrepareRequest() PrepareRequest[hash] {
+func (p payloadStub) GetPrepareRequest() PrepareRequest[hash, *tx64] {
 	panic("TODO")
 }
 func (p payloadStub) GetPrepareResponse() PrepareResponse[hash] {
@@ -55,7 +60,7 @@ func (p payloadStub) GetPreCommit() PreCommit { panic("TODO") }
 func (p payloadStub) GetRecoveryRequest() RecoveryRequest {
 	panic("TODO")
 }
-func (p payloadStub) GetRecoveryMessage() RecoveryMessage[hash] {
+func (p payloadStub) GetRecoveryMessage() RecoveryMessage[hash, *tx64] {
 	panic("TODO")
 }
 func (p payloadStub) ValidatorIndex() uint16 {
@@ -75,7 +80,7 @@ func (p payloadStub) Hash() hash {
 }
 
 func TestMessageCache(t *testing.T) {
-	c := newCache[hash]()
+	c := newCache[hash, *tx64]()
 
 	p1 := payloadStub{
 		height: 3,
