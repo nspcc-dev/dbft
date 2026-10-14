@@ -10,6 +10,7 @@ Behaviour changes:
  * transactions management refactoring implied library API changes (#164)
  * add a separate `DBFT` generic parameter for transaction slice type
    specificatoin (#165)
+ * transaction duplicates in the proposal are not supported any more (#164, #167)
 
 Improvements:
  * minimum required Go version is 1.26 (#144, #156, #162)
