@@ -9,5 +9,7 @@ type PrepareRequest[H Hash, Tx Transaction[H]] interface {
 	// Transactions returns the list of all transactions in a proposed block
 	// with possible gaps in place of missing transactions and the map of
 	// missing transaction hashes to their indexes in the proposal list.
+	// Transaction duplicates are no-op and will lead to improper block
+	// construction.
 	Transactions() ([]Tx, map[H]int)
 }

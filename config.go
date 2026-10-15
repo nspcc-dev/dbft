@@ -52,8 +52,9 @@ type Config[H Hash, Tx Transaction[H]] struct {
 	// StopTxFlow is a callback which is called when the process no longer needs
 	// any transactions.
 	StopTxFlow func()
-	// GetVerified returns a slice of verified transactions
-	// to be proposed in a new block.
+	// GetVerified returns a slice of verified transactions to be proposed in a
+	// new block. It's a caller's responsibility to check for the duplicates in
+	// the proposed set of transactions.
 	GetVerified func() []Tx
 	// VerifyPreBlock verifies if preBlock is valid.
 	VerifyPreBlock func(b PreBlock[H, Tx]) bool

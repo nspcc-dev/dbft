@@ -56,6 +56,7 @@ type Context[H Hash, Tx Transaction[H]] struct {
 	Timestamp uint64
 	Nonce     uint64
 	// Transactions is a slice containing actual transactions for the current block.
+	// Duplicates are no-op and will lead to improper block construction.
 	Transactions []Tx
 	// MissingTransactions is a map of a missing transaction hash to its index in
 	// the slice of proposed transactions for the current block. This map is
