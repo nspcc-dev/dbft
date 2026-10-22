@@ -10,6 +10,7 @@ type PrepareRequest[H Hash, Tx Transaction[H]] interface {
 	// with possible gaps in place of missing transactions and the map of
 	// missing transaction hashes to their indexes in the proposal list.
 	// Transaction duplicates are no-op and will lead to improper block
-	// construction.
+	// construction. Do not modify the returned list of transactions or map of
+	// missing transaction hashes since dBFT doesn't copy them.
 	Transactions() ([]Tx, map[H]int)
 }
