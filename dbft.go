@@ -350,12 +350,11 @@ func (d *DBFT[H, Tx]) onPrepareRequest(msg ConsensusPayload[H, Tx]) {
 	d.updateExistingPayloads(msg)
 	d.PreparationPayloads[msg.ValidatorIndex()] = msg
 
-	if d.Context.WatchOnly() {
-		return
+	if !d.Context.WatchOnly() {
+		d.processMissingTx()
 	}
-	d.processMissingTx()
 
-	if !d.hasAllTransactions() || !d.createAndCheckBlock() {
+	if !d.hasAllTransactions() || !d.createAndCheckBlock() || d.Context.WatchOnly() {
 		return
 	}
 

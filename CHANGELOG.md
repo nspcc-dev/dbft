@@ -11,7 +11,7 @@ Behaviour changes:
  * add a separate `DBFT` generic parameter for transaction slice type
    specificatoin (#165)
  * transaction duplicates in the proposal are not supported any more (#164, #167)
- * forbid watch-only to request missing transactions (#169)
+ * forbid watch-only to request missing transactions (#169, #170)
 
 Improvements:
  * minimum required Go version is 1.26 (#144, #156, #162)
